@@ -471,144 +471,9 @@ export default function App() {
     return Array.from(new Set(list));
   }, [transactions]);
 
-  // Dashboard Financial Summary Filters and Engine
-  const [dashboardSummaryPeriod, setDashboardSummaryPeriod] = useState<'custom' | 'weekly' | 'monthly' | 'quarterly' | 'semester' | 'yearly'>('monthly');
-  const [dashboardStartDate, setDashboardStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-  const [dashboardEndDate, setDashboardEndDate] = useState(new Date().toISOString().split('T')[0]);
-  const [breakdownDimension, setBreakdownDimension] = useState<'account' | 'category' | 'subcategory' | 'location' | 'product'>('category');
+  // (Dashboard filter states removed — new dashboard is a static wealth summary)
 
-  const dashboardSummaryData = useMemo(() => {
-    const today = new Date();
-    let startOfPeriod = new Date();
-    startOfPeriod.setHours(0, 0, 0, 0);
 
-    let endOfPeriod = new Date();
-    endOfPeriod.setHours(23, 59, 59, 999);
-
-    if (dashboardSummaryPeriod === 'custom') {
-      startOfPeriod = new Date(dashboardStartDate);
-      startOfPeriod.setHours(0, 0, 0, 0);
-      endOfPeriod = new Date(dashboardEndDate);
-      endOfPeriod.setHours(23, 59, 59, 999);
-    } else if (dashboardSummaryPeriod === 'weekly') {
-      const day = today.getDay();
-      const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
-      startOfPeriod = new Date(today.getFullYear(), today.getMonth(), diffToMonday);
-      startOfPeriod.setHours(0, 0, 0, 0);
-    } else if (dashboardSummaryPeriod === 'monthly') {
-      startOfPeriod = new Date(today.getFullYear(), today.getMonth(), 1);
-      startOfPeriod.setHours(0, 0, 0, 0);
-    } else if (dashboardSummaryPeriod === 'quarterly') {
-      const quarterIndex = Math.floor(today.getMonth() / 3);
-      startOfPeriod = new Date(today.getFullYear(), quarterIndex * 3, 1);
-      startOfPeriod.setHours(0, 0, 0, 0);
-    } else if (dashboardSummaryPeriod === 'semester') {
-      const semesterMonth = today.getMonth() < 6 ? 0 : 6;
-      startOfPeriod = new Date(today.getFullYear(), semesterMonth, 1);
-      startOfPeriod.setHours(0, 0, 0, 0);
-    } else if (dashboardSummaryPeriod === 'yearly') {
-      startOfPeriod = new Date(today.getFullYear(), 0, 1);
-      startOfPeriod.setHours(0, 0, 0, 0);
-    }
-
-    const filtered = transactions.filter(tx => {
-      const txDate = new Date(tx.date);
-      txDate.setHours(0, 0, 0, 0);
-      if (dashboardSummaryPeriod === 'custom') {
-        return txDate >= startOfPeriod && txDate <= endOfPeriod;
-      }
-      return txDate >= startOfPeriod && txDate <= today;
-    });
-
-    let totalInflow = 0;
-    let totalOutflow = 0;
-    const categoryMap: { [cat: string]: number } = {};
-
-    filtered.forEach(tx => {
-      if (tx.amount > 0) {
-        totalInflow += tx.amount;
-      } else {
-        const absAmt = Math.abs(tx.amount);
-        totalOutflow += absAmt;
-        categoryMap[tx.category] = (categoryMap[tx.category] || 0) + absAmt;
-      }
-    });
-
-    // Top categories by expenditure
-    const topCategories = Object.keys(categoryMap)
-      .map(cat => ({
-        category: cat,
-        amount: categoryMap[cat],
-        pct: totalOutflow > 0 ? (categoryMap[cat] / totalOutflow) * 100 : 0
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 4);
-
-    return {
-      filtered,
-      totalInflow,
-      totalOutflow,
-      netSavings: totalInflow - totalOutflow,
-      topCategories,
-      txCount: filtered.length
-    };
-  }, [transactions, dashboardSummaryPeriod, dashboardStartDate, dashboardEndDate]);
-
-  // Dynamic Breakdown Analytics grouped by selected dimension (account, category, subcategory, location, product)
-  const breakdownAnalyticsData = useMemo(() => {
-    const getDimensionKey = (tx: any) => {
-      if (breakdownDimension === 'account') {
-        return tx.account_name || 'Unknown Account';
-      }
-      if (breakdownDimension === 'category') {
-        const cat = dbCategories.find(c => c.name === tx.category);
-        if (cat && cat.parent_id) {
-          const parent = dbCategories.find(p => p.id === cat.parent_id);
-          if (parent) return parent.name;
-        }
-        return tx.category || 'Others';
-      }
-      if (breakdownDimension === 'subcategory') {
-        const cat = dbCategories.find(c => c.name === tx.category);
-        return cat && cat.parent_id ? tx.category : `${tx.category} (Main)`;
-      }
-      if (breakdownDimension === 'location') {
-        return tx.location_merchant || '(Not Specified)';
-      }
-      if (breakdownDimension === 'product') {
-        return tx.product_service || '(Not Specified)';
-      }
-      return 'Unknown';
-    };
-
-    const aggregates: { [key: string]: { income: number; expense: number } } = {};
-    
-    dashboardSummaryData.filtered.forEach(tx => {
-      const key = getDimensionKey(tx);
-      if (!aggregates[key]) {
-        aggregates[key] = { income: 0, expense: 0 };
-      }
-      if (tx.amount > 0) {
-        aggregates[key].income += tx.amount;
-      } else {
-        aggregates[key].expense += Math.abs(tx.amount);
-      }
-    });
-
-    return Object.keys(aggregates).map(key => {
-      const income = aggregates[key].income;
-      const expense = aggregates[key].expense;
-      const totalVolume = income + expense;
-      return {
-        key,
-        income,
-        expense,
-        net: income - expense,
-        incomePct: totalVolume > 0 ? (income / totalVolume) * 100 : 0,
-        expensePct: totalVolume > 0 ? (expense / totalVolume) * 100 : 0
-      };
-    }).sort((a, b) => (b.income + b.expense) - (a.income + a.expense));
-  }, [dashboardSummaryData.filtered, breakdownDimension, dbCategories]);
 
   // loading/error status
   const [loading, setLoading] = useState(false);
@@ -1166,14 +1031,8 @@ export default function App() {
   const [txLocationMerchant, setTxLocationMerchant] = useState('');
   const [txProductService, setTxProductService] = useState('');
 
-  // Transfer form manually
-  const [quickAddTab, setQuickAddTab] = useState<'transaction' | 'transfer'>('transaction');
-  const [transferSourceAccId, setTransferSourceAccId] = useState('');
-  const [transferDestAccId, setTransferDestAccId] = useState('');
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferFee, setTransferFee] = useState('');
-  const [transferDate, setTransferDate] = useState(new Date().toISOString().split('T')[0]);
-  const [transferDesc, setTransferDesc] = useState('');
+
+
 
   // Filter categories dynamically based on transaction type (income / expense)
   const filteredCategoriesForTx = useMemo(() => {
@@ -1209,42 +1068,7 @@ export default function App() {
     return result;
   }, [groupedCategories]);
 
-  const handleAddTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!transferSourceAccId || !transferDestAccId || !transferAmount || !transferDate) return;
-    if (transferSourceAccId === transferDestAccId) {
-      alert('Source and destination accounts must be different!');
-      return;
-    }
 
-    try {
-      const payload = {
-        source_account_id: transferSourceAccId,
-        destination_account_id: transferDestAccId,
-        amount: parseFloat(transferAmount),
-        fee: parseFloat(transferFee) || 0,
-        date: transferDate,
-        description: transferDesc
-      };
-
-      const res = await fetch(`${API_URL}/transfers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        setTransferAmount('');
-        setTransferFee('');
-        setTransferDesc('');
-        fetchData();
-      } else {
-        const errJson = await res.json();
-        alert(errJson.error || 'Failed to process transfer');
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2853,614 +2677,337 @@ export default function App() {
         {/* -------------------------------------------------------------
             TAB 1: DASHBOARD
             ------------------------------------------------------------- */}
-        {activeTab === 'dashboard' && (
-          <div>
-            {/* Top Cards Grid */}
-            <div className="grid-cols-3">
-              <div className="glass-panel card-content">
-                <div className="card-title">Net Wealth (Net Worth)</div>
-                <div className={`card-value ${totals.netWorth >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {renderAmount(totals.netWorth)}
-                </div>
-                <div className="card-desc">Total bank savings minus outstanding credit card balances</div>
-              </div>
+        {activeTab === 'dashboard' && (() => {
+            /* ── derived values ── */
+            const totalInvestmentValue = investments.reduce((s: number, inv: any) =>
+              s + (inv.current_units > 0 ? inv.current_units * inv.current_price : inv.total_invested || 0), 0);
+            const totalInvestmentCost  = investments.reduce((s: number, inv: any) => s + (inv.total_invested || 0), 0);
+            const investmentPnL        = totalInvestmentValue - totalInvestmentCost;
+            const totalGoalTarget      = goals.filter((g: any) => g.status === 'active').reduce((s: number, g: any) => s + g.target_amount, 0);
+            const totalGoalSaved       = goals.filter((g: any) => g.status === 'active').reduce((s: number, g: any) => s + g.current_savings, 0);
+            const totalPersonalDebt    = debtsReceivables.filter((d: any) => d.type === 'debt' && d.status === 'active').reduce((s: number, d: any) => s + d.remaining_amount, 0);
+            const totalReceivable      = debtsReceivables.filter((d: any) => d.type === 'receivable' && d.status === 'active').reduce((s: number, d: any) => s + d.remaining_amount, 0);
+            const totalAssets          = totals.totalCash + totalInvestmentValue + totalGoalSaved + totalReceivable;
+            const totalLiabilities     = totals.totalCcDebt + totals.totalInstallmentDebt + totalPersonalDebt;
+            const trueNetWorth         = totalAssets - totalLiabilities;
+            const bankAccounts         = accounts.filter((a: any) => a.type === 'bank' || a.type === 'cash');
+            const ccAccounts           = accounts.filter((a: any) => a.type === 'credit_card');
+            const activeGoals          = goals.filter((g: any) => g.status === 'active');
 
-              <div className="glass-panel card-content">
-                <div className="card-title">Cash & Savings</div>
-                <div className="card-value text-success">{renderAmount(totals.totalCash)}</div>
-                <div className="card-desc">Total money deposited in bank accounts</div>
-              </div>
-
-              <div className="glass-panel card-content">
-                <div className="card-title">Outstanding CC Debt</div>
-                <div className="card-value text-danger">{renderAmount(totals.totalCcDebt)}</div>
-                <div className="card-desc">Current statement charges (does not include pending installments)</div>
-              </div>
-            </div>
-
-            {/* Period-based Financial Summary Widget */}
-            <div className="glass-panel card-content" style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>Dashboard Quick Summary</h3>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                    Analyze cash flows and top spend categories based on selected frequency
-                  </span>
-                </div>
-
-                {/* Period Selector Tabs */}
-                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border-color)', gap: '0.25rem', flexWrap: 'wrap' }}>
-                  {([
-                    { id: 'custom', label: '📅 Range Tanggal' },
-                    { id: 'weekly', label: '📆 Week' },
-                    { id: 'monthly', label: '📅 Bulan' },
-                    { id: 'quarterly', label: '📊 Quarter' },
-                    { id: 'semester', label: '🗓️ Semester' },
-                    { id: 'yearly', label: '⏳ Tahun' }
-                  ] as const).map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setDashboardSummaryPeriod(p.id)}
-                      style={{
-                        padding: '0.4rem 0.8rem',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        background: dashboardSummaryPeriod === p.id ? 'var(--color-primary)' : 'transparent',
-                        color: dashboardSummaryPeriod === p.id ? '#fff' : 'var(--color-text-muted)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        margin: 0
-                      }}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+            const Row = ({ label, value, sub, color }: { label: React.ReactNode; value: React.ReactNode; sub?: React.ReactNode; color?: string }) => (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.45rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{label}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: color || 'var(--color-text-main)' }}>{value}</span>
+                  {sub && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>{sub}</div>}
                 </div>
               </div>
+            );
 
-              {dashboardSummaryPeriod === 'custom' && (
-                <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.01)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                  <div className="form-group" style={{ margin: 0, flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.25rem' }}>Start Date</label>
-                    <input 
-                      type="date"
-                      className="form-control"
-                      value={dashboardStartDate}
-                      onChange={(e) => setDashboardStartDate(e.target.value)}
-                      style={{ margin: 0, padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0, flex: 1 }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.25rem' }}>End Date</label>
-                    <input 
-                      type="date"
-                      className="form-control"
-                      value={dashboardEndDate}
-                      onChange={(e) => setDashboardEndDate(e.target.value)}
-                      style={{ margin: 0, padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
-                    />
-                  </div>
-                </div>
-              )}
+            const SectionTitle = ({ icon, label }: { icon: string; label: string }) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', paddingBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '0.85rem' }}>{icon}</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{label}</span>
+              </div>
+            );
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem', alignItems: 'start' }}>
-                {/* Cash Flows Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '0.95rem', letterSpacing: '0.5px' }}>PERIOD CASH FLOWS</h4>
-                  
-                  <div style={{ background: 'rgba(255,255,255,0.01)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ color: 'var(--color-text-muted)' }}>Total Inflow</span>
-                      <strong className="text-success">{renderAmount(dashboardSummaryData.totalInflow)}</strong>
+            const Panel = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+              <div className="glass-panel" style={{ padding: '1rem', ...style }}>{children}</div>
+            );
+
+            return (
+              <div>
+                {/* ── Hero: Net Worth ── */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)',
+                  border: '1px solid rgba(99,102,241,0.18)',
+                  borderRadius: '10px',
+                  padding: '1.25rem 1.5rem',
+                  marginBottom: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
+                      Total Net Worth
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ color: 'var(--color-text-muted)' }}>Total Outflow</span>
-                      <strong className="text-danger">{renderAmount(dashboardSummaryData.totalOutflow)}</strong>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px', color: trueNetWorth >= 0 ? 'var(--color-success)' : 'var(--color-danger)', lineHeight: 1 }}>
+                      {renderAmount(trueNetWorth)}
                     </div>
-                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0.75rem 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600 }}>Net Savings</span>
-                      <strong className={dashboardSummaryData.netSavings >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '1.1rem' }}>
-                        {renderAmount(dashboardSummaryData.netSavings)}
-                      </strong>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.4rem' }}>
+                      Aset <strong style={{ color: 'var(--color-success)' }}>{renderAmount(totalAssets)}</strong>
+                      &nbsp;—&nbsp;Kewajiban <strong style={{ color: 'var(--color-danger)' }}>{renderAmount(totalLiabilities)}</strong>
                     </div>
                   </div>
-                  
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Active Transactions: <strong>{dashboardSummaryData.txCount}</strong></span>
-                    <span>Range: <strong>{dashboardSummaryPeriod === 'custom' ? `${dashboardStartDate} to ${dashboardEndDate}` : dashboardSummaryPeriod.toUpperCase()}</strong></span>
+                  <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Kas & Tabungan', val: totals.totalCash, color: 'var(--color-success)' },
+                      { label: 'Portofolio Investasi', val: totalInvestmentValue, color: 'var(--color-primary)' },
+                      { label: 'Total Kewajiban', val: -totalLiabilities, color: 'var(--color-danger)' },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', letterSpacing: '0.5px', marginBottom: '0.2rem', textTransform: 'uppercase' }}>{label}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color }}>{renderAmount(Math.abs(val))}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Top Categories Column */}
-                <div>
-                  <h4 style={{ margin: '0 0 1rem 0', color: 'var(--color-primary)', fontSize: '0.95rem', letterSpacing: '0.5px' }}>TOP SPENDING CATEGORIES</h4>
-                  {dashboardSummaryData.topCategories.length === 0 ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                      No expenses registered during this period.
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {dashboardSummaryData.topCategories.map(c => (
-                        <div key={c.category}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.3rem' }}>
-                            <span><strong>{getFullCategoryName(c.category)}</strong></span>
-                            <span style={{ color: 'var(--color-text-muted)' }}>
-                              {renderAmount(c.amount)} <small>({c.pct.toFixed(0)}%)</small>
-                            </span>
-                          </div>
-                          <div className="progress-track" style={{ height: '6px', margin: 0 }}>
-                            <div 
-                              className="progress-fill danger"
-                              style={{ width: `${c.pct}%`, height: '100%' }}
-                            />
-                          </div>
+                {/* ── Main Grid: 2 columns ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                  {/* ═══ COLUMN 1: ASSETS ═══ */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                    {/* Cash & Bank Accounts */}
+                    <Panel>
+                      <SectionTitle icon="🏦" label="Kas & Rekening Bank" />
+                      {bankAccounts.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
+                          Belum ada rekening.{' '}
+                          <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                            onClick={() => setActiveTab('accounts')}>Tambah →</button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+                      ) : (
+                        <>
+                          {bankAccounts.map((a: any) => (
+                            <Row
+                              key={a.id}
+                              label={`${a.type === 'cash' ? '💵' : '🏦'} ${a.name}`}
+                              value={renderAmount(a.current_balance)}
+                              color="var(--color-success)"
+                            />
+                          ))}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-success)' }}>{renderAmount(totals.totalCash)}</span>
+                          </div>
+                        </>
+                      )}
+                    </Panel>
 
-            {/* Advanced Financial Breakdown Analysis Widget */}
-            <div className="glass-panel card-content" style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>Advanced Flow Breakdown</h3>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                    Analyze total income, expenses, and net flows categorized by different dimensions for the selected period ({dashboardSummaryPeriod})
-                  </span>
-                </div>
+                    {/* Investment Portfolio */}
+                    <Panel>
+                      <SectionTitle icon="📈" label="Portofolio Investasi" />
+                      {investments.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
+                          Belum ada investasi.{' '}
+                          <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
+                            onClick={() => setActiveTab('investments')}>Tambah →</button>
+                        </div>
+                      ) : (
+                        <>
+                          {investments.map((inv: any) => {
+                            const mktVal = inv.current_units > 0 ? inv.current_units * inv.current_price : inv.total_invested || 0;
+                            const pnl = mktVal - (inv.total_invested || 0);
+                            const pnlPct = inv.total_invested > 0 ? (pnl / inv.total_invested) * 100 : 0;
+                            return (
+                              <Row
+                                key={inv.id}
+                                label={inv.name}
+                                value={renderAmount(mktVal)}
+                                sub={pnl !== 0 ? `${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnl >= 0 ? '+' : ''}${renderAmount(pnl)})` : undefined}
+                                color={pnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                              />
+                            );
+                          })}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Portfolio</span>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{renderAmount(totalInvestmentValue)}</div>
+                              {investmentPnL !== 0 && (
+                                <div style={{ fontSize: '0.7rem', color: investmentPnL >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                                  {investmentPnL >= 0 ? '+' : ''}{renderAmount(investmentPnL)} unrealized P&L
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </Panel>
 
-                {/* Dimension Selector Tabs */}
-                <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border-color)', gap: '0.25rem', flexWrap: 'wrap' }}>
-                  {([
-                    { id: 'category', label: '📂 Category' },
-                    { id: 'subcategory', label: '🏷️ Sub Category' },
-                    { id: 'account', label: '🏦 Account' },
-                    { id: 'location', label: '📍 Location/Merchant' },
-                    { id: 'product', label: '📦 Product/Service' }
-                  ] as const).map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setBreakdownDimension(d.id)}
-                      style={{
-                        padding: '0.4rem 0.8rem',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        background: breakdownDimension === d.id ? 'var(--color-primary)' : 'transparent',
-                        color: breakdownDimension === d.id ? '#fff' : 'var(--color-text-muted)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        outline: 'none',
-                        boxShadow: 'none',
-                        margin: 0
-                      }}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {breakdownAnalyticsData.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                  No transactions found for the selected dimension and period.
-                </div>
-              ) : (
-                <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ textTransform: 'capitalize' }}>{breakdownDimension === 'subcategory' ? 'Sub Category' : breakdownDimension === 'location' ? 'Location/Merchant' : breakdownDimension === 'product' ? 'Product/Service' : breakdownDimension}</th>
-                        <th style={{ width: '18%', textAlign: 'right' }}>Total Income</th>
-                        <th style={{ width: '18%', textAlign: 'right' }}>Total Expense</th>
-                        <th style={{ width: '18%', textAlign: 'right' }}>Net Flow</th>
-                        <th style={{ width: '22%', textAlign: 'center' }}>Inflow / Outflow Split</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {breakdownAnalyticsData.map((row) => (
-                        <tr key={row.key}>
-                          <td style={{ fontWeight: 600 }}>{row.key}</td>
-                          <td className="text-success" style={{ fontWeight: '600', textAlign: 'right' }}>
-                            {row.income > 0 ? renderAmount(row.income) : <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>-</span>}
-                          </td>
-                          <td className="text-danger" style={{ fontWeight: '600', textAlign: 'right' }}>
-                            {row.expense > 0 ? renderAmount(row.expense) : <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>-</span>}
-                          </td>
-                          <td className={row.net >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: '700', textAlign: 'right' }}>
-                            {renderAmount(row.net)}
-                          </td>
-                          <td style={{ verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              <div style={{ display: 'flex', height: '6px', borderRadius: '3px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
-                                {row.income > 0 && (
-                                  <div style={{ width: `${row.incomePct}%`, background: 'var(--color-success)' }} />
-                                )}
-                                {row.expense > 0 && (
-                                  <div style={{ width: `${row.expensePct}%`, background: 'var(--color-danger)' }} />
-                                )}
+                    {/* Future Goals */}
+                    {activeGoals.length > 0 && (
+                      <Panel>
+                        <SectionTitle icon="🎯" label="Dana Tujuan (Goals)" />
+                        {activeGoals.map((g: any) => {
+                          const pct = g.target_amount > 0 ? Math.min(100, (g.current_savings / g.target_amount) * 100) : 0;
+                          return (
+                            <div key={g.id} style={{ marginBottom: '0.6rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.25rem' }}>
+                                <span style={{ fontWeight: 500 }}>{g.name}</span>
+                                <span style={{ color: 'var(--color-text-muted)' }}>{pct.toFixed(0)}%</span>
                               </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                                <span>In: {row.incomePct.toFixed(0)}%</span>
-                                <span>Out: {row.expensePct.toFixed(0)}%</span>
+                              <div className="progress-track">
+                                <div className={`progress-fill ${pct >= 100 ? 'success' : pct >= 60 ? 'warning' : 'danger'}`}
+                                  style={{ width: `${pct}%` }} />
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
+                                <span>{renderAmount(g.current_savings)}</span>
+                                <span>{renderAmount(g.target_amount)}</span>
                               </div>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Dashboard Content Grid */}
-            <div className="grid-cols-2">
-              {/* Transactions Log */}
-              <div className="glass-panel card-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h3>Recent Financial Activity</h3>
-                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={fetchData}>Refresh</button>
-                </div>
-
-                <div className="table-container">
-                  {transactions.length === 0 ? (
-                    <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                      No transactions recorded yet.<br />
-                      <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => { setActiveTab('transactions'); setTransactionSubTab('import'); }}>Import PDF Statement</button>
-                    </div>
-                  ) : (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Account</th>
-                          <th>Description</th>
-                          <th>Category</th>
-                          <th>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.slice(0, 15).map((tx) => (
-                          <tr key={tx.id}>
-                            <td style={{ whiteSpace: 'nowrap' }}>{tx.date}</td>
-                            <td>{tx.account_name}</td>
-                            <td>
-                              <div style={{ fontWeight: 500 }}>{tx.description}</div>
-                              {tx.is_installment === 1 && (
-                                <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', fontSize: '0.65rem', marginTop: '0.2rem', padding: '0.1rem 0.4rem' }}>INSTALLMENT</span>
-                              )}
-                            </td>
-                            <td>
-                              <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
-                                {getTransactionPath(tx)}
-                              </span>
-                            </td>
-                            <td className={tx.amount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: '600' }}>
-                              {renderAmount(tx.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-
-              {/* Sidebar Quick Add */}
-              <div>
-                {/* Manual Transaction Card */}
-                <div className="glass-panel card-content" style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '1.25rem' }}>
-                    <button
-                      type="button"
-                      className={`nav-btn`}
-                      style={{
-                        flex: 1,
-                        padding: '0.6rem',
-                        background: 'transparent',
-                        border: 'none',
-                        color: quickAddTab === 'transaction' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        borderBottom: quickAddTab === 'transaction' ? '2px solid var(--color-primary)' : 'none',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: '0.95rem',
-                        outline: 'none',
-                        borderRadius: 0
-                      }}
-                      onClick={() => setQuickAddTab('transaction')}
-                    >
-                      Transaction
-                    </button>
-                    <button
-                      type="button"
-                      className={`nav-btn`}
-                      style={{
-                        flex: 1,
-                        padding: '0.6rem',
-                        background: 'transparent',
-                        border: 'none',
-                        color: quickAddTab === 'transfer' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        borderBottom: quickAddTab === 'transfer' ? '2px solid var(--color-primary)' : 'none',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: '0.95rem',
-                        outline: 'none',
-                        borderRadius: 0
-                      }}
-                      onClick={() => setQuickAddTab('transfer')}
-                    >
-                      Transfer
-                    </button>
-                  </div>
-                  {accounts.length === 0 ? (
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                      Please create an account or credit card first under the **Accounts** tab.
-                    </div>
-                  ) : quickAddTab === 'transaction' ? (
-                    <form onSubmit={handleAddTransaction}>
-                      <div className="form-group">
-                        <label>Account / Credit Card</label>
-                        <select 
-                          className="form-control"
-                          value={txAccId}
-                          onChange={(e) => setTxAccId(e.target.value)}
-                          required
-                        >
-                          <option value="">-- Select --</option>
-                          {accounts.map(a => (
-                            <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'Credit Card'})</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>Transaction Date</label>
-                          <input 
-                            type="date" 
-                            className="form-control" 
-                            value={txDate} 
-                            onChange={(e) => {
-                              setTxDate(e.target.value);
-                              setTxBookingDate(e.target.value); // default booking date to same
-                            }}
-                            required 
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Booking Date</label>
-                          <input 
-                            type="date" 
-                            className="form-control" 
-                            value={txBookingDate} 
-                            onChange={(e) => setTxBookingDate(e.target.value)}
-                            required 
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '0.8fr 1.2fr', margin: 0, gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>Type</label>
-                          <select 
-                            className="form-control" 
-                            value={txType} 
-                            onChange={(e) => setTxType(e.target.value as any)}
-                          >
-                            <option value="expense">Expense (-)</option>
-                            <option value="income">Income (+)</option>
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>Category</label>
-                          <select 
-                            className="form-control" 
-                            value={txCategory} 
-                            onChange={(e) => setTxCategory(e.target.value)}
-                          >
-                            {filteredCategoriesForTx.map(group => (
-                              <optgroup key={group.parent.id} label={group.parent.name}>
-                                <option value={group.parent.name}>{group.parent.name}</option>
-                                {group.subs.map(sub => (
-                                  <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                                ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: '0 0 1rem 0', gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>Location/Merchant</label>
-                          <AutocompleteInput 
-                            className="form-control" 
-                            placeholder="e.g. Starbucks, Mal Kelapa Gading" 
-                            value={txLocationMerchant}
-                            onChangeValue={setTxLocationMerchant}
-                            suggestions={locationSuggestions}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Product/Service</label>
-                          <AutocompleteInput 
-                            className="form-control" 
-                            placeholder="e.g. Coffee, Taxi Service" 
-                            value={txProductService}
-                            onChangeValue={setTxProductService}
-                            suggestions={productSuggestions}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Description</label>
-                        <AutocompleteInput 
-                          className="form-control" 
-                          placeholder="e.g. Starbucks, Transfer salary" 
-                          value={txDesc}
-                          onChangeValue={setTxDesc}
-                          suggestions={descSuggestions}
-                          required 
-                        />
-                      </div>
-
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', margin: 0, gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>Amount (IDR)</label>
-                          <input 
-                            type="number" 
-                            className="form-control" 
-                            placeholder="e.g. 50000"
-                            value={txAmount}
-                            onChange={(e) => setTxAmount(e.target.value)}
-                            required 
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Note (Optional)</label>
-                          <input 
-                            type="text" 
-                            className="form-control" 
-                            placeholder="e.g. Lunch with team"
-                            value={txNote}
-                            onChange={(e) => setTxNote(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                        <Icons.Plus /> Save Transaction
-                      </button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleAddTransfer}>
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>From (Source)</label>
-                          <select 
-                            className="form-control"
-                            value={transferSourceAccId}
-                            onChange={(e) => setTransferSourceAccId(e.target.value)}
-                            required
-                          >
-                            <option value="">-- Select --</option>
-                            {accounts.map(a => (
-                              <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash' : 'CC'})</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>To (Destination)</label>
-                          <select 
-                            className="form-control"
-                            value={transferDestAccId}
-                            onChange={(e) => setTransferDestAccId(e.target.value)}
-                            required
-                          >
-                            <option value="">-- Select --</option>
-                            {accounts.map(a => (
-                              <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash' : 'CC'})</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1.2fr', margin: 0, gap: '1rem' }}>
-                        <div className="form-group">
-                          <label>Date</label>
-                          <input 
-                            type="date" 
-                            className="form-control" 
-                            value={transferDate} 
-                            onChange={(e) => setTransferDate(e.target.value)}
-                            required 
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Transfer Fee (IDR)</label>
-                          <input 
-                            type="number" 
-                            className="form-control" 
-                            placeholder="e.g. 6500" 
-                            value={transferFee} 
-                            onChange={(e) => setTransferFee(e.target.value)} 
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Description</label>
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          placeholder="e.g. CC Bill Payment" 
-                          value={transferDesc}
-                          onChange={(e) => setTransferDesc(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label>Amount (IDR)</label>
-                        <input 
-                          type="number" 
-                          className="form-control" 
-                          placeholder="e.g. 1000000"
-                          value={transferAmount}
-                          onChange={(e) => setTransferAmount(e.target.value)}
-                          required 
-                        />
-                      </div>
-
-                      <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                        <Icons.Plus /> Execute Transfer
-                      </button>
-                    </form>
-                  )}
-                </div>
-
-                {/* Account Balances Widget */}
-                <div className="glass-panel card-content">
-                  <h3 style={{ marginBottom: '1.25rem' }}>My Accounts</h3>
-                  {accounts.length === 0 ? (
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>
-                      No accounts registered.
-                    </div>
-                  ) : (
-                    accounts.map(a => (
-                      <div key={a.id} className="account-card" style={{ margin: '0 0 0.75rem 0' }}>
-                        <div className="account-info">
-                          <h4>{a.name}</h4>
-                          <span>{a.type === 'bank' ? '🏦 BANK DEPOSIT' : a.type === 'cash' ? '💵 CASH / WALLET' : '💳 CREDIT CARD'}</span>
-                        </div>
-                        <div className="account-balance">
-                          <div className="val" style={{ color: (a.type === 'bank' || a.type === 'cash') ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                            {renderAmount(a.current_balance)}
+                          );
+                        })}
+                        {totalGoalTarget > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Tersimpan</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totalGoalSaved)}</span>
                           </div>
-                          {a.type === 'credit_card' && (
-                            <div className="sub">Limit: {renderAmount(a.credit_limit || 0)}</div>
-                          )}
+                        )}
+                      </Panel>
+                    )}
+
+                    {/* Receivables */}
+                    {totalReceivable > 0 && (
+                      <Panel>
+                        <SectionTitle icon="💸" label="Piutang (Receivables)" />
+                        {debtsReceivables.filter((d: any) => d.type === 'receivable' && d.status === 'active').map((d: any) => (
+                          <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-warning)" />
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Piutang</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totalReceivable)}</span>
                         </div>
+                      </Panel>
+                    )}
+                  </div>
+
+                  {/* ═══ COLUMN 2: LIABILITIES ═══ */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                    {/* Credit Cards */}
+                    <Panel>
+                      <SectionTitle icon="💳" label="Kartu Kredit" />
+                      {ccAccounts.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>Tidak ada kartu kredit.</div>
+                      ) : (
+                        <>
+                          {ccAccounts.map((a: any) => {
+                            const usedPct = a.credit_limit > 0 ? Math.min(100, (Math.abs(a.current_balance) / a.credit_limit) * 100) : 0;
+                            return (
+                              <div key={a.id} style={{ marginBottom: '0.6rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.2rem' }}>
+                                  <span style={{ fontWeight: 500 }}>💳 {a.name}</span>
+                                  <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{renderAmount(Math.abs(a.current_balance))}</span>
+                                </div>
+                                {a.credit_limit > 0 && (
+                                  <>
+                                    <div className="progress-track">
+                                      <div className={`progress-fill ${usedPct >= 80 ? 'danger' : usedPct >= 50 ? 'warning' : 'success'}`}
+                                        style={{ width: `${usedPct}%` }} />
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                                      {usedPct.toFixed(0)}% dari limit {renderAmount(a.credit_limit)}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total CC Debt</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totals.totalCcDebt)}</span>
+                          </div>
+                        </>
+                      )}
+                    </Panel>
+
+                    {/* Installments */}
+                    {totals.totalInstallmentDebt > 0 && (
+                      <Panel>
+                        <SectionTitle icon="🔄" label="Cicilan Aktif" />
+                        {ccAccounts.map((a: any) => a.installment_debt > 0 && (
+                          <Row key={a.id} label={a.name} value={renderAmount(a.installment_debt)} color="var(--color-warning)" />
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Cicilan</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totals.totalInstallmentDebt)}</span>
+                        </div>
+                      </Panel>
+                    )}
+
+                    {/* Personal Debts */}
+                    {totalPersonalDebt > 0 && (
+                      <Panel>
+                        <SectionTitle icon="🤝" label="Utang Pribadi" />
+                        {debtsReceivables.filter((d: any) => d.type === 'debt' && d.status === 'active').map((d: any) => (
+                          <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-danger)" />
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Utang Pribadi</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totalPersonalDebt)}</span>
+                        </div>
+                      </Panel>
+                    )}
+
+                    {/* Wealth Allocation Summary */}
+                    {totalAssets > 0 && (
+                      <Panel>
+                        <SectionTitle icon="📊" label="Alokasi Aset" />
+                        {[
+                          { label: 'Kas & Tabungan', val: totals.totalCash, color: 'var(--color-success)' },
+                          { label: 'Investasi',       val: totalInvestmentValue, color: 'var(--color-primary)' },
+                          { label: 'Dana Goals',      val: totalGoalSaved,        color: 'var(--color-warning)' },
+                          { label: 'Piutang',         val: totalReceivable,       color: '#a78bfa' },
+                        ].filter(x => x.val > 0).map(({ label, val, color }) => {
+                          const pct = totalAssets > 0 ? (val / totalAssets) * 100 : 0;
+                          return (
+                            <div key={label} style={{ marginBottom: '0.55rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.2rem' }}>
+                                <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                                <span style={{ fontWeight: 600, color }}>{pct.toFixed(1)}%</span>
+                              </div>
+                              <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.6s ease' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </Panel>
+                    )}
+
+                    {/* Quick Links */}
+                    <Panel>
+                      <SectionTitle icon="⚡" label="Navigasi Cepat" />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                        {[
+                          { label: '📊 Transactions', tab: 'transactions' as const },
+                          { label: '📈 Investments', tab: 'investments' as const },
+                          { label: '💰 Budgets', tab: 'budgets' as const },
+                          { label: '🎯 Goals', tab: 'goals' as const },
+                          { label: '🤝 Liabilities', tab: 'liabilities' as const },
+                          { label: '🤖 AI Advisor', tab: 'ai' as const },
+                        ].map(({ label, tab }) => (
+                          <button key={tab} type="button"
+                            style={{
+                              background: 'rgba(255,255,255,0.02)',
+                              border: '1px solid rgba(255,255,255,0.06)',
+                              color: 'var(--color-text-muted)',
+                              padding: '0.5rem 0.6rem',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              textAlign: 'left'
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)'; }}
+                            onClick={() => { setActiveTab(tab); setNavOpen(false); }}
+                          >{label}</button>
+                        ))}
                       </div>
-                    ))
-                  )}
+                    </Panel>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            );
+          })()}
+
 
 
         {/* -------------------------------------------------------------
