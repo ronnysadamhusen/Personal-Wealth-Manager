@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+*.pdf
+.env
+.DS_Store
+frontend/dist/
+frontend/node_modules/
+backend/node_modules/
