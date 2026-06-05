@@ -5526,21 +5526,23 @@ export default function App() {
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>TOTAL NILAI PORTOFOLIO</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                    Rp {totalValue.toLocaleString('id-ID')}
+                    {renderAmount(totalValue)}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>{activeInv.length} aset aktif</div>
                 </div>
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>TOTAL MODAL DIINVESTASIKAN</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>Rp {totalInvested.toLocaleString('id-ID')}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{renderAmount(totalInvested)}</div>
                 </div>
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>UNREALIZED GAIN / LOSS</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 700, color: unrealizedGain >= 0 ? 'var(--color-income)' : 'var(--color-expense)' }}>
-                    {unrealizedGain >= 0 ? '+' : ''}Rp {unrealizedGain.toLocaleString('id-ID')}
+                    {unrealizedGain >= 0 ? '+' : ''}{renderAmount(unrealizedGain)}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: unrealizedGain >= 0 ? 'var(--color-income)' : 'var(--color-expense)', marginTop: '0.25rem' }}>
-                    {unrealizedPct >= 0 ? '+' : ''}{unrealizedPct.toFixed(2)}%
+                    <span className={privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : ''}>
+                      {unrealizedPct >= 0 ? '+' : ''}{unrealizedPct.toFixed(2)}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -5556,7 +5558,9 @@ export default function App() {
                         <div key={type}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.2rem' }}>
                             <span>{typeLabels[type] || type}</span>
-                            <span style={{ color: 'var(--color-text-muted)' }}>{pct.toFixed(1)}% &nbsp; Rp {val.toLocaleString('id-ID')}</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>
+                              <span className={privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : ''}>{pct.toFixed(1)}%</span> &nbsp; {renderAmount(val)}
+                            </span>
                           </div>
                           <div style={{ height: '6px', background: 'rgba(255,255,255,0.07)', borderRadius: '99px', overflow: 'hidden' }}>
                             <div style={{ width: `${pct}%`, height: '100%', background: 'var(--color-primary)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
@@ -5606,11 +5610,11 @@ export default function App() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                           <div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '0.1rem' }}>NILAI SAAT INI</div>
-                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>Rp {(inv.current_value || 0).toLocaleString('id-ID')}</div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem' }}>{renderAmount(inv.current_value || 0)}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '0.1rem' }}>MODAL</div>
-                            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Rp {(inv.total_invested || 0).toLocaleString('id-ID')}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{renderAmount(inv.total_invested || 0)}</div>
                           </div>
                         </div>
 
@@ -5618,17 +5622,19 @@ export default function App() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '0.1rem' }}>UNIT / JUMLAH</div>
-                              <div style={{ fontSize: '0.85rem' }}>{inv.current_units.toLocaleString('id-ID', {maximumFractionDigits: 6})} {inv.unit || ''}</div>
+                              <div style={{ fontSize: '0.85rem' }} className={privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : ''}>
+                                {inv.current_units.toLocaleString('id-ID', {maximumFractionDigits: 6})} {inv.unit || ''}
+                              </div>
                             </div>
                             <div>
                               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '0.1rem' }}>HARGA/UNIT</div>
-                              <div style={{ fontSize: '0.85rem' }}>Rp {(inv.current_price_per_unit || 0).toLocaleString('id-ID')}</div>
+                              <div style={{ fontSize: '0.85rem' }}>{renderAmount(inv.current_price_per_unit || 0)}</div>
                             </div>
                           </div>
                         )}
 
                         <div style={{ padding: '0.6rem 0.75rem', borderRadius: '8px', background: gain >= 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', marginBottom: '1rem' }}>
-                          <span style={{ color: gain >= 0 ? 'var(--color-income)' : 'var(--color-expense)', fontWeight: 600, fontSize: '0.9rem' }}>
+                          <span style={{ color: gain >= 0 ? 'var(--color-income)' : 'var(--color-expense)', fontWeight: 600, fontSize: '0.9rem' }} className={privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : ''}>
                             {gain >= 0 ? '▲' : '▼'} {gain >= 0 ? '+' : ''}Rp {gain.toLocaleString('id-ID')} ({gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%)
                           </span>
                         </div>
