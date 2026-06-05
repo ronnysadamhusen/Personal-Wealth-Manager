@@ -225,6 +225,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'budgets' | 'liabilities' | 'goals' | 'investments' | 'transactions' | 'ai' | 'settings'>('dashboard');
   const [transactionSubTab, setTransactionSubTab] = useState<'ledger' | 'import' | 'ocr'>('ledger');
   const [liabilitiesSubTab, setLiabilitiesSubTab] = useState<'overview' | 'installments' | 'loans'>('overview');
+  const [navOpen, setNavOpen] = useState(false);
   
   // Future Goals States
   const [goals, setGoals] = useState<any[]>([]);
@@ -2294,61 +2295,70 @@ export default function App() {
         <div className="header-content">
           <div className="brand">
             <span style={{ fontSize: '1.8rem' }}>💰</span>
-            <span>Personal Financial Manager</span>
+            <span>Personal Wealth Manager</span>
           </div>
 
-          <nav className="nav-links">
+          <button
+            className="nav-hamburger"
+            onClick={() => setNavOpen(prev => !prev)}
+            aria-label="Toggle navigation menu"
+            aria-expanded={navOpen}
+          >
+            {navOpen ? '✕' : '☰'}
+          </button>
+
+          <nav className={`nav-links${navOpen ? ' open' : ''}`}>
             <button 
               className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => { setActiveTab('dashboard'); setNavOpen(false); }}
             >
               <Icons.Dashboard /> Dashboard
             </button>
             <button 
               className={`nav-btn ${activeTab === 'accounts' ? 'active' : ''}`}
-              onClick={() => setActiveTab('accounts')}
+              onClick={() => { setActiveTab('accounts'); setNavOpen(false); }}
             >
               <Icons.Accounts /> Accounts
             </button>
             <button 
               className={`nav-btn ${activeTab === 'transactions' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('transactions'); setTransactionSubTab('ledger'); }}
+              onClick={() => { setActiveTab('transactions'); setTransactionSubTab('ledger'); setNavOpen(false); }}
             >
               <Icons.Ledger /> Transactions
             </button>
             <button 
               className={`nav-btn ${activeTab === 'budgets' ? 'active' : ''}`}
-              onClick={() => setActiveTab('budgets')}
+              onClick={() => { setActiveTab('budgets'); setNavOpen(false); }}
             >
               <Icons.Budget /> Budgets
             </button>
             <button 
               className={`nav-btn ${activeTab === 'liabilities' ? 'active' : ''}`}
-              onClick={() => setActiveTab('liabilities')}
+              onClick={() => { setActiveTab('liabilities'); setNavOpen(false); }}
             >
               🤝 Liabilities & Receivables
             </button>
             <button 
               className={`nav-btn ${activeTab === 'goals' ? 'active' : ''}`}
-              onClick={() => setActiveTab('goals')}
+              onClick={() => { setActiveTab('goals'); setNavOpen(false); }}
             >
               🎯 Future Goals
             </button>
             <button 
               className={`nav-btn ${activeTab === 'investments' ? 'active' : ''}`}
-              onClick={() => setActiveTab('investments')}
+              onClick={() => { setActiveTab('investments'); setNavOpen(false); }}
             >
               📈 Investments
             </button>
             <button 
               className={`nav-btn ${activeTab === 'ai' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ai')}
+              onClick={() => { setActiveTab('ai'); setNavOpen(false); }}
             >
               <Icons.AI /> AI Advisor
             </button>
             <button 
               className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
+              onClick={() => { setActiveTab('settings'); setNavOpen(false); }}
             >
               <Icons.Settings /> Settings
             </button>
