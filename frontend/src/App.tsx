@@ -4685,7 +4685,7 @@ export default function App() {
                           map[main] = (map[main] || 0) + b.amount;
                         });
                         const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
-                        if (sorted.length <= 6) return sorted;
+                        if (sorted.length <= 5) return sorted;
                         const top5 = sorted.slice(0, 5);
                         const rest = sorted.slice(5).reduce((s, [, v]) => s + v, 0);
                         return [...top5, ['Lainnya', rest]];
