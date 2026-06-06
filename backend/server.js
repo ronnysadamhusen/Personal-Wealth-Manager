@@ -711,7 +711,7 @@ app.get('/api/budgets', async (req, res) => {
 
     // Fetch budget aggregates grouped by category for target months
     const sqlBudgets = `
-      SELECT category, SUM(amount) as amount, MAX(recurrence) as recurrence, MAX(recurrence_day) as recurrence_day, MAX(start_date) as start_date, MAX(end_date) as end_date
+      SELECT MAX(id) as id, category, SUM(amount) as amount, MAX(recurrence) as recurrence, MAX(recurrence_day) as recurrence_day, MAX(start_date) as start_date, MAX(end_date) as end_date
       FROM budgets
       WHERE month_year IN (${placeholders})
       GROUP BY category

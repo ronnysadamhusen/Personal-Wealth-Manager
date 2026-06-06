@@ -4437,8 +4437,8 @@ export default function App() {
                         <span>{isIncome ? 'Pencapaian Target' : 'Utilisasi'}: {percentage.toFixed(0)}%</span>
                         <span>
                           {isIncome 
-                            ? (b.spent >= b.amount ? 'Target Tercapai!' : `Kekurangan: ${renderAmount(b.amount - b.spent)}`)
-                            : `Sisa: ${renderAmount(Math.max(0, b.amount - b.spent))}`
+                            ? (b.spent >= b.amount ? 'Target Tercapai!' : <>Kekurangan: {renderAmount(b.amount - b.spent)}</>)
+                            : <>Sisa: {renderAmount(Math.max(0, b.amount - b.spent))}</>
                           }
                         </span>
                       </div>
