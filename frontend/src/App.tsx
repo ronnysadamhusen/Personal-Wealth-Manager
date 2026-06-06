@@ -1396,6 +1396,15 @@ export default function App() {
     e.preventDefault();
     if (!budgetAmount) return;
 
+    // Dynamically calculate month_year from start_date if available
+    let targetMonthYear = selectedBudgetMonth;
+    if (budgetStartDate) {
+      const [y, m] = budgetStartDate.split('-');
+      if (y && m) {
+        targetMonthYear = `${y}-${m}`;
+      }
+    }
+
     try {
       const res = await fetch(`${API_URL}/budgets`, {
         method: 'POST',
@@ -1403,7 +1412,7 @@ export default function App() {
         body: JSON.stringify({
           category: budgetCategory,
           amount: parseFloat(budgetAmount),
-          month_year: selectedBudgetMonth,
+          month_year: targetMonthYear,
           start_date: budgetStartDate || null,
           end_date: budgetEndDate || null,
           recurrence: budgetRecurrence,
@@ -4105,22 +4114,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '120px' }}>Bulan Awal:</span>
-                    <input 
-                      type="month" 
-                      className="form-control"
-                      style={{ width: 'auto', padding: '0.4rem 0.8rem', margin: 0 }}
-                      value={selectedBudgetMonth}
-                      onChange={(e) => {
-                        setSelectedBudgetMonth(e.target.value);
-                        // Also initialize start date range for convenience
-                        if (e.target.value) {
-                          setBudgetStartDate(`${e.target.value}-01`);
-                        }
-                      }}
-                    />
-                  </div>
+
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     <div>
@@ -4228,7 +4222,19 @@ export default function App() {
 
             {/* Right: Budgets Progress Bars */}
             <div className="glass-panel card-content">
-              <h3 style={{ marginBottom: '1.5rem' }}>Progress Anggaran Bulan ({selectedBudgetMonth})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0 }}>Progress Anggaran</h3>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Bulan:</span>
+                  <input 
+                    type="month" 
+                    className="form-control"
+                    style={{ width: 'auto', padding: '0.3rem 0.6rem', margin: 0 }}
+                    value={selectedBudgetMonth}
+                    onChange={(e) => setSelectedBudgetMonth(e.target.value)}
+                  />
+                </div>
+              </div>
               
               {budgets.length === 0 ? (
                 <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
