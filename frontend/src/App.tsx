@@ -2314,8 +2314,8 @@ export default function App() {
       <header>
         <div className="header-content">
           <div className="brand">
-            <span style={{ fontSize: '1.8rem' }}>💰</span>
-            <span>Personal Wealth Manager</span>
+            <span className="brand-icon">💰</span>
+            <span className="brand-text">Personal Wealth Manager</span>
           </div>
 
           <button
