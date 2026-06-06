@@ -671,20 +671,20 @@ app.get('/api/budgets', async (req, res) => {
     let monthList = [];
 
     if (period === 'yearly') {
-      const sYr = start_year ? parseInt(start_year as string) : new Date().getFullYear();
-      const eYr = end_year ? parseInt(end_year as string) : sYr;
+      const sYr = start_year ? parseInt(start_year) : new Date().getFullYear();
+      const eYr = end_year ? parseInt(end_year) : sYr;
       for (let y = sYr; y <= eYr; y++) {
         for (let m = 1; m <= 12; m++) {
           monthList.push(`${y}-${String(m).padStart(2, '0')}`);
         }
       }
     } else {
-      const activeYear = year ? parseInt(year as string) : new Date().getFullYear();
+      const activeYear = year ? parseInt(year) : new Date().getFullYear();
       if (period === 'monthly') {
-        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        const month = month_year ? parseInt(month_year.split('-')[1] || month_year) : (new Date().getMonth() + 1);
         monthList.push(`${activeYear}-${String(month).padStart(2, '0')}`);
       } else if (period === 'quarterly') {
-        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        const month = month_year ? parseInt(month_year.split('-')[1] || month_year) : (new Date().getMonth() + 1);
         const q = Math.ceil(month / 3);
         const startMonth = (q - 1) * 3 + 1;
         const endMonth = q * 3;
@@ -692,7 +692,7 @@ app.get('/api/budgets', async (req, res) => {
           monthList.push(`${activeYear}-${String(m).padStart(2, '0')}`);
         }
       } else if (period === 'semesterly') {
-        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        const month = month_year ? parseInt(month_year.split('-')[1] || month_year) : (new Date().getMonth() + 1);
         const s = Math.ceil(month / 6);
         const startMonth = (s - 1) * 6 + 1;
         const endMonth = s * 6;
