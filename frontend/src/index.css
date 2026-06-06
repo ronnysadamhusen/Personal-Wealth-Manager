@@ -1147,97 +1147,122 @@ table.data-table input.grid-input:focus {
     grid-template-columns: 1fr !important;
   }
 
+  /* ── Ledger container: no horizontal scroll on mobile ──────── */
+  .tx-ledger-container {
+    overflow-x: hidden !important;
+  }
+
   /* ── Ledger table → card layout on mobile ───────────────────── */
   table.tx-ledger-table,
   table.tx-ledger-table tbody {
     display: block;
+    width: 100%;
   }
 
-  table.tx-ledger-table thead {
-    display: none;
-  }
+  table.tx-ledger-table thead { display: none; }
 
   table.tx-ledger-table tr {
-    display: grid;
+    display: grid !important;
     grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto auto auto !important;
     grid-template-areas:
-      "date    amount"
-      "desc    actions"
-      "cat     actions";
-    gap: 0 0.5rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+      "date   amount"
+      "desc   desc"
+      "cat    actions" !important;
+    gap: 0.05rem 0.75rem;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 12px;
-    margin-bottom: 0.55rem;
-    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
   }
 
-  /* selected row highlight */
   table.tx-ledger-table tr[style*="rgba(99, 102, 241, 0.04)"] {
-    background: rgba(99, 102, 241, 0.07) !important;
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-color: rgba(99, 102, 241, 0.2) !important;
   }
 
   table.tx-ledger-table td {
     display: block;
     padding: 0;
     border: none !important;
-    font-size: 0.85rem;
-    line-height: 1.35;
+    line-height: 1.4;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  /* col 1 – checkbox: hidden */
+  /* col 1 – checkbox */
   table.tx-ledger-table td:nth-child(1) { display: none; }
 
   /* col 2 – date */
   table.tx-ledger-table td:nth-child(2) {
     grid-area: date;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--color-text-muted);
-    align-self: end;
-    padding-bottom: 0.1rem;
+    letter-spacing: 0.01em;
   }
 
-  /* col 3 – account: hidden */
+  /* col 3 – account */
   table.tx-ledger-table td:nth-child(3) { display: none; }
 
-  /* col 4 – description */
+  /* col 4 – description (full width, wraps) */
   table.tx-ledger-table td:nth-child(4) {
     grid-area: desc;
-    font-size: 0.88rem;
+    font-size: 0.875rem;
     font-weight: 500;
+    white-space: normal;
+    word-break: break-word;
+    padding-top: 0.1rem;
   }
 
-  /* col 5 – category */
+  /* col 5 – category badge */
   table.tx-ledger-table td:nth-child(5) {
     grid-area: cat;
-    padding-top: 0.15rem;
+    align-self: center;
+  }
+
+  table.tx-ledger-table td:nth-child(5) .badge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.45rem;
   }
 
   /* col 6 – amount */
   table.tx-ledger-table td:nth-child(6) {
     grid-area: amount;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 700;
     text-align: right !important;
-    align-self: end;
-    padding-bottom: 0.1rem;
     white-space: nowrap;
+    align-self: center;
   }
 
-  /* col 7 – actions */
+  /* col 7 – actions: three small icon buttons in a row */
   table.tx-ledger-table td:nth-child(7) {
     grid-area: actions;
     display: flex !important;
-    flex-direction: column;
-    gap: 0.15rem;
+    flex-direction: row;
+    gap: 0.2rem;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
   }
 
   table.tx-ledger-table td:nth-child(7) .btn {
     min-height: unset !important;
-    padding: 0.2rem !important;
-    font-size: 0.9rem;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    font-size: 0.78rem;
+    line-height: 1;
+    flex-shrink: 0;
   }
 
   /* ── Credit card detail row: allow wrapping ─────────────────── */

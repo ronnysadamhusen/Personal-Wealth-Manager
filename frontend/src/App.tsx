@@ -2771,7 +2771,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              <div className="table-container tx-ledger-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
                 {filteredAndAggregatedTx.list.length === 0 ? (
                   <div style={{ padding: '4rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                     No transactions match your current filtering criteria.
