@@ -737,18 +737,28 @@ app.get('/api/budgets', async (req, res) => {
     `;
     const budgets = await query.all(sqlBudgets, monthList);
 
-    // Get categories to determine type (income vs expense)
-    const dbCategories = await query.all('SELECT name, type FROM categories');
+    // Get categories to determine type (income vs expense) and parent-child relationships
+    const dbCategories = await query.all('SELECT id, name, type, parent_id FROM categories');
     const categoryTypeMap = {};
+    const childrenMap = {}; // parentName -> [childName, ...]
     dbCategories.forEach(c => {
       categoryTypeMap[c.name] = c.type;
+    });
+    dbCategories.forEach(c => {
+      if (c.parent_id) {
+        const parent = dbCategories.find(p => p.id === c.parent_id);
+        if (parent) {
+          if (!childrenMap[parent.name]) childrenMap[parent.name] = [];
+          childrenMap[parent.name].push(c.name);
+        }
+      }
     });
 
     // We fetch matching transactions for all months in the target period
     const transactionMonthPatterns = monthList.map(m => `${m}-%`);
     const transactionMonthPlaceholders = monthList.map(() => 'date LIKE ?').join(' OR ');
 
-    // Get actual expense aggregates per category
+    // Get actual expense aggregates per category (exact category name)
     const sqlExpenses = `
       SELECT category, SUM(-amount) as spent
       FROM transactions
@@ -757,7 +767,7 @@ app.get('/api/budgets', async (req, res) => {
     `;
     const expenses = await query.all(sqlExpenses, transactionMonthPatterns);
 
-    // Get actual income aggregates per category
+    // Get actual income aggregates per category (exact category name)
     const sqlIncome = `
       SELECT category, SUM(amount) as received
       FROM transactions
@@ -766,15 +776,18 @@ app.get('/api/budgets', async (req, res) => {
     `;
     const income = await query.all(sqlIncome, transactionMonthPatterns);
 
+    // Maps keyed by exact category name
     const expenseMap = {};
-    expenses.forEach(e => {
-      expenseMap[e.category] = e.spent;
-    });
+    expenses.forEach(e => { expenseMap[e.category] = e.spent; });
 
     const incomeMap = {};
-    income.forEach(i => {
-      incomeMap[i.category] = i.received;
-    });
+    income.forEach(i => { incomeMap[i.category] = i.received; });
+
+    // Helper: sum a map for a category AND all its sub-categories
+    const sumWithChildren = (map, categoryName) => {
+      const cats = [categoryName, ...(childrenMap[categoryName] || [])];
+      return cats.reduce((total, cat) => total + (map[cat] || 0), 0);
+    };
 
     const budgetSummary = budgets.map(b => {
       const catType = categoryTypeMap[b.category] || 'expense';
@@ -782,7 +795,7 @@ app.get('/api/budgets', async (req, res) => {
       return {
         ...b,
         type: catType,
-        spent: isIncome ? (incomeMap[b.category] || 0) : (expenseMap[b.category] || 0)
+        spent: isIncome ? sumWithChildren(incomeMap, b.category) : sumWithChildren(expenseMap, b.category)
       };
     });
 
