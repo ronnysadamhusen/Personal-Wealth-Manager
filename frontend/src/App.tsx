@@ -359,9 +359,9 @@ export default function App() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }, []);
-  const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(currentMonthYear);
+  const [selectedBudgetMonth] = useState(currentMonthYear);
   const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
-  const [budgetViewPeriod, setBudgetViewPeriod] = useState<'monthly' | 'quarterly' | 'semesterly' | 'yearly'>('monthly');
+  const [budgetViewPeriod] = useState<'monthly' | 'quarterly' | 'semesterly' | 'yearly'>('yearly');
   const [isAddBudgetModalOpen, setIsAddBudgetModalOpen] = useState(false);
   const [selectedBudgetYear, setSelectedBudgetYear] = useState(new Date().getFullYear());
   const [budgetStartYear, setBudgetStartYear] = useState(new Date().getFullYear());
@@ -4397,121 +4397,31 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <h3 style={{ margin: 0 }}>Progress Anggaran</h3>
                   
-                  {/* Contextual Selector Controls */}
+                  {/* Year selector + MTD info */}
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Periode:</span>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Tahun:</span>
                     <select
                       className="form-control"
-                      style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                      value={budgetViewPeriod}
-                      onChange={(e) => setBudgetViewPeriod(e.target.value as any)}
+                      style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                      value={selectedBudgetYear}
+                      onChange={(e) => { const y = parseInt(e.target.value); setSelectedBudgetYear(y); setBudgetStartYear(y); setBudgetEndYear(y); }}
                     >
-                      <option value="monthly">Bulan</option>
-                      <option value="quarterly">Quarter</option>
-                      <option value="semesterly">Semester</option>
-                      <option value="yearly">Tahun</option>
+                      {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
                     </select>
-
-                    {budgetViewPeriod !== 'yearly' ? (
-                      <>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Tahun:</span>
-                        <select
-                          className="form-control"
-                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                          value={selectedBudgetYear}
-                          onChange={(e) => setSelectedBudgetYear(parseInt(e.target.value))}
-                        >
-                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-
-                        {budgetViewPeriod === 'monthly' && (
-                          <>
-                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Bulan:</span>
-                            <select
-                              className="form-control"
-                              style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                              value={selectedBudgetMonth.split('-')[1] || '01'}
-                              onChange={(e) => {
-                                setSelectedBudgetMonth(`${selectedBudgetYear}-${e.target.value}`);
-                              }}
-                            >
-                              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
-                                <option key={m} value={m}>
-                                  {new Date(2000, parseInt(m) - 1, 1).toLocaleString('id-ID', { month: 'long' })}
-                                </option>
-                              ))}
-                            </select>
-                          </>
-                        )}
-
-                        {budgetViewPeriod === 'quarterly' && (
-                          <>
-                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Quarter:</span>
-                            <select
-                              className="form-control"
-                              style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                              value={Math.ceil(parseInt(selectedBudgetMonth.split('-')[1] || '1') / 3)}
-                              onChange={(e) => {
-                                const q = parseInt(e.target.value);
-                                const firstMonthOfQ = String((q - 1) * 3 + 1).padStart(2, '0');
-                                setSelectedBudgetMonth(`${selectedBudgetYear}-${firstMonthOfQ}`);
-                              }}
-                            >
-                              <option value="1">Q1 (Jan-Mar)</option>
-                              <option value="2">Q2 (Apr-Jun)</option>
-                              <option value="3">Q3 (Jul-Sep)</option>
-                              <option value="4">Q4 (Oct-Dec)</option>
-                            </select>
-                          </>
-                        )}
-
-                        {budgetViewPeriod === 'semesterly' && (
-                          <>
-                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Semester:</span>
-                            <select
-                              className="form-control"
-                              style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                              value={Math.ceil(parseInt(selectedBudgetMonth.split('-')[1] || '1') / 6)}
-                              onChange={(e) => {
-                                const sem = parseInt(e.target.value);
-                                const firstMonthOfSem = String((sem - 1) * 6 + 1).padStart(2, '0');
-                                setSelectedBudgetMonth(`${selectedBudgetYear}-${firstMonthOfSem}`);
-                              }}
-                            >
-                              <option value="1">Semester 1</option>
-                              <option value="2">Semester 2</option>
-                            </select>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Dari:</span>
-                        <select
-                          className="form-control"
-                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                          value={budgetStartYear}
-                          onChange={(e) => setBudgetStartYear(parseInt(e.target.value))}
-                        >
-                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.2rem' }}>Hingga:</span>
-                        <select
-                          className="form-control"
-                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
-                          value={budgetEndYear}
-                          onChange={(e) => setBudgetEndYear(parseInt(e.target.value))}
-                        >
-                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
+                    {/* MTD badge — only meaningful for current year */}
+                    {selectedBudgetYear === new Date().getFullYear() && (() => {
+                      const now = new Date();
+                      const start = new Date(selectedBudgetYear, 0, 1);
+                      const end   = new Date(selectedBudgetYear, 11, 31, 23, 59, 59);
+                      const mtdPct = Math.round(((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100);
+                      return (
+                        <span style={{ fontSize: '0.72rem', background: 'rgba(99,102,241,0.12)', color: 'var(--color-primary)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '5px', padding: '0.2rem 0.5rem', fontWeight: 600 }}>
+                          MTD {mtdPct}% hari terlewati
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -4529,6 +4439,15 @@ export default function App() {
                 const totalExpenseSpent  = expenseBudgets.reduce((s, b) => s + b.spent,  0);
                 const netBudget = totalIncomeBudget - totalExpenseBudget;
                 const netActual = totalIncomeSpent  - totalExpenseSpent;
+
+                // MTD progress (% of year elapsed) — used to draw the pace marker
+                const mtdPct = (() => {
+                  const now   = new Date();
+                  const start = new Date(selectedBudgetYear, 0, 1);
+                  const end   = new Date(selectedBudgetYear, 11, 31, 23, 59, 59);
+                  if (now.getFullYear() !== selectedBudgetYear) return null;
+                  return Math.min(100, Math.max(0, ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100));
+                })();
 
                 const renderCompactRow = (b: any) => {
                   const isIncome  = b.type === 'income';
@@ -4554,8 +4473,22 @@ export default function App() {
                             {b.start_date && <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', flexShrink: 0 }}>📅 {b.start_date.slice(0,7)}→{b.end_date ? b.end_date.slice(0,7) : '∞'}</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <div style={{ flex: 1, height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                            {/* Progress bar with MTD marker */}
+                            <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', position: 'relative', overflow: 'visible' }}>
+                              {/* Filled bar */}
+                              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease', overflow: 'hidden' }} />
+                              {/* MTD pace marker — vertical tick */}
+                              {mtdPct !== null && (
+                                <div title={`Batas MTD: ${mtdPct.toFixed(0)}% waktu terlewati`} style={{
+                                  position: 'absolute', top: '-3px', bottom: '-3px',
+                                  left: `${mtdPct}%`, transform: 'translateX(-50%)',
+                                  width: '2px', borderRadius: '1px',
+                                  background: pct >= mtdPct
+                                    ? (isIncome ? 'rgba(34,197,94,0.9)' : 'rgba(255,255,255,0.35)')
+                                    : 'rgba(239,68,68,0.85)',
+                                  zIndex: 2,
+                                }} />
+                              )}
                             </div>
                             <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', flexShrink: 0, width: '30px', textAlign: 'right' }}>{pct.toFixed(0)}%</span>
                           </div>
