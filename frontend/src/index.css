@@ -1021,7 +1021,8 @@ table.data-table input.grid-input:focus {
   cursor: pointer;
 }
 
-.privacy-hover:hover {
+.privacy-hover:hover,
+.privacy-hover.privacy-revealed {
   filter: none;
   user-select: auto;
 }

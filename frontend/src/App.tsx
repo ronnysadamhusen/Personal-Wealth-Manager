@@ -570,11 +570,23 @@ export default function App() {
     });
   };
 
-  const renderAmount = (value: number) => {
-    const text = formatIDR(value);
-    const privacyClass = privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : '';
-    return <span className={privacyClass}>{text}</span>;
+  // Tap-to-reveal component for hover privacy mode on touch devices
+  const PrivacySpan = ({ text }: { text: string }) => {
+    const [tapped, setTapped] = React.useState(false);
+    if (privacyMode !== 'hover') {
+      return <span className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
+    }
+    return (
+      <span
+        className={`privacy-hover${tapped ? ' privacy-revealed' : ''}`}
+        onClick={() => setTapped(t => !t)}
+      >
+        {text}
+      </span>
+    );
   };
+
+  const renderAmount = (value: number) => <PrivacySpan text={formatIDR(value)} />;
 
 
   // 1. Fetch all essential data
