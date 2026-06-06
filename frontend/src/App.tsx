@@ -2242,61 +2242,43 @@ export default function App() {
             {navOpen ? '✕' : '☰'}
           </button>
 
-          <nav className={`nav-links${navOpen ? ' open' : ''}`}>
-            <button 
-              className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('dashboard'); setNavOpen(false); }}
+          <nav className={`nav-links${navOpen ? ' open' : ''}`} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Menu:</span>
+            <select
+              className="form-control"
+              style={{ 
+                width: '210px', 
+                padding: '0.35rem 1.8rem 0.35rem 0.75rem', 
+                margin: 0, 
+                height: '34px', 
+                fontSize: '0.85rem', 
+                fontWeight: 600,
+                background: 'rgba(255, 255, 255, 0.03)', 
+                borderColor: 'var(--border-color)', 
+                color: 'var(--color-text-main)',
+                cursor: 'pointer',
+                borderRadius: '6px'
+              }}
+              value={activeTab}
+              onChange={(e) => {
+                const tab = e.target.value;
+                setActiveTab(tab as any);
+                if (tab === 'transactions') {
+                  setTransactionSubTab('ledger');
+                }
+                setNavOpen(false);
+              }}
             >
-              <Icons.Dashboard /> Dashboard
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'accounts' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('accounts'); setNavOpen(false); }}
-            >
-              <Icons.Accounts /> Accounts
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'transactions' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('transactions'); setTransactionSubTab('ledger'); setNavOpen(false); }}
-            >
-              <Icons.Ledger /> Transactions
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'budgets' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('budgets'); setNavOpen(false); }}
-            >
-              <Icons.Budget /> Budgets
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'liabilities' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('liabilities'); setNavOpen(false); }}
-            >
-              🤝 Liabilities & Receivables
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'goals' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('goals'); setNavOpen(false); }}
-            >
-              🎯 Future Goals
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'investments' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('investments'); setNavOpen(false); }}
-            >
-              📈 Investments
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'ai' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('ai'); setNavOpen(false); }}
-            >
-              <Icons.AI /> AI Advisor
-            </button>
-            <button 
-              className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('settings'); setNavOpen(false); }}
-            >
-              <Icons.Settings /> Settings
-            </button>
+              <option value="dashboard">📊 Dashboard Summary</option>
+              <option value="accounts">💳 Accounts & Balance</option>
+              <option value="transactions">📝 Transactions Ledger</option>
+              <option value="budgets">💸 Anggaran / Budgets</option>
+              <option value="liabilities">🤝 Liabilities & Receivables</option>
+              <option value="goals">🎯 Future Financial Goals</option>
+              <option value="investments">📈 Investments Modules</option>
+              <option value="ai">🤖 AI Financial Advisor</option>
+              <option value="settings">⚙️ Settings & System</option>
+            </select>
             <span style={{ borderLeft: '1px solid var(--border-color)', margin: '0 0.25rem', alignSelf: 'center', height: '20px' }} />
             <button
               type="button"
