@@ -773,6 +773,21 @@ app.post('/api/budgets', async (req, res) => {
   }
 });
 
+// Delete a budget
+app.delete('/api/budgets/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const existing = await query.get('SELECT * FROM budgets WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Budget not found' });
+    }
+    await query.run('DELETE FROM budgets WHERE id = ?', [id]);
+    res.json({ message: 'Budget deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // -------------------------------------------------------------------
 // 4. INSTALLMENT & CC PROJECTION ENDPOINTS
 // -------------------------------------------------------------------

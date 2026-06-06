@@ -362,6 +362,8 @@ export default function App() {
   const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(currentMonthYear);
   const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
   const [budgetDuration, setBudgetDuration] = useState<'single' | 'yearly'>('single');
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1396,6 +1398,48 @@ export default function App() {
       });
       if (res.ok) {
         setBudgetAmount('');
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleStartEditBudget = (budget: any) => {
+    setEditingBudgetId(budget.id);
+    setEditingBudgetAmount(String(budget.amount));
+  };
+
+  const handleSaveEditedBudget = async (budget: any) => {
+    if (!editingBudgetAmount || isNaN(parseFloat(editingBudgetAmount))) return;
+    try {
+      const res = await fetch(`${API_URL}/budgets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: budget.category,
+          amount: parseFloat(editingBudgetAmount),
+          month_year: budget.month_year,
+          duration: 'single'
+        })
+      });
+      if (res.ok) {
+        setEditingBudgetId(null);
+        setEditingBudgetAmount('');
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBudget = async (budgetId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus anggaran ini?')) return;
+    try {
+      const res = await fetch(`${API_URL}/budgets/${budgetId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
         fetchData();
       }
     } catch (err) {
@@ -4165,7 +4209,7 @@ export default function App() {
                         />
                       </div>
                       
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', alignItems: 'center' }}>
                         <span>{isIncome ? 'Pencapaian Target' : 'Utilisasi'}: {percentage.toFixed(0)}%</span>
                         <span>
                           {isIncome 
@@ -4173,6 +4217,57 @@ export default function App() {
                             : `Sisa: ${renderAmount(Math.max(0, b.amount - b.spent))}`
                           }
                         </span>
+                      </div>
+
+                      {/* Edit / Delete Inline actions */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px dashed rgba(255,255,255,0.03)' }}>
+                        {editingBudgetId === b.id ? (
+                          <div style={{ display: 'flex', gap: '0.3rem', width: '100%', alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              className="form-control"
+                              style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1 }}
+                              value={editingBudgetAmount}
+                              onChange={(e) => setEditingBudgetAmount(e.target.value)}
+                              placeholder="Nominal baru"
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '26px' }}
+                              onClick={() => handleSaveEditedBudget(b)}
+                            >
+                              💾 Simpan
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '26px' }}
+                              onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); }}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                              onClick={() => handleStartEditBudget(b)}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>|</span>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                              onClick={() => handleDeleteBudget(b.id)}
+                            >
+                              🗑️ Hapus
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
