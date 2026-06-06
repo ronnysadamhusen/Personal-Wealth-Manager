@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  personal-wealth-manager:
+    build: .
+    image: personal-wealth-manager:latest
+    container_name: personal-wealth-manager
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/accounts"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
