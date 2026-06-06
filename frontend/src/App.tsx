@@ -221,6 +221,30 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   );
 };
 
+// Defined outside App so its identity is stable across re-renders,
+// preserving the tapped state when App re-renders.
+const PrivacySpan = React.memo(({ text, privacyMode }: { text: string; privacyMode: 'blur' | 'hover' | 'visible' }) => {
+  const [tapped, setTapped] = useState(false);
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault(); // suppress the synthetic click so it doesn't fire twice
+    setTapped(t => !t);
+  };
+
+  if (privacyMode !== 'hover') {
+    return <span className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
+  }
+  return (
+    <span
+      className={`privacy-hover${tapped ? ' privacy-revealed' : ''}`}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => setTapped(t => !t)}
+    >
+      {text}
+    </span>
+  );
+});
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'budgets' | 'liabilities' | 'goals' | 'investments' | 'transactions' | 'ai' | 'settings'>(
     () => (localStorage.getItem('pfm_active_tab') as any) || 'dashboard'
@@ -570,23 +594,7 @@ export default function App() {
     });
   };
 
-  // Tap-to-reveal component for hover privacy mode on touch devices
-  const PrivacySpan = ({ text }: { text: string }) => {
-    const [tapped, setTapped] = React.useState(false);
-    if (privacyMode !== 'hover') {
-      return <span className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
-    }
-    return (
-      <span
-        className={`privacy-hover${tapped ? ' privacy-revealed' : ''}`}
-        onClick={() => setTapped(t => !t)}
-      >
-        {text}
-      </span>
-    );
-  };
-
-  const renderAmount = (value: number) => <PrivacySpan text={formatIDR(value)} />;
+  const renderAmount = (value: number) => <PrivacySpan text={formatIDR(value)} privacyMode={privacyMode} />;
 
 
   // 1. Fetch all essential data
