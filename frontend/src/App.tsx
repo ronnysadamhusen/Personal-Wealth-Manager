@@ -3015,6 +3015,120 @@ export default function App() {
                         <QCard qKey="tidak_penting-mendesak"     title="Tidak Penting · Mendesak"     subtitle="Pertimbangkan ulang — bisa dikurangi"           border="rgba(245,158,11,0.3)"  bg="rgba(245,158,11,0.05)"  titleColor="#fbbf24" />
                         <QCard qKey="tidak_penting-tidak_mendesak" title="Tidak Penting · Tidak Mendesak" subtitle="Eliminasi — kandidat penghematan terbesar" border="rgba(107,114,128,0.3)" bg="rgba(107,114,128,0.05)" titleColor="#9ca3af" />
                       </div>
+
+                      {/* ── Analysis Panel ── */}
+                      {(() => {
+                        const q1 = quadrants['penting-mendesak'].total;
+                        const q2 = quadrants['penting-tidak_mendesak'].total;
+                        const q3 = quadrants['tidak_penting-mendesak'].total;
+                        const q4 = quadrants['tidak_penting-tidak_mendesak'].total;
+                        const pct = (v: number) => grandTotal > 0 ? (v / grandTotal * 100) : 0;
+                        const fmt = (v: number) => `${pct(v).toFixed(0)}%`;
+
+                        // Health score: productive = Q1+Q2, unproductive = Q3+Q4
+                        const unproductivePct = pct(q3 + q4);
+                        const q2Pct = pct(q2);
+                        const q4Pct = pct(q4);
+                        const q3Pct = pct(q3);
+                        const q1Pct = pct(q1);
+
+                        let healthLabel: string;
+                        let healthColor: string;
+                        let healthScore: number; // 0-100
+                        if (unproductivePct < 10) { healthLabel = 'Sangat Baik'; healthColor = '#22c55e'; healthScore = 92; }
+                        else if (unproductivePct < 20) { healthLabel = 'Baik'; healthColor = '#4ade80'; healthScore = 75; }
+                        else if (unproductivePct < 35) { healthLabel = 'Perlu Perhatian'; healthColor = '#fbbf24'; healthScore = 50; }
+                        else { healthLabel = 'Perlu Evaluasi'; healthColor = '#f87171'; healthScore = 25; }
+
+                        // Generate insights
+                        const insights: { icon: string; color: string; text: string }[] = [];
+
+                        // Q4 insight — eliminate zone
+                        if (q4 > 0) {
+                          const topQ4 = Object.entries(quadrants['tidak_penting-tidak_mendesak'].cats).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c])=>c).join(', ');
+                          if (q4Pct >= 20) {
+                            insights.push({ icon: '🚨', color: '#f87171', text: `${fmt(q4)} pengeluaranmu (${renderAmount(q4)}) masuk zona <strong>Eliminasi</strong> — tidak penting dan tidak mendesak. Kategori terbesar: ${topQ4}. Ini kandidat paling potensial untuk dihemat.` });
+                          } else if (q4Pct >= 10) {
+                            insights.push({ icon: '⚠️', color: '#fbbf24', text: `${fmt(q4)} pengeluaran di zona Eliminasi (${renderAmount(q4)}). Pertimbangkan untuk mengurangi kategori: ${topQ4}.` });
+                          } else {
+                            insights.push({ icon: '✅', color: '#22c55e', text: `Zona Eliminasi hanya ${fmt(q4)} dari total pengeluaran — sudah sangat terkontrol.` });
+                          }
+                        }
+
+                        // Q3 insight — not important but urgent
+                        if (q3 > 0 && q3Pct >= 10) {
+                          const topQ3 = Object.entries(quadrants['tidak_penting-mendesak'].cats).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([c])=>c).join(', ');
+                          insights.push({ icon: '💡', color: '#fbbf24', text: `${fmt(q3)} dialokasikan untuk hal <strong>Tidak Penting tapi Mendesak</strong> (${topQ3}). Pertimbangkan renegotiasi, cari alternatif lebih murah, atau kurangi frekuensinya.` });
+                        }
+
+                        // Q2 insight — important, not urgent (planning zone)
+                        if (q2Pct < 15 && (q1 + q2 + q3 + q4) > 0) {
+                          insights.push({ icon: '📌', color: '#818cf8', text: `Alokasi untuk hal <strong>Penting tapi Tidak Mendesak</strong> (tabungan, investasi, pengembangan diri, kesehatan preventif) baru ${fmt(q2)}. Kuadran ini adalah kunci kebebasan finansial jangka panjang — idealnya di atas 20%.` });
+                        } else if (q2Pct >= 20) {
+                          insights.push({ icon: '🌱', color: '#818cf8', text: `Bagus! ${fmt(q2)} dialokasikan untuk hal Penting tapi Tidak Mendesak. Ini menunjukkan kamu sudah berinvestasi untuk masa depan.` });
+                        }
+
+                        // Q1 dominance insight
+                        if (q1Pct > 70) {
+                          insights.push({ icon: '⏱️', color: '#f87171', text: `${fmt(q1)} pengeluaran bersifat mendesak dan penting — artinya sebagian besar uang habis untuk kebutuhan reaktif. Pastikan ada ruang untuk perencanaan (Q2) agar tidak selalu dalam mode "pemadam kebakaran".` });
+                        }
+
+                        // Overall positive if small unproductive
+                        if (unproductivePct < 10 && insights.length === 0) {
+                          insights.push({ icon: '🏆', color: '#22c55e', text: `Distribusi pengeluaranmu sangat sehat. Kurang dari ${fmt(q3+q4)} masuk zona tidak produktif. Pertahankan dan terus tingkatkan alokasi untuk perencanaan (Q2).` });
+                        }
+
+                        return (
+                          <div style={{ marginTop: '0.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '0.75rem 0.9rem' }}>
+                            {/* Health Score */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>💊 Skor Kesehatan Pengeluaran</span>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: healthColor }}>{healthLabel}</span>
+                            </div>
+                            {/* Score bar */}
+                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                              <div style={{ height: '100%', borderRadius: '3px', width: `${healthScore}%`, background: `linear-gradient(90deg, #6366f1, ${healthColor})`, transition: 'width 0.6s ease' }} />
+                            </div>
+                            {/* Distribution bar */}
+                            <div style={{ marginBottom: '0.75rem' }}>
+                              <div style={{ fontSize: '0.63rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Distribusi pengeluaran</div>
+                              <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', gap: '1px' }}>
+                                {[
+                                  { val: q1, color: '#f87171', label: 'Q1' },
+                                  { val: q2, color: '#818cf8', label: 'Q2' },
+                                  { val: q3, color: '#fbbf24', label: 'Q3' },
+                                  { val: q4, color: '#6b7280', label: 'Q4' },
+                                ].filter(s => s.val > 0).map(s => (
+                                  <div key={s.label} title={`${s.label}: ${pct(s.val).toFixed(1)}%`}
+                                    style={{ width: `${pct(s.val)}%`, background: s.color, transition: 'width 0.6s ease' }} />
+                                ))}
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
+                                {[
+                                  { label: 'Penting+Mendesak', val: q1, color: '#f87171' },
+                                  { label: 'Penting+Tidak Mendesak', val: q2, color: '#818cf8' },
+                                  { label: 'Tidak Penting+Mendesak', val: q3, color: '#fbbf24' },
+                                  { label: 'Tidak Penting+Tidak Mendesak', val: q4, color: '#6b7280' },
+                                ].filter(s => s.val > 0).map(s => (
+                                  <span key={s.label} style={{ fontSize: '0.6rem', color: s.color, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', background: s.color, flexShrink: 0 }} />
+                                    {s.label} {fmt(s.val)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Insights */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                              {insights.map((ins, i) => (
+                                <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.4rem 0.5rem', borderRadius: '6px', background: 'rgba(255,255,255,0.02)', borderLeft: `3px solid ${ins.color}` }}>
+                                  <span style={{ fontSize: '0.8rem', flexShrink: 0, lineHeight: 1.4 }}>{ins.icon}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: ins.text }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
