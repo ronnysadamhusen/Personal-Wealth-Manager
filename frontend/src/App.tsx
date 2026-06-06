@@ -222,11 +222,30 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'budgets' | 'liabilities' | 'goals' | 'investments' | 'transactions' | 'ai' | 'settings'>('dashboard');
-  const [transactionSubTab, setTransactionSubTab] = useState<'ledger' | 'import' | 'ocr'>('ledger');
-  const [liabilitiesSubTab, setLiabilitiesSubTab] = useState<'overview' | 'installments' | 'loans'>('overview');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'budgets' | 'liabilities' | 'goals' | 'investments' | 'transactions' | 'ai' | 'settings'>(
+    () => (localStorage.getItem('pfm_active_tab') as any) || 'dashboard'
+  );
+  const [transactionSubTab, setTransactionSubTab] = useState<'ledger' | 'import' | 'ocr'>(
+    () => (localStorage.getItem('pfm_tx_sub_tab') as any) || 'ledger'
+  );
+  const [liabilitiesSubTab, setLiabilitiesSubTab] = useState<'overview' | 'installments' | 'loans'>(
+    () => (localStorage.getItem('pfm_liab_sub_tab') as any) || 'overview'
+  );
   const [navOpen, setNavOpen] = useState(false);
-  
+
+  const navigateTo = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    localStorage.setItem('pfm_active_tab', tab);
+  };
+  const switchTxSubTab = (tab: typeof transactionSubTab) => {
+    setTransactionSubTab(tab);
+    localStorage.setItem('pfm_tx_sub_tab', tab);
+  };
+  const switchLiabSubTab = (tab: typeof liabilitiesSubTab) => {
+    setLiabilitiesSubTab(tab);
+    localStorage.setItem('pfm_liab_sub_tab', tab);
+  };
+
   // Future Goals States
   const [goals, setGoals] = useState<any[]>([]);
   const [newGoalName, setNewGoalName] = useState('');
@@ -1377,7 +1396,7 @@ export default function App() {
       if (res.ok) {
         alert('Application data reset successfully!');
         fetchData();
-        setActiveTab('dashboard');
+        navigateTo('dashboard');
       } else {
         const errJ = await res.json();
         alert(errJ.error || 'Failed to reset application.');
@@ -1945,7 +1964,7 @@ export default function App() {
         setOcrFormAmount('');
         setOcrProgress('');
         setOcrProgressPct(0);
-        setActiveTab('dashboard');
+        navigateTo('dashboard');
         fetchData();
       } else {
         const errJson = await res.json();
@@ -2204,7 +2223,7 @@ export default function App() {
         setPdfFile(null);
         setPdfFiles([]);
         setParsedTxList([]);
-        setActiveTab('dashboard');
+        navigateTo('dashboard');
         fetchData();
       } else {
         const errJ = await res.json();
@@ -2357,9 +2376,9 @@ export default function App() {
               value={activeTab}
               onChange={(e) => {
                 const tab = e.target.value;
-                setActiveTab(tab as any);
+                navigateTo(tab as any);
                 if (tab === 'transactions') {
-                  setTransactionSubTab('ledger');
+                  switchTxSubTab('ledger');
                 }
                 setNavOpen(false);
               }}
@@ -2446,7 +2465,7 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', gap: '0', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '4px', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <button
-                  onClick={() => setTransactionSubTab('ledger')}
+                  onClick={() => switchTxSubTab('ledger')}
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'ledger' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -2457,7 +2476,7 @@ export default function App() {
                   <Icons.Ledger /> Ledger
                 </button>
                 <button
-                  onClick={() => setTransactionSubTab('import')}
+                  onClick={() => switchTxSubTab('import')}
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'import' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -2468,7 +2487,7 @@ export default function App() {
                   <Icons.Import /> Import PDF
                 </button>
                 <button
-                  onClick={() => setTransactionSubTab('ocr')}
+                  onClick={() => switchTxSubTab('ocr')}
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'ocr' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -2758,11 +2777,11 @@ export default function App() {
                     No transactions match your current filtering criteria.
                   </div>
                 ) : (
-                  <table className="data-table">
+                  <table className="data-table tx-ledger-table">
                     <thead>
                       <tr>
                         <th style={{ width: '4%', textAlign: 'center' }}>
-                          <input 
+                          <input
                             type="checkbox"
                             checked={filteredAndAggregatedTx.list.length > 0 && filteredAndAggregatedTx.list.every((t: any) => selectedTxIds.includes(t.id))}
                             onChange={(e) => {
@@ -3015,7 +3034,7 @@ export default function App() {
                     <div style={{ marginBottom: '0.75rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>⊞ Eisenhower Matrix · Pengeluaran {currentYear}</span>
-                        <button type="button" onClick={() => setActiveTab('settings')} style={{ fontSize: '0.65rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <button type="button" onClick={() => navigateTo('settings')} style={{ fontSize: '0.65rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                           Atur kategori →
                         </button>
                       </div>
@@ -3156,7 +3175,7 @@ export default function App() {
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
                           Belum ada rekening.{' '}
                           <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => setActiveTab('accounts')}>Tambah →</button>
+                            onClick={() => navigateTo('accounts')}>Tambah →</button>
                         </div>
                       ) : (
                         <>
@@ -3183,7 +3202,7 @@ export default function App() {
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
                           Belum ada investasi.{' '}
                           <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => setActiveTab('investments')}>Tambah →</button>
+                            onClick={() => navigateTo('investments')}>Tambah →</button>
                         </div>
                       ) : (
                         <>
@@ -3384,7 +3403,7 @@ export default function App() {
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)'; }}
-                            onClick={() => { setActiveTab(tab); setNavOpen(false); }}
+                            onClick={() => { navigateTo(tab); setNavOpen(false); }}
                           >{label}</button>
                         ))}
                       </div>
@@ -3593,7 +3612,7 @@ export default function App() {
                     <button 
                       type="button"
                       className="btn btn-primary" 
-                      onClick={() => setActiveTab('accounts')}
+                      onClick={() => navigateTo('accounts')}
                       style={{ padding: '0.6rem 1.5rem', fontWeight: 600, display: 'inline-flex', alignSelf: 'center' }}
                     >
                       🏦 Register Account Now
@@ -5006,19 +5025,19 @@ export default function App() {
             <div className="sub-tab-bar">
               <button
                 className={`sub-tab-btn${liabilitiesSubTab === 'overview' ? ' active' : ''}`}
-                onClick={() => setLiabilitiesSubTab('overview')}
+                onClick={() => switchLiabSubTab('overview')}
               >
                 📊 Overview
               </button>
               <button
                 className={`sub-tab-btn${liabilitiesSubTab === 'installments' ? ' active' : ''}`}
-                onClick={() => setLiabilitiesSubTab('installments')}
+                onClick={() => switchLiabSubTab('installments')}
               >
                 💳 CC Cicilan
               </button>
               <button
                 className={`sub-tab-btn${liabilitiesSubTab === 'loans' ? ' active' : ''}`}
-                onClick={() => setLiabilitiesSubTab('loans')}
+                onClick={() => switchLiabSubTab('loans')}
               >
                 🤝 Hutang & Piutang
               </button>
@@ -7843,8 +7862,8 @@ export default function App() {
               type="button"
               className={`mobile-nav-item${activeTab === tab ? ' active' : ''}`}
               onClick={() => {
-                setActiveTab(tab);
-                if (tab === 'transactions') setTransactionSubTab('ledger');
+                navigateTo(tab);
+                if (tab === 'transactions') switchTxSubTab('ledger');
               }}
               aria-current={activeTab === tab ? 'page' : undefined}
             >

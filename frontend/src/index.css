@@ -1147,12 +1147,97 @@ table.data-table input.grid-input:focus {
     grid-template-columns: 1fr !important;
   }
 
-  /* ── Transaction table: hide less important columns ─────────── */
-  table.data-table th:nth-child(3),
-  table.data-table td:nth-child(3),
-  table.data-table th:nth-child(5),
-  table.data-table td:nth-child(5) {
+  /* ── Ledger table → card layout on mobile ───────────────────── */
+  table.tx-ledger-table,
+  table.tx-ledger-table tbody {
+    display: block;
+  }
+
+  table.tx-ledger-table thead {
     display: none;
+  }
+
+  table.tx-ledger-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "date    amount"
+      "desc    actions"
+      "cat     actions";
+    gap: 0 0.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 0.55rem;
+    padding: 0.65rem 0.75rem;
+  }
+
+  /* selected row highlight */
+  table.tx-ledger-table tr[style*="rgba(99, 102, 241, 0.04)"] {
+    background: rgba(99, 102, 241, 0.07) !important;
+  }
+
+  table.tx-ledger-table td {
+    display: block;
+    padding: 0;
+    border: none !important;
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+
+  /* col 1 – checkbox: hidden */
+  table.tx-ledger-table td:nth-child(1) { display: none; }
+
+  /* col 2 – date */
+  table.tx-ledger-table td:nth-child(2) {
+    grid-area: date;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    align-self: end;
+    padding-bottom: 0.1rem;
+  }
+
+  /* col 3 – account: hidden */
+  table.tx-ledger-table td:nth-child(3) { display: none; }
+
+  /* col 4 – description */
+  table.tx-ledger-table td:nth-child(4) {
+    grid-area: desc;
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+
+  /* col 5 – category */
+  table.tx-ledger-table td:nth-child(5) {
+    grid-area: cat;
+    padding-top: 0.15rem;
+  }
+
+  /* col 6 – amount */
+  table.tx-ledger-table td:nth-child(6) {
+    grid-area: amount;
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-align: right !important;
+    align-self: end;
+    padding-bottom: 0.1rem;
+    white-space: nowrap;
+  }
+
+  /* col 7 – actions */
+  table.tx-ledger-table td:nth-child(7) {
+    grid-area: actions;
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  table.tx-ledger-table td:nth-child(7) .btn {
+    min-height: unset !important;
+    padding: 0.2rem !important;
+    font-size: 0.9rem;
   }
 
   /* ── Credit card detail row: allow wrapping ─────────────────── */
