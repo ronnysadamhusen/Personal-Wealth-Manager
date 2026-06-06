@@ -4270,6 +4270,19 @@ export default function App() {
                   
                   {/* Contextual Selector Controls */}
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Periode:</span>
+                    <select
+                      className="form-control"
+                      style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                      value={budgetViewPeriod}
+                      onChange={(e) => setBudgetViewPeriod(e.target.value as any)}
+                    >
+                      <option value="monthly">Bulan</option>
+                      <option value="quarterly">Quarter</option>
+                      <option value="semesterly">Semester</option>
+                      <option value="yearly">Tahun</option>
+                    </select>
+
                     {budgetViewPeriod !== 'yearly' ? (
                       <>
                         <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Tahun:</span>
@@ -4371,34 +4384,6 @@ export default function App() {
                       </>
                     )}
                   </div>
-                </div>
-
-                {/* Period Selector Tabs */}
-                <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.2)', padding: '0.25rem', borderRadius: '8px' }}>
-                  {(['monthly', 'quarterly', 'semesterly', 'yearly'] as const).map((p) => {
-                    const label = p === 'monthly' ? 'Bulan' : p === 'quarterly' ? 'Quarter' : p === 'semesterly' ? 'Semester' : 'Tahun';
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        style={{
-                          flex: 1,
-                          padding: '0.4rem',
-                          fontSize: '0.78rem',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: budgetViewPeriod === p ? 'var(--color-primary)' : 'transparent',
-                          color: budgetViewPeriod === p ? '#fff' : 'var(--color-text-muted)',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                          transition: 'all 0.2s ease'
-                        }}
-                        onClick={() => setBudgetViewPeriod(p)}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
               
