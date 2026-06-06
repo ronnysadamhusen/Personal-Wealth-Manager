@@ -2890,7 +2890,6 @@ export default function App() {
               s + (inv.current_units > 0 ? inv.current_units * (inv.current_price_per_unit || 0) : inv.total_invested || 0), 0);
             const totalInvestmentCost  = investments.reduce((s: number, inv: any) => s + (inv.total_invested || 0), 0);
             const investmentPnL        = totalInvestmentValue - totalInvestmentCost;
-            const totalGoalTarget      = goals.filter((g: any) => g.status === 'active').reduce((s: number, g: any) => s + g.target_amount, 0);
             const totalGoalSaved       = goals.filter((g: any) => g.status === 'active').reduce((s: number, g: any) => s + g.current_savings, 0);
             const totalPersonalDebt    = debtsReceivables.filter((d: any) => d.type === 'debt' && d.status === 'active').reduce((s: number, d: any) => s + d.remaining_amount, 0);
             const totalReceivable      = debtsReceivables.filter((d: any) => d.type === 'receivable' && d.status === 'active').reduce((s: number, d: any) => s + d.remaining_amount, 0);
@@ -2922,47 +2921,289 @@ export default function App() {
               <div className="glass-panel" style={{ padding: '1rem', ...style }}>{children}</div>
             );
 
+            // ── Bulan Ini derived values ──
+            const thisMonthTx = transactions.filter((t: any) => t.date?.startsWith(currentMonthYear));
+            const monthIncome  = thisMonthTx.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + t.amount, 0);
+            const monthExpense = thisMonthTx.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
+            const expenseBudgetsTotal = budgets.filter((b: any) => b.type !== 'income').reduce((s: number, b: any) => s + b.amount, 0);
+            const monthSaldo = monthIncome - monthExpense;
+
+            // ── Transaksi terbaru ──
+            const recentTx = [...transactions]
+              .sort((a: any, b: any) => b.date.localeCompare(a.date))
+              .slice(0, 5);
+
+            // ── Month label ──
+            const monthLabel = new Date(currentMonthYear + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
             return (
-              <div>
-                {/* ── Hero: Net Worth ── */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                {/* ── 1. HERO: Kekayaan Bersih ── */}
                 <div style={{
                   background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)',
                   border: '1px solid rgba(99,102,241,0.18)',
-                  borderRadius: '10px',
+                  borderRadius: '14px',
                   padding: '1.25rem 1.5rem',
-                  marginBottom: '0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '1rem'
                 }}>
-                  <div>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.3rem' }}>
-                      Total Net Worth
-                    </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px', color: trueNetWorth >= 0 ? 'var(--color-success)' : 'var(--color-danger)', lineHeight: 1 }}>
-                      {renderAmount(trueNetWorth)}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.4rem' }}>
-                      Aset <strong style={{ color: 'var(--color-success)' }}>{renderAmount(totalAssets)}</strong>
-                      &nbsp;—&nbsp;Kewajiban <strong style={{ color: 'var(--color-danger)' }}>{renderAmount(totalLiabilities)}</strong>
-                    </div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                    Kekayaan Bersih
                   </div>
-                  <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '2.1rem', fontWeight: 800, letterSpacing: '-1px', color: trueNetWorth >= 0 ? 'var(--color-success)' : 'var(--color-danger)', lineHeight: 1.1, marginBottom: '0.35rem' }}>
+                    {renderAmount(trueNetWorth)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                    Total aset dikurangi semua kewajiban (hutang & cicilan)
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     {[
-                      { label: 'Kas & Tabungan', val: totals.totalCash, color: 'var(--color-success)' },
-                      { label: 'Portofolio Investasi', val: totalInvestmentValue, color: 'var(--color-primary)' },
-                      { label: 'Total Kewajiban', val: -totalLiabilities, color: 'var(--color-danger)' },
-                    ].map(({ label, val, color }) => (
-                      <div key={label} style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', letterSpacing: '0.5px', marginBottom: '0.2rem', textTransform: 'uppercase' }}>{label}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color }}>{renderAmount(Math.abs(val))}</div>
+                      { label: 'Total Aset', val: totalAssets, color: 'var(--color-success)', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+                      { label: 'Total Kewajiban', val: totalLiabilities, color: 'var(--color-danger)', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)' },
+                    ].map(({ label, val, color, bg, border }) => (
+                      <div key={label} style={{ flex: '1 1 120px', background: bg, border: `1px solid ${border}`, borderRadius: '10px', padding: '0.6rem 0.85rem' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color }}>{renderAmount(val)}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                {/* ── 2. BULAN INI ── */}
+                <Panel>
+                  <SectionTitle icon="📅" label={`Bulan Ini — ${monthLabel}`} />
+                  <div style={{ display: 'flex', gap: '0.6rem', marginBottom: monthSaldo !== 0 ? '0.75rem' : 0 }}>
+                    <div style={{ flex: 1, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: '10px', padding: '0.65rem 0.85rem' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>Pemasukan</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-success)' }}>{renderAmount(monthIncome)}</div>
+                    </div>
+                    <div style={{ flex: 1, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '10px', padding: '0.65rem 0.85rem' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>Pengeluaran</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-danger)' }}>{renderAmount(monthExpense)}</div>
+                    </div>
+                  </div>
+                  {monthSaldo !== 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', borderRadius: '8px', background: monthSaldo >= 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${monthSaldo >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}` }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{monthSaldo >= 0 ? '✅ Sisa bulan ini' : '⚠️ Lebih dari pemasukan'}</span>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: monthSaldo >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{renderAmount(Math.abs(monthSaldo))}</span>
+                    </div>
+                  )}
+                  {expenseBudgetsTotal > 0 && monthExpense > 0 && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.3rem' }}>
+                        <span>Pengeluaran vs Anggaran Bulanan</span>
+                        <span style={{ fontWeight: 600, color: monthExpense > expenseBudgetsTotal ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                          {expenseBudgetsTotal > 0 ? `${Math.round(monthExpense / expenseBudgetsTotal * 100)}%` : '—'}
+                        </span>
+                      </div>
+                      <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '3px',
+                          width: `${Math.min(100, expenseBudgetsTotal > 0 ? monthExpense / expenseBudgetsTotal * 100 : 0)}%`,
+                          background: monthExpense > expenseBudgetsTotal ? 'var(--color-danger)' : monthExpense > expenseBudgetsTotal * 0.8 ? 'var(--color-warning)' : 'var(--color-success)',
+                          transition: 'width 0.5s ease'
+                        }} />
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                        {renderAmount(monthExpense)} dari anggaran {renderAmount(expenseBudgetsTotal)}
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+
+                {/* ── 3. UANGMU (ASET) ── */}
+                <Panel>
+                  <SectionTitle icon="💰" label="Uangmu Saat Ini" />
+                  {bankAccounts.length === 0 && investments.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
+                      Belum ada rekening.{' '}
+                      <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }} onClick={() => navigateTo('accounts')}>Tambah →</button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Bank & Cash */}
+                      {bankAccounts.length > 0 && (
+                        <>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Kas & Rekening Bank</div>
+                          {bankAccounts.map((a: any) => (
+                            <Row key={a.id} label={`${a.type === 'cash' ? '💵' : '🏦'} ${a.name}`} value={renderAmount(a.current_balance)} color="var(--color-success)" />
+                          ))}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.3rem 0 0.75rem', paddingTop: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Subtotal</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-success)' }}>{renderAmount(totals.totalCash)}</span>
+                          </div>
+                        </>
+                      )}
+                      {/* Investments */}
+                      {investments.length > 0 && (
+                        <>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Investasi</div>
+                          {investments.map((inv: any) => {
+                            const mktVal = inv.current_units > 0 ? inv.current_units * (inv.current_price_per_unit || 0) : inv.total_invested || 0;
+                            const pnl = mktVal - (inv.total_invested || 0);
+                            const pnlPct = inv.total_invested > 0 ? (pnl / inv.total_invested) * 100 : 0;
+                            return (
+                              <Row key={inv.id} label={inv.name} value={renderAmount(mktVal)}
+                                sub={pnl !== 0 ? `${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnl >= 0 ? '+' : ''}${formatIDR(pnl)})` : undefined}
+                                color={pnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
+                            );
+                          })}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.3rem 0 0.75rem', paddingTop: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Subtotal</span>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{renderAmount(totalInvestmentValue)}</div>
+                              {investmentPnL !== 0 && <div style={{ fontSize: '0.68rem', color: investmentPnL >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{investmentPnL >= 0 ? '+' : ''}{renderAmount(investmentPnL)} P&L</div>}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {/* Goals */}
+                      {activeGoals.length > 0 && (
+                        <>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Dana Tujuan</div>
+                          {activeGoals.map((g: any) => {
+                            const pct = g.target_amount > 0 ? Math.min(100, (g.current_savings / g.target_amount) * 100) : 0;
+                            return (
+                              <div key={g.id} style={{ marginBottom: '0.55rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.2rem' }}>
+                                  <span style={{ fontWeight: 500 }}>🎯 {g.name}</span>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>{renderAmount(g.current_savings)} <span style={{ fontSize: '0.68rem' }}>/ {renderAmount(g.target_amount)}</span></span>
+                                </div>
+                                <div className="progress-track">
+                                  <div className={`progress-fill ${pct >= 100 ? 'success' : pct >= 60 ? 'warning' : 'danger'}`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                      {/* Piutang */}
+                      {totalReceivable > 0 && (
+                        <>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem', marginTop: '0.25rem' }}>Piutang</div>
+                          {debtsReceivables.filter((d: any) => d.type === 'receivable' && d.status === 'active').map((d: any) => (
+                            <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-warning)" />
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </Panel>
+
+                {/* ── 4. KEWAJIBAN ── */}
+                {(ccAccounts.length > 0 || totals.totalInstallmentDebt > 0 || totalPersonalDebt > 0) && (
+                  <Panel>
+                    <SectionTitle icon="⚠️" label="Kewajiban (Utang & Cicilan)" />
+                    {/* Credit Cards */}
+                    {ccAccounts.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Kartu Kredit</div>
+                        {ccAccounts.map((a: any) => {
+                          const usedPct = a.credit_limit > 0 ? Math.min(100, (Math.abs(a.current_balance) / a.credit_limit) * 100) : 0;
+                          return (
+                            <div key={a.id} style={{ marginBottom: '0.65rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.2rem' }}>
+                                <span style={{ fontWeight: 500 }}>💳 {a.name}</span>
+                                <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{renderAmount(Math.abs(a.current_balance))}</span>
+                              </div>
+                              {a.credit_limit > 0 && (
+                                <>
+                                  <div className="progress-track">
+                                    <div className={`progress-fill ${usedPct >= 80 ? 'danger' : usedPct >= 50 ? 'warning' : 'success'}`} style={{ width: `${usedPct}%` }} />
+                                  </div>
+                                  <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{usedPct.toFixed(0)}% terpakai dari limit {renderAmount(a.credit_limit)}</div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.3rem 0 0.75rem', paddingTop: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Subtotal CC</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totals.totalCcDebt)}</span>
+                        </div>
+                      </>
+                    )}
+                    {/* Cicilan */}
+                    {totals.totalInstallmentDebt > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Cicilan Aktif</div>
+                        {ccAccounts.map((a: any) => a.installment_debt > 0 && (
+                          <Row key={a.id} label={a.name} value={renderAmount(a.installment_debt)} color="var(--color-warning)" />
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.3rem 0 0.75rem', paddingTop: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Subtotal Cicilan</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totals.totalInstallmentDebt)}</span>
+                        </div>
+                      </>
+                    )}
+                    {/* Utang Pribadi */}
+                    {totalPersonalDebt > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '0.35rem' }}>Utang Pribadi</div>
+                        {debtsReceivables.filter((d: any) => d.type === 'debt' && d.status === 'active').map((d: any) => (
+                          <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-danger)" />
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.3rem 0 0', paddingTop: '0.3rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Subtotal Utang</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totalPersonalDebt)}</span>
+                        </div>
+                      </>
+                    )}
+                  </Panel>
+                )}
+
+                {/* ── 5. TRANSAKSI TERBARU ── */}
+                {recentTx.length > 0 && (
+                  <Panel>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', paddingBottom: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.85rem' }}>🕐</span>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Transaksi Terbaru</span>
+                      </div>
+                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }} onClick={() => navigateTo('transactions')}>
+                        Lihat Semua →
+                      </button>
+                    </div>
+                    {recentTx.map((tx: any) => (
+                      <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.45rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ flex: 1, minWidth: 0, marginRight: '0.75rem' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.description}</div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>{tx.date} · {tx.account_name}</div>
+                        </div>
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {tx.amount >= 0 ? '+' : ''}{renderAmount(tx.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </Panel>
+                )}
+
+                {/* ── 6. ALOKASI ASET ── */}
+                {totalAssets > 0 && (
+                  <Panel>
+                    <SectionTitle icon="📊" label="Alokasi Aset" />
+                    {[
+                      { label: 'Kas & Tabungan', val: totals.totalCash, color: 'var(--color-success)' },
+                      { label: 'Investasi',       val: totalInvestmentValue, color: 'var(--color-primary)' },
+                      { label: 'Dana Goals',      val: totalGoalSaved,        color: 'var(--color-warning)' },
+                      { label: 'Piutang',         val: totalReceivable,       color: '#a78bfa' },
+                    ].filter(x => x.val > 0).map(({ label, val, color }) => {
+                      const pct = totalAssets > 0 ? (val / totalAssets) * 100 : 0;
+                      return (
+                        <div key={label} style={{ marginBottom: '0.55rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.2rem' }}>
+                            <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+                            <span style={{ fontWeight: 600, color }}>{pct.toFixed(1)}%</span>
+                          </div>
+                          <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '3px', transition: 'width 0.6s ease' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </Panel>
+                )}
+
+                {/* ── 7. EISENHOWER MATRIX ── */}
                 {/* ── Eisenhower Matrix ── */}
                 {(() => {
                   // Build category lookup: name → {importance, urgency}
@@ -3162,254 +3403,6 @@ export default function App() {
                   );
                 })()}
 
-                {/* ── Main Grid: 2 columns ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
-                  {/* ═══ COLUMN 1: ASSETS ═══ */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-
-                    {/* Cash & Bank Accounts */}
-                    <Panel>
-                      <SectionTitle icon="🏦" label="Kas & Rekening Bank" />
-                      {bankAccounts.length === 0 ? (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
-                          Belum ada rekening.{' '}
-                          <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => navigateTo('accounts')}>Tambah →</button>
-                        </div>
-                      ) : (
-                        <>
-                          {bankAccounts.map((a: any) => (
-                            <Row
-                              key={a.id}
-                              label={`${a.type === 'cash' ? '💵' : '🏦'} ${a.name}`}
-                              value={renderAmount(a.current_balance)}
-                              color="var(--color-success)"
-                            />
-                          ))}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-success)' }}>{renderAmount(totals.totalCash)}</span>
-                          </div>
-                        </>
-                      )}
-                    </Panel>
-
-                    {/* Investment Portfolio */}
-                    <Panel>
-                      <SectionTitle icon="📈" label="Portofolio Investasi" />
-                      {investments.length === 0 ? (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
-                          Belum ada investasi.{' '}
-                          <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => navigateTo('investments')}>Tambah →</button>
-                        </div>
-                      ) : (
-                        <>
-                           {investments.map((inv: any) => {
-                             const mktVal = inv.current_units > 0 ? inv.current_units * (inv.current_price_per_unit || 0) : inv.total_invested || 0;
-                             const pnl = mktVal - (inv.total_invested || 0);
-                             const pnlPct = inv.total_invested > 0 ? (pnl / inv.total_invested) * 100 : 0;
-                             return (
-                               <Row
-                                 key={inv.id}
-                                 label={inv.name}
-                                 value={renderAmount(mktVal)}
-                                 sub={pnl !== 0 ? `${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnl >= 0 ? '+' : ''}${formatIDR(pnl)})` : undefined}
-                                 color={pnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-                               />
-                             );
-                           })}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Portfolio</span>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{renderAmount(totalInvestmentValue)}</div>
-                              {investmentPnL !== 0 && (
-                                <div style={{ fontSize: '0.7rem', color: investmentPnL >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                                  {investmentPnL >= 0 ? '+' : ''}{renderAmount(investmentPnL)} unrealized P&L
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </Panel>
-
-                    {/* Future Goals */}
-                    {activeGoals.length > 0 && (
-                      <Panel>
-                        <SectionTitle icon="🎯" label="Dana Tujuan (Goals)" />
-                        {activeGoals.map((g: any) => {
-                          const pct = g.target_amount > 0 ? Math.min(100, (g.current_savings / g.target_amount) * 100) : 0;
-                          return (
-                            <div key={g.id} style={{ marginBottom: '0.6rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.25rem' }}>
-                                <span style={{ fontWeight: 500 }}>{g.name}</span>
-                                <span style={{ color: 'var(--color-text-muted)' }}>{pct.toFixed(0)}%</span>
-                              </div>
-                              <div className="progress-track">
-                                <div className={`progress-fill ${pct >= 100 ? 'success' : pct >= 60 ? 'warning' : 'danger'}`}
-                                  style={{ width: `${pct}%` }} />
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                                <span>{renderAmount(g.current_savings)}</span>
-                                <span>{renderAmount(g.target_amount)}</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {totalGoalTarget > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Tersimpan</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totalGoalSaved)}</span>
-                          </div>
-                        )}
-                      </Panel>
-                    )}
-
-                    {/* Receivables */}
-                    {totalReceivable > 0 && (
-                      <Panel>
-                        <SectionTitle icon="💸" label="Piutang (Receivables)" />
-                        {debtsReceivables.filter((d: any) => d.type === 'receivable' && d.status === 'active').map((d: any) => (
-                          <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-warning)" />
-                        ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Piutang</span>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totalReceivable)}</span>
-                        </div>
-                      </Panel>
-                    )}
-                  </div>
-
-                  {/* ═══ COLUMN 2: LIABILITIES ═══ */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-
-                    {/* Credit Cards */}
-                    <Panel>
-                      <SectionTitle icon="💳" label="Kartu Kredit" />
-                      {ccAccounts.length === 0 ? (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>Tidak ada kartu kredit.</div>
-                      ) : (
-                        <>
-                          {ccAccounts.map((a: any) => {
-                            const usedPct = a.credit_limit > 0 ? Math.min(100, (Math.abs(a.current_balance) / a.credit_limit) * 100) : 0;
-                            return (
-                              <div key={a.id} style={{ marginBottom: '0.6rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.2rem' }}>
-                                  <span style={{ fontWeight: 500 }}>💳 {a.name}</span>
-                                  <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{renderAmount(Math.abs(a.current_balance))}</span>
-                                </div>
-                                {a.credit_limit > 0 && (
-                                  <>
-                                    <div className="progress-track">
-                                      <div className={`progress-fill ${usedPct >= 80 ? 'danger' : usedPct >= 50 ? 'warning' : 'success'}`}
-                                        style={{ width: `${usedPct}%` }} />
-                                    </div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
-                                      {usedPct.toFixed(0)}% dari limit {renderAmount(a.credit_limit)}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total CC Debt</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totals.totalCcDebt)}</span>
-                          </div>
-                        </>
-                      )}
-                    </Panel>
-
-                    {/* Installments */}
-                    {totals.totalInstallmentDebt > 0 && (
-                      <Panel>
-                        <SectionTitle icon="🔄" label="Cicilan Aktif" />
-                        {ccAccounts.map((a: any) => a.installment_debt > 0 && (
-                          <Row key={a.id} label={a.name} value={renderAmount(a.installment_debt)} color="var(--color-warning)" />
-                        ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Cicilan</span>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-warning)' }}>{renderAmount(totals.totalInstallmentDebt)}</span>
-                        </div>
-                      </Panel>
-                    )}
-
-                    {/* Personal Debts */}
-                    {totalPersonalDebt > 0 && (
-                      <Panel>
-                        <SectionTitle icon="🤝" label="Utang Pribadi" />
-                        {debtsReceivables.filter((d: any) => d.type === 'debt' && d.status === 'active').map((d: any) => (
-                          <Row key={d.id} label={d.person_name} value={renderAmount(d.remaining_amount)} color="var(--color-danger)" />
-                        ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Utang Pribadi</span>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-danger)' }}>{renderAmount(totalPersonalDebt)}</span>
-                        </div>
-                      </Panel>
-                    )}
-
-                    {/* Wealth Allocation Summary */}
-                    {totalAssets > 0 && (
-                      <Panel>
-                        <SectionTitle icon="📊" label="Alokasi Aset" />
-                        {[
-                          { label: 'Kas & Tabungan', val: totals.totalCash, color: 'var(--color-success)' },
-                          { label: 'Investasi',       val: totalInvestmentValue, color: 'var(--color-primary)' },
-                          { label: 'Dana Goals',      val: totalGoalSaved,        color: 'var(--color-warning)' },
-                          { label: 'Piutang',         val: totalReceivable,       color: '#a78bfa' },
-                        ].filter(x => x.val > 0).map(({ label, val, color }) => {
-                          const pct = totalAssets > 0 ? (val / totalAssets) * 100 : 0;
-                          return (
-                            <div key={label} style={{ marginBottom: '0.55rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.2rem' }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-                                <span style={{ fontWeight: 600, color }}>{pct.toFixed(1)}%</span>
-                              </div>
-                              <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.6s ease' }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </Panel>
-                    )}
-
-                    {/* Quick Links */}
-                    <Panel>
-                      <SectionTitle icon="⚡" label="Navigasi Cepat" />
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-                        {[
-                          { label: '📊 Transactions', tab: 'transactions' as const },
-                          { label: '📈 Investments', tab: 'investments' as const },
-                          { label: '💰 Budgets', tab: 'budgets' as const },
-                          { label: '🎯 Goals', tab: 'goals' as const },
-                          { label: '🤝 Liabilities', tab: 'liabilities' as const },
-                          { label: '🤖 AI Advisor', tab: 'ai' as const },
-                        ].map(({ label, tab }) => (
-                          <button key={tab} type="button"
-                            style={{
-                              background: 'rgba(255,255,255,0.02)',
-                              border: '1px solid rgba(255,255,255,0.06)',
-                              color: 'var(--color-text-muted)',
-                              padding: '0.5rem 0.6rem',
-                              borderRadius: '6px',
-                              fontSize: '0.78rem',
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              textAlign: 'left'
-                            }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)'; }}
-                            onClick={() => { navigateTo(tab); setNavOpen(false); }}
-                          >{label}</button>
-                        ))}
-                      </div>
-                    </Panel>
-                  </div>
-                </div>
               </div>
             );
           })()}
