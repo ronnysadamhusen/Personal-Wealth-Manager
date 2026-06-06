@@ -725,47 +725,76 @@ app.get('/api/budgets', async (req, res) => {
   }
 });
 
-// Create/Update a budget (supports single month or 12 months duplicate)
+// Helper to expand dates between start_date and end_date into month list
+function getMonthsInRange(startDateStr, endDateStr) {
+  const months = [];
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return [];
+  }
+  
+  let current = new Date(start.getFullYear(), start.getMonth(), 1);
+  const finalLimit = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (current <= finalLimit) {
+    const yStr = current.getFullYear();
+    const mStr = String(current.getMonth() + 1).padStart(2, '0');
+    months.push(`${yStr}-${mStr}`);
+    current.setMonth(current.getMonth() + 1);
+  }
+  return months;
+}
+
+// Create/Update a budget (supports start_date, end_date range, recurrence frequency and interval day/date)
 app.post('/api/budgets', async (req, res) => {
-  const { category, amount, month_year, duration } = req.body;
-  if (!category || amount === undefined || !month_year) {
-    return res.status(400).json({ error: 'Required: category, amount, month_year' });
+  const { category, amount, month_year, start_date, end_date, recurrence, recurrence_day } = req.body;
+  if (!category || amount === undefined) {
+    return res.status(400).json({ error: 'Required: category, amount' });
   }
 
   try {
-    const monthsToProcess = [];
-    
-    if (duration === 'yearly') {
-      const [yearStr, monthStr] = month_year.split('-');
-      let year = parseInt(yearStr);
-      let month = parseInt(monthStr) - 1; // 0-indexed month
-      
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(year, month + i, 1);
-        const yVal = d.getFullYear();
-        const mVal = String(d.getMonth() + 1).padStart(2, '0');
-        monthsToProcess.push(`${yVal}-${mVal}`);
-      }
+    let targetMonths = [];
+    const recType = recurrence || 'none';
+    const recDay = recurrence_day !== undefined ? parseInt(recurrence_day) : null;
+
+    if (start_date && end_date) {
+      targetMonths = getMonthsInRange(start_date, end_date);
+    } else if (month_year) {
+      targetMonths = [month_year];
     } else {
-      monthsToProcess.push(month_year);
+      // Default to current month if nothing provided
+      const d = new Date();
+      targetMonths = [`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`];
     }
+
+    if (targetMonths.length === 0) {
+      return res.status(400).json({ error: 'Range tanggal start_date dan end_date tidak valid.' });
+    }
+
+    const refMonthYear = targetMonths[0];
 
     await query.exec('BEGIN TRANSACTION');
     
-    for (const mStr of monthsToProcess) {
+    for (const mStr of targetMonths) {
       const id = generateUUID();
       await query.run(
-        `INSERT INTO budgets (id, category, amount, month_year)
-         VALUES (?, ?, ?, ?)
+        `INSERT INTO budgets (id, category, amount, month_year, start_date, end_date, recurrence, recurrence_day)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(category, month_year)
-         DO UPDATE SET amount = excluded.amount`,
-        [id, category, amount, mStr]
+         DO UPDATE SET 
+            amount = excluded.amount,
+            start_date = excluded.start_date,
+            end_date = excluded.end_date,
+            recurrence = excluded.recurrence,
+            recurrence_day = excluded.recurrence_day`,
+        [id, category, amount, mStr, start_date || null, end_date || null, recType, recDay]
       );
     }
 
     await query.exec('COMMIT');
 
-    const saved = await query.get('SELECT * FROM budgets WHERE category = ? AND month_year = ?', [category, month_year]);
+    const saved = await query.get('SELECT * FROM budgets WHERE category = ? AND month_year = ?', [category, refMonthYear]);
     res.json(saved);
   } catch (error) {
     await query.exec('ROLLBACK');
@@ -773,10 +802,10 @@ app.post('/api/budgets', async (req, res) => {
   }
 });
 
-// Update an existing budget (allows editing both category and amount, and repeating the update for 12 months)
+// Update an existing budget (allows editing category, amount, range, recurrence, and interval day)
 app.put('/api/budgets/:id', async (req, res) => {
   const { id } = req.params;
-  const { category, amount, duration } = req.body;
+  const { category, amount, start_date, end_date, recurrence, recurrence_day } = req.body;
   if (!category || amount === undefined) {
     return res.status(400).json({ error: 'category and amount are required' });
   }
@@ -787,55 +816,63 @@ app.put('/api/budgets/:id', async (req, res) => {
       return res.status(404).json({ error: 'Budget not found' });
     }
 
-    const monthsToProcess = [];
-    if (duration === 'yearly') {
-      const [yearStr, monthStr] = existing.month_year.split('-');
-      let year = parseInt(yearStr);
-      let month = parseInt(monthStr) - 1; // 0-indexed month
-      
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(year, month + i, 1);
-        const yVal = d.getFullYear();
-        const mVal = String(d.getMonth() + 1).padStart(2, '0');
-        monthsToProcess.push(`${yVal}-${mVal}`);
-      }
+    const recType = recurrence || 'none';
+    const recDay = recurrence_day !== undefined ? parseInt(recurrence_day) : null;
+
+    let targetMonths = [];
+    if (start_date && end_date) {
+      targetMonths = getMonthsInRange(start_date, end_date);
     } else {
-      monthsToProcess.push(existing.month_year);
+      targetMonths = [existing.month_year];
+    }
+
+    if (targetMonths.length === 0) {
+      return res.status(400).json({ error: 'Range tanggal start_date dan end_date tidak valid.' });
     }
 
     await query.exec('BEGIN TRANSACTION');
 
-    for (const mStr of monthsToProcess) {
-      // Check if another budget with the target category already exists in this specific month
+    // First delete matching budgets of this category in target months to prevent constraints violation
+    for (const mStr of targetMonths) {
       const duplicate = await query.get(
-        'SELECT * FROM budgets WHERE category = ? AND month_year = ? AND id != ? AND id != (SELECT id FROM budgets WHERE category = ? AND month_year = ?)',
-        [category, mStr, id, existing.category, mStr]
+        'SELECT * FROM budgets WHERE category = ? AND month_year = ? AND id != ?',
+        [category, mStr, id]
       );
       if (duplicate) {
-        throw new Error(`Kategori ${category} sudah terdaftar pada bulan ${mStr}. Silakan hapus atau edit kategori tersebut terlebih dahulu.`);
+        // If another budget with same category exists in target month, delete it so we can overwrite/update it clean
+        await query.run('DELETE FROM budgets WHERE id = ?', [duplicate.id]);
       }
+    }
 
-      // We either update the corresponding budget for (existing.category, mStr) if exists,
-      // or we insert a new one, or if it is the current ID, we update it directly.
-      const match = await query.get(
-        'SELECT * FROM budgets WHERE category = ? AND month_year = ?',
-        [existing.category, mStr]
-      );
-
-      if (match) {
+    // Now update existing or insert new ones
+    for (const mStr of targetMonths) {
+      // If it is the current edited month_year, update this specific ID
+      if (mStr === existing.month_year) {
         await query.run(
-          'UPDATE budgets SET category = ?, amount = ? WHERE id = ?',
-          [category, amount, match.id]
+          `UPDATE budgets SET 
+            category = ?, 
+            amount = ?, 
+            start_date = ?, 
+            end_date = ?, 
+            recurrence = ?, 
+            recurrence_day = ? 
+           WHERE id = ?`,
+          [category, amount, start_date || null, end_date || null, recType, recDay, id]
         );
       } else {
-        // If it doesn't exist for that month, insert a new one
+        // Else upsert/insert for other months in range
         const newId = generateUUID();
         await query.run(
-          `INSERT INTO budgets (id, category, amount, month_year)
-           VALUES (?, ?, ?, ?)
+          `INSERT INTO budgets (id, category, amount, month_year, start_date, end_date, recurrence, recurrence_day)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(category, month_year)
-           DO UPDATE SET amount = excluded.amount`,
-          [newId, category, amount, mStr]
+           DO UPDATE SET 
+              amount = excluded.amount,
+              start_date = excluded.start_date,
+              end_date = excluded.end_date,
+              recurrence = excluded.recurrence,
+              recurrence_day = excluded.recurrence_day`,
+          [newId, category, amount, mStr, start_date || null, end_date || null, recType, recDay]
         );
       }
     }

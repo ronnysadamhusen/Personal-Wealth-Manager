@@ -133,10 +133,20 @@ db.serialize(() => {
       category TEXT NOT NULL,
       amount REAL NOT NULL,
       month_year TEXT NOT NULL,
+      start_date TEXT,
+      end_date TEXT,
+      recurrence TEXT CHECK(recurrence IN ('monthly', 'weekly', 'none')) DEFAULT 'monthly',
+      recurrence_day INTEGER, -- Date of month (1-31) or Day of week (1=Mon, 7=Sun)
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(category, month_year)
     )
-  `);
+  `, (err) => {
+    // Add columns dynamically for self-healing migrations
+    db.run("ALTER TABLE budgets ADD COLUMN start_date TEXT", (alterErr) => {});
+    db.run("ALTER TABLE budgets ADD COLUMN end_date TEXT", (alterErr) => {});
+    db.run("ALTER TABLE budgets ADD COLUMN recurrence TEXT CHECK(recurrence IN ('monthly', 'weekly', 'none')) DEFAULT 'monthly'", (alterErr) => {});
+    db.run("ALTER TABLE budgets ADD COLUMN recurrence_day INTEGER", (alterErr) => {});
+  });
 
   // Transfers
   db.run(`

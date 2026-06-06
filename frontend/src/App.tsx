@@ -361,11 +361,20 @@ export default function App() {
   }, []);
   const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(currentMonthYear);
   const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
-  const [budgetDuration, setBudgetDuration] = useState<'single' | 'yearly'>('single');
+  
+  // Range & Recurrence States
+  const [budgetStartDate, setBudgetStartDate] = useState('');
+  const [budgetEndDate, setBudgetEndDate] = useState('');
+  const [budgetRecurrence, setBudgetRecurrence] = useState<'monthly' | 'weekly' | 'none'>('monthly');
+  const [budgetRecurrenceDay, setBudgetRecurrenceDay] = useState('1'); // Date (1-31) or Day of week (1-7)
+
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
   const [editingBudgetCategory, setEditingBudgetCategory] = useState('');
-  const [editingBudgetDuration, setEditingBudgetDuration] = useState<'single' | 'yearly'>('single');
+  const [editingBudgetStartDate, setEditingBudgetStartDate] = useState('');
+  const [editingBudgetEndDate, setEditingBudgetEndDate] = useState('');
+  const [editingBudgetRecurrence, setEditingBudgetRecurrence] = useState<'monthly' | 'weekly' | 'none'>('monthly');
+  const [editingBudgetRecurrenceDay, setEditingBudgetRecurrenceDay] = useState('1');
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1395,12 +1404,22 @@ export default function App() {
           category: budgetCategory,
           amount: parseFloat(budgetAmount),
           month_year: selectedBudgetMonth,
-          duration: budgetDuration
+          start_date: budgetStartDate || null,
+          end_date: budgetEndDate || null,
+          recurrence: budgetRecurrence,
+          recurrence_day: budgetRecurrenceDay ? parseInt(budgetRecurrenceDay) : null
         })
       });
       if (res.ok) {
         setBudgetAmount('');
+        setBudgetStartDate('');
+        setBudgetEndDate('');
+        setBudgetRecurrence('monthly');
+        setBudgetRecurrenceDay('1');
         fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Gagal menyimpan anggaran.');
       }
     } catch (err) {
       console.error(err);
@@ -1411,7 +1430,10 @@ export default function App() {
     setEditingBudgetId(budget.id);
     setEditingBudgetAmount(String(budget.amount));
     setEditingBudgetCategory(budget.category);
-    setEditingBudgetDuration('single');
+    setEditingBudgetStartDate(budget.start_date || '');
+    setEditingBudgetEndDate(budget.end_date || '');
+    setEditingBudgetRecurrence(budget.recurrence || 'monthly');
+    setEditingBudgetRecurrenceDay(budget.recurrence_day !== null && budget.recurrence_day !== undefined ? String(budget.recurrence_day) : '1');
   };
 
   const handleSaveEditedBudget = async (budget: any) => {
@@ -1423,14 +1445,20 @@ export default function App() {
         body: JSON.stringify({
           category: editingBudgetCategory,
           amount: parseFloat(editingBudgetAmount),
-          duration: editingBudgetDuration
+          start_date: editingBudgetStartDate || null,
+          end_date: editingBudgetEndDate || null,
+          recurrence: editingBudgetRecurrence,
+          recurrence_day: editingBudgetRecurrenceDay ? parseInt(editingBudgetRecurrenceDay) : null
         })
       });
       if (res.ok) {
         setEditingBudgetId(null);
         setEditingBudgetAmount('');
         setEditingBudgetCategory('');
-        setEditingBudgetDuration('single');
+        setEditingBudgetStartDate('');
+        setEditingBudgetEndDate('');
+        setEditingBudgetRecurrence('monthly');
+        setEditingBudgetRecurrenceDay('1');
         fetchData();
       } else {
         const errorData = await res.json();
@@ -4053,21 +4081,10 @@ export default function App() {
                   Tetapkan batas pengeluaran bulanan atau target pemasukan. Anggaran dapat dibuat untuk satu bulan saja atau diduplikasi langsung selama satu tahun penuh.
                 </p>
 
-                {/* Selectors for Month, Type, and Duration */}
+                {/* Selectors for Month, Type, and Range/Recurrence */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Bulan Awal:</span>
-                    <input 
-                      type="month" 
-                      className="form-control"
-                      style={{ width: 'auto', padding: '0.4rem 0.8rem', margin: 0 }}
-                      value={selectedBudgetMonth}
-                      onChange={(e) => setSelectedBudgetMonth(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Tipe Anggaran:</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '120px' }}>Tipe Anggaran:</span>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button 
                         type="button"
@@ -4089,25 +4106,84 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Durasi:</span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        type="button"
-                        className={`btn ${budgetDuration === 'single' ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
-                        onClick={() => setBudgetDuration('single')}
-                      >
-                        Hanya Bulan Ini
-                      </button>
-                      <button 
-                        type="button"
-                        className={`btn ${budgetDuration === 'yearly' ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
-                        onClick={() => setBudgetDuration('yearly')}
-                      >
-                        Ulangi 1 Tahun (12 Bulan)
-                      </button>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '120px' }}>Bulan Awal:</span>
+                    <input 
+                      type="month" 
+                      className="form-control"
+                      style={{ width: 'auto', padding: '0.4rem 0.8rem', margin: 0 }}
+                      value={selectedBudgetMonth}
+                      onChange={(e) => {
+                        setSelectedBudgetMonth(e.target.value);
+                        // Also initialize start date range for convenience
+                        if (e.target.value) {
+                          setBudgetStartDate(`${e.target.value}-01`);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mulai Tanggal:</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        value={budgetStartDate}
+                        onChange={(e) => setBudgetStartDate(e.target.value)}
+                      />
                     </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sampai Tanggal:</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        value={budgetEndDate}
+                        onChange={(e) => setBudgetEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Frekuensi:</label>
+                      <select
+                        className="form-control"
+                        value={budgetRecurrence}
+                        onChange={(e) => setBudgetRecurrence(e.target.value as any)}
+                      >
+                        <option value="none">Satu Kali Saja (None)</option>
+                        <option value="monthly">Bulanan (Monthly)</option>
+                        <option value="weekly">Mingguan (Weekly)</option>
+                      </select>
+                    </div>
+                    {budgetRecurrence !== 'none' && (
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          {budgetRecurrence === 'weekly' ? 'Hari Pengulangan:' : 'Tanggal Pengulangan:'}
+                        </label>
+                        <select
+                          className="form-control"
+                          value={budgetRecurrenceDay}
+                          onChange={(e) => setBudgetRecurrenceDay(e.target.value)}
+                        >
+                          {budgetRecurrence === 'weekly' ? (
+                            <>
+                              <option value="1">Senin</option>
+                              <option value="2">Selasa</option>
+                              <option value="3">Rabu</option>
+                              <option value="4">Kamis</option>
+                              <option value="5">Jumat</option>
+                              <option value="6">Sabtu</option>
+                              <option value="7">Minggu</option>
+                            </>
+                          ) : (
+                            Array.from({ length: 31 }, (_, idx) => (
+                              <option key={idx + 1} value={idx + 1}>Tanggal {idx + 1}</option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4131,7 +4207,7 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>Nominal Anggaran {budgetType === 'income' ? 'Pemasukan' : 'Pengeluaran'} Bulanan (IDR)</label>
+                    <label>Nominal Anggaran Bulanan (IDR)</label>
                     <input 
                       type="number" 
                       className="form-control"
@@ -4261,26 +4337,76 @@ export default function App() {
                                 autoFocus
                               />
                             </div>
-                            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'flex-start', marginTop: '0.2rem' }}>
-                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Terapkan ke:</span>
-                              <button
-                                type="button"
-                                className={`btn ${editingBudgetDuration === 'single' ? 'btn-primary' : 'btn-secondary'}`}
-                                style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', height: '20px' }}
-                                onClick={() => setEditingBudgetDuration('single')}
-                              >
-                                Bulan Ini
-                              </button>
-                              <button
-                                type="button"
-                                className={`btn ${editingBudgetDuration === 'yearly' ? 'btn-primary' : 'btn-secondary'}`}
-                                style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', height: '20px' }}
-                                onClick={() => setEditingBudgetDuration('yearly')}
-                              >
-                                Ulangi 1 Tahun
-                              </button>
+                            {/* Edit Range and Recurrence Options */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.2rem' }}>
+                              <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Mulai:</label>
+                                <input
+                                  type="date"
+                                  className="form-control"
+                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                  value={editingBudgetStartDate}
+                                  onChange={(e) => setEditingBudgetStartDate(e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Sampai:</label>
+                                <input
+                                  type="date"
+                                  className="form-control"
+                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                  value={editingBudgetEndDate}
+                                  onChange={(e) => setEditingBudgetEndDate(e.target.value)}
+                                />
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.2rem' }}>
+                              <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Frekuensi:</label>
+                                <select
+                                  className="form-control"
+                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                  value={editingBudgetRecurrence}
+                                  onChange={(e) => setEditingBudgetRecurrence(e.target.value as any)}
+                                >
+                                  <option value="none">Satu Kali Saja</option>
+                                  <option value="monthly">Bulanan</option>
+                                  <option value="weekly">Mingguan</option>
+                                </select>
+                              </div>
+                              {editingBudgetRecurrence !== 'none' && (
+                                <div>
+                                  <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>
+                                    {editingBudgetRecurrence === 'weekly' ? 'Hari:' : 'Tanggal:'}
+                                  </label>
+                                  <select
+                                    className="form-control"
+                                    style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                    value={editingBudgetRecurrenceDay}
+                                    onChange={(e) => setEditingBudgetRecurrenceDay(e.target.value)}
+                                  >
+                                    {editingBudgetRecurrence === 'weekly' ? (
+                                      <>
+                                        <option value="1">Senin</option>
+                                        <option value="2">Selasa</option>
+                                        <option value="3">Rabu</option>
+                                        <option value="4">Kamis</option>
+                                        <option value="5">Jumat</option>
+                                        <option value="6">Sabtu</option>
+                                        <option value="7">Minggu</option>
+                                      </>
+                                    ) : (
+                                      Array.from({ length: 31 }, (_, idx) => (
+                                        <option key={idx + 1} value={idx + 1}>Tanggal {idx + 1}</option>
+                                      ))
+                                    )}
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.4rem' }}>
                               <button
                                 type="button"
                                 className="btn btn-primary"
@@ -4293,7 +4419,7 @@ export default function App() {
                                 type="button"
                                 className="btn btn-secondary"
                                 style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
-                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); setEditingBudgetDuration('single'); }}
+                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); setEditingBudgetStartDate(''); setEditingBudgetEndDate(''); setEditingBudgetRecurrence('monthly'); setEditingBudgetRecurrenceDay('1'); }}
                               >
                                 Batal
                               </button>
