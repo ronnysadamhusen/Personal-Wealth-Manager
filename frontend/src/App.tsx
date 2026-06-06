@@ -363,6 +363,9 @@ export default function App() {
   const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
   const [budgetViewPeriod, setBudgetViewPeriod] = useState<'monthly' | 'quarterly' | 'semesterly' | 'yearly'>('monthly');
   const [isAddBudgetModalOpen, setIsAddBudgetModalOpen] = useState(false);
+  const [selectedBudgetYear, setSelectedBudgetYear] = useState(new Date().getFullYear());
+  const [budgetStartYear, setBudgetStartYear] = useState(new Date().getFullYear());
+  const [budgetEndYear, setBudgetEndYear] = useState(new Date().getFullYear());
   
   // Range & Recurrence States
   const [budgetStartDate, setBudgetStartDate] = useState('');
@@ -583,8 +586,8 @@ export default function App() {
       const catData = await catRes.json();
       setDbCategories(catData);
 
-      // fetch budgets for selected month and period
-      const bRes = await fetch(`${API_URL}/budgets?month_year=${selectedBudgetMonth}&period=${budgetViewPeriod}`);
+      // fetch budgets with period and year parameters
+      const bRes = await fetch(`${API_URL}/budgets?month_year=${selectedBudgetMonth}&period=${budgetViewPeriod}&year=${selectedBudgetYear}&start_year=${budgetStartYear}&end_year=${budgetEndYear}`);
       const bData = await bRes.json();
       setBudgets(bData);
 
@@ -959,7 +962,7 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedBudgetMonth, budgetViewPeriod]);
+  }, [selectedBudgetMonth, budgetViewPeriod, selectedBudgetYear, budgetStartYear, budgetEndYear]);
 
   // Calculated Values
   const totals = useMemo(() => {
@@ -4262,17 +4265,111 @@ export default function App() {
             {/* Right: Budgets Progress Bars */}
             <div className="glass-panel card-content">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <h3 style={{ margin: 0 }}>Progress Anggaran</h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Pilih Bulan:</span>
-                    <input 
-                      type="month" 
-                      className="form-control"
-                      style={{ width: 'auto', padding: '0.3rem 0.6rem', margin: 0 }}
-                      value={selectedBudgetMonth}
-                      onChange={(e) => setSelectedBudgetMonth(e.target.value)}
-                    />
+                  
+                  {/* Contextual Selector Controls */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {budgetViewPeriod !== 'yearly' ? (
+                      <>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Tahun:</span>
+                        <select
+                          className="form-control"
+                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                          value={selectedBudgetYear}
+                          onChange={(e) => setSelectedBudgetYear(parseInt(e.target.value))}
+                        >
+                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+
+                        {budgetViewPeriod === 'monthly' && (
+                          <>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Bulan:</span>
+                            <select
+                              className="form-control"
+                              style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                              value={selectedBudgetMonth.split('-')[1] || '01'}
+                              onChange={(e) => {
+                                setSelectedBudgetMonth(`${selectedBudgetYear}-${e.target.value}`);
+                              }}
+                            >
+                              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(m => (
+                                <option key={m} value={m}>
+                                  {new Date(2000, parseInt(m) - 1, 1).toLocaleString('id-ID', { month: 'long' })}
+                                </option>
+                              ))}
+                            </select>
+                          </>
+                        )}
+
+                        {budgetViewPeriod === 'quarterly' && (
+                          <>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Quarter:</span>
+                            <select
+                              className="form-control"
+                              style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                              value={Math.ceil(parseInt(selectedBudgetMonth.split('-')[1] || '1') / 3)}
+                              onChange={(e) => {
+                                const q = parseInt(e.target.value);
+                                const firstMonthOfQ = String((q - 1) * 3 + 1).padStart(2, '0');
+                                setSelectedBudgetMonth(`${selectedBudgetYear}-${firstMonthOfQ}`);
+                              }}
+                            >
+                              <option value="1">Q1 (Jan-Mar)</option>
+                              <option value="2">Q2 (Apr-Jun)</option>
+                              <option value="3">Q3 (Jul-Sep)</option>
+                              <option value="4">Q4 (Oct-Dec)</option>
+                            </select>
+                          </>
+                        )}
+
+                        {budgetViewPeriod === 'semesterly' && (
+                          <>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.3rem' }}>Semester:</span>
+                            <select
+                              className="form-control"
+                              style={{ width: '110px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                              value={Math.ceil(parseInt(selectedBudgetMonth.split('-')[1] || '1') / 6)}
+                              onChange={(e) => {
+                                const sem = parseInt(e.target.value);
+                                const firstMonthOfSem = String((sem - 1) * 6 + 1).padStart(2, '0');
+                                setSelectedBudgetMonth(`${selectedBudgetYear}-${firstMonthOfSem}`);
+                              }}
+                            >
+                              <option value="1">Semester 1</option>
+                              <option value="2">Semester 2</option>
+                            </select>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Dari:</span>
+                        <select
+                          className="form-control"
+                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                          value={budgetStartYear}
+                          onChange={(e) => setBudgetStartYear(parseInt(e.target.value))}
+                        >
+                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginLeft: '0.2rem' }}>Hingga:</span>
+                        <select
+                          className="form-control"
+                          style={{ width: '90px', padding: '0.3rem 0.5rem', margin: 0, height: '30px', fontSize: '0.8rem' }}
+                          value={budgetEndYear}
+                          onChange={(e) => setBudgetEndYear(parseInt(e.target.value))}
+                        >
+                          {Array.from({ length: 7 }, (_, i) => 2023 + i).map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
                   </div>
                 </div>
 

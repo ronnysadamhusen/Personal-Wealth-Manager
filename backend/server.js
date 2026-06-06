@@ -665,37 +665,45 @@ app.delete('/api/transfers/:id', async (req, res) => {
 
 // Get budgets summary for a specific period (monthly, quarterly, semesterly, or yearly)
 app.get('/api/budgets', async (req, res) => {
-  const { period = 'monthly', month_year } = req.query; // period: monthly, quarterly, semesterly, yearly
-  if (!month_year) {
-    return res.status(400).json({ error: 'month_year query parameter is required (e.g. YYYY-MM)' });
-  }
+  const { period = 'monthly', month_year, year, start_year, end_year } = req.query; 
 
   try {
-    const [yearStr, monthStr] = month_year.split('-');
-    const year = parseInt(yearStr);
-    const month = parseInt(monthStr); // 1-12
+    let monthList = [];
 
-    let startMonth = month;
-    let endMonth = month;
-
-    if (period === 'quarterly') {
-      // Q1: 1-3, Q2: 4-6, Q3: 7-9, Q4: 10-12
-      const q = Math.ceil(month / 3);
-      startMonth = (q - 1) * 3 + 1;
-      endMonth = q * 3;
-    } else if (period === 'semesterly') {
-      // S1: 1-6, S2: 7-12
-      const s = Math.ceil(month / 6);
-      startMonth = (s - 1) * 6 + 1;
-      endMonth = s * 6;
-    } else if (period === 'yearly') {
-      startMonth = 1;
-      endMonth = 12;
+    if (period === 'yearly') {
+      const sYr = start_year ? parseInt(start_year as string) : new Date().getFullYear();
+      const eYr = end_year ? parseInt(end_year as string) : sYr;
+      for (let y = sYr; y <= eYr; y++) {
+        for (let m = 1; m <= 12; m++) {
+          monthList.push(`${y}-${String(m).padStart(2, '0')}`);
+        }
+      }
+    } else {
+      const activeYear = year ? parseInt(year as string) : new Date().getFullYear();
+      if (period === 'monthly') {
+        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        monthList.push(`${activeYear}-${String(month).padStart(2, '0')}`);
+      } else if (period === 'quarterly') {
+        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        const q = Math.ceil(month / 3);
+        const startMonth = (q - 1) * 3 + 1;
+        const endMonth = q * 3;
+        for (let m = startMonth; m <= endMonth; m++) {
+          monthList.push(`${activeYear}-${String(m).padStart(2, '0')}`);
+        }
+      } else if (period === 'semesterly') {
+        const month = month_year ? parseInt((month_year as string).split('-')[1] || month_year as string) : (new Date().getMonth() + 1);
+        const s = Math.ceil(month / 6);
+        const startMonth = (s - 1) * 6 + 1;
+        const endMonth = s * 6;
+        for (let m = startMonth; m <= endMonth; m++) {
+          monthList.push(`${activeYear}-${String(m).padStart(2, '0')}`);
+        }
+      }
     }
 
-    const monthList = [];
-    for (let m = startMonth; m <= endMonth; m++) {
-      monthList.push(`${year}-${String(m).padStart(2, '0')}`);
+    if (monthList.length === 0) {
+      return res.json([]);
     }
 
     // Prepare SQL placeholder
