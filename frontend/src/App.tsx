@@ -4665,8 +4665,8 @@ export default function App() {
 
                     {/* ── Donut Charts ── */}
                     {(() => {
-                      const INCOME_COLORS  = ['#22c55e','#4ade80','#86efac','#16a34a','#bbf7d0','#15803d'];
-                      const EXPENSE_COLORS = ['#6366f1','#f97316','#ef4444','#eab308','#06b6d4','#a855f7','#ec4899','#14b8a6','#f43f5e','#84cc16'];
+                      const INCOME_COLORS  = ['#22c55e','#4ade80','#34d399','#16a34a','#86efac','#6ee7b7'];
+                      const EXPENSE_COLORS = ['#6366f1','#f97316','#ef4444','#eab308','#06b6d4','#808080'];
 
                       const getMainCat = (catName: string) => {
                         const cat = dbCategories.find(c => c.name === catName);
@@ -4677,61 +4677,94 @@ export default function App() {
                         return catName;
                       };
 
-                      const buildGroups = (list: any[]) => {
+                      // Build groups, cap at top-5 + "Lainnya"
+                      const buildGroups = (list: any[]): [string, number][] => {
                         const map: Record<string, number> = {};
                         list.forEach(b => {
                           const main = getMainCat(b.category);
                           map[main] = (map[main] || 0) + b.amount;
                         });
-                        return Object.entries(map).sort((a, b) => b[1] - a[1]);
+                        const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+                        if (sorted.length <= 6) return sorted;
+                        const top5 = sorted.slice(0, 5);
+                        const rest = sorted.slice(5).reduce((s, [, v]) => s + v, 0);
+                        return [...top5, ['Lainnya', rest]];
                       };
 
-                      const DonutChart = ({ groups, colors, total, label }: { groups: [string, number][], colors: string[], total: number, label: string }) => {
+                      const DonutChart = ({ groups, colors, total, accentColor, title }: {
+                        groups: [string, number][]; colors: string[]; total: number; accentColor: string; title: string;
+                      }) => {
                         if (total === 0 || groups.length === 0) return (
-                          <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>Tidak ada data</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100px', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                            Tidak ada data
+                          </div>
                         );
-                        const R = 45, CX = 60, CY = 60;
+
+                        // SVG donut params
+                        const R = 38, CX = 48, CY = 48, SW = 14;
                         const CIRC = 2 * Math.PI * R;
-                        let offset = 0;
+                        const GAP  = 2.5; // gap in px between slices
+
+                        let cumulOffset = 0;
                         const slices = groups.map(([name, val], i) => {
-                          const pct  = val / total;
-                          const dash = pct * CIRC;
-                          const gap  = CIRC - dash;
-                          const slice = { name, val, pct, dash, gap, color: colors[i % colors.length], offset };
-                          offset += dash;
-                          return slice;
+                          const pct    = val / total;
+                          const arcLen = Math.max(pct * CIRC - GAP, 0);
+                          const s = { name, val, pct, arcLen, color: colors[i % colors.length], offset: cumulOffset };
+                          cumulOffset += pct * CIRC;
+                          return s;
                         });
 
                         return (
                           <div>
-                            {/* SVG donut */}
-                            <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto' }}>
-                              <svg viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)', width: '120px', height: '120px' }}>
-                                {slices.map((s, i) => (
-                                  <circle key={i} cx={CX} cy={CY} r={R} fill="none"
-                                    stroke={s.color} strokeWidth="18"
-                                    strokeDasharray={`${s.dash} ${s.gap}`}
-                                    strokeDashoffset={-s.offset}
-                                  />
-                                ))}
-                                {/* inner hole */}
-                                <circle cx={CX} cy={CY} r={28} fill="var(--color-surface, #1a1a2e)" />
-                              </svg>
-                              {/* center label */}
-                              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text)' }}>{renderAmount(total)}</span>
-                              </div>
+                            {/* Title */}
+                            <div style={{ fontSize: '0.62rem', fontWeight: 700, color: accentColor, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
+                              {title}
                             </div>
-                            {/* Legend */}
-                            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                              {slices.map((s, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem' }}>
-                                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: s.color, flexShrink: 0 }} />
-                                  <span style={{ flex: 1, color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                                  <span style={{ fontWeight: 600, color: 'var(--color-text)', flexShrink: 0 }}>{(s.pct * 100).toFixed(0)}%</span>
+
+                            {/* Chart + Legend side-by-side */}
+                            <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center' }}>
+
+                              {/* SVG donut */}
+                              <div style={{ position: 'relative', flexShrink: 0, width: '96px', height: '96px' }}>
+                                <svg viewBox="0 0 96 96" width="96" height="96" style={{ transform: 'rotate(-90deg)' }}>
+                                  {/* track */}
+                                  <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={SW} />
+                                  {/* slices */}
+                                  {slices.map((s, i) => (
+                                    <circle key={i} cx={CX} cy={CY} r={R} fill="none"
+                                      stroke={s.color} strokeWidth={SW}
+                                      strokeDasharray={`${s.arcLen} ${CIRC}`}
+                                      strokeDashoffset={-s.offset}
+                                      strokeLinecap="butt"
+                                    />
+                                  ))}
+                                </svg>
+                                {/* Center text */}
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                                  <span style={{ fontSize: '0.55rem', color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.03em' }}>TOTAL</span>
+                                  <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.2 }}>
+                                    {total >= 1_000_000
+                                      ? `${(total / 1_000_000).toFixed(1)}M`
+                                      : total >= 1_000 ? `${(total / 1_000).toFixed(0)}K` : total}
+                                  </span>
                                 </div>
-                              ))}
+                              </div>
+
+                              {/* Legend */}
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.28rem', minWidth: 0 }}>
+                                {slices.map((s, i) => (
+                                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto auto', gap: '0.3rem', alignItems: 'center' }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: s.color, flexShrink: 0, display: 'block' }} />
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text)', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                      {s.val >= 1_000_000 ? `${(s.val / 1_000_000).toFixed(1)}M` : s.val >= 1_000 ? `${(s.val / 1_000).toFixed(0)}K` : s.val}
+                                    </span>
+                                    <span style={{ fontSize: '0.62rem', color: accentColor, fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', minWidth: '28px' }}>
+                                      {(s.pct * 100).toFixed(0)}%
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         );
@@ -4739,23 +4772,22 @@ export default function App() {
 
                       const incomeGroups  = buildGroups(incomeBudgets);
                       const expenseGroups = buildGroups(expenseBudgets);
-                      const totalIncome   = incomeGroups.reduce((s, [, v]) => s + v, 0);
-                      const totalExpense  = expenseGroups.reduce((s, [, v]) => s + v, 0);
+                      const totalIncome   = incomeBudgets.reduce((s, b) => s + b.amount, 0);
+                      const totalExpense  = expenseBudgets.reduce((s, b) => s + b.amount, 0);
 
                       if (incomeGroups.length === 0 && expenseGroups.length === 0) return null;
 
+                      const hasBoth = incomeGroups.length > 0 && expenseGroups.length > 0;
                       return (
-                        <div style={{ display: 'grid', gridTemplateColumns: incomeGroups.length > 0 && expenseGroups.length > 0 ? '1fr 1fr' : '1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: hasBoth ? '1fr 1fr' : '1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
                           {incomeGroups.length > 0 && (
-                            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)', borderRadius: '10px', padding: '1rem' }}>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-income)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.75rem', textAlign: 'center' }}>Distribusi Anggaran Pemasukan</div>
-                              <DonutChart groups={incomeGroups} colors={INCOME_COLORS} total={totalIncome} label="Income" />
+                            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.1)', borderRadius: '10px', padding: '0.85rem 1rem' }}>
+                              <DonutChart groups={incomeGroups} colors={INCOME_COLORS} total={totalIncome} accentColor="var(--color-income)" title="Distribusi Pemasukan" />
                             </div>
                           )}
                           {expenseGroups.length > 0 && (
-                            <div style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)', borderRadius: '10px', padding: '1rem' }}>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.75rem', textAlign: 'center' }}>Distribusi Anggaran Pengeluaran</div>
-                              <DonutChart groups={expenseGroups} colors={EXPENSE_COLORS} total={totalExpense} label="Expense" />
+                            <div style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)', borderRadius: '10px', padding: '0.85rem 1rem' }}>
+                              <DonutChart groups={expenseGroups} colors={EXPENSE_COLORS} total={totalExpense} accentColor="var(--color-primary)" title="Distribusi Pengeluaran" />
                             </div>
                           )}
                         </div>
