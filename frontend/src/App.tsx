@@ -380,6 +380,7 @@ export default function App() {
   const [editingBudgetEndDate, setEditingBudgetEndDate] = useState('');
   const [editingBudgetRecurrence, setEditingBudgetRecurrence] = useState<'monthly' | 'weekly' | 'none'>('monthly');
   const [editingBudgetRecurrenceDay, setEditingBudgetRecurrenceDay] = useState('1');
+  const [budgetTxModal, setBudgetTxModal] = useState<{ budget: any; transactions: any[]; loading: boolean; dateRange: string } | null>(null);
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1171,6 +1172,14 @@ export default function App() {
       if (res.ok) {
         setEditingTx(null);
         fetchData();
+        // Refresh budget modal transaction list if it's open
+        if (budgetTxModal) {
+          const params = new URLSearchParams({ category: budgetTxModal.budget.category, start_date: budgetTxModal.dateRange.split(' s/d ')[0], end_date: budgetTxModal.dateRange.split(' s/d ')[1] });
+          fetch(`${API_URL}/transactions?${params}`)
+            .then(r => r.json())
+            .then(data => setBudgetTxModal(prev => prev ? { ...prev, transactions: data } : null))
+            .catch(console.error);
+        }
       } else {
         const errJson = await res.json();
         alert(errJson.error || 'Failed to update transaction');
@@ -1488,14 +1497,69 @@ export default function App() {
   const handleDeleteBudget = async (budgetId: string) => {
     if (!confirm('Apakah Anda yakin ingin menghapus anggaran ini?')) return;
     try {
-      const res = await fetch(`${API_URL}/budgets/${budgetId}`, {
+      const params = new URLSearchParams({
+        period: budgetViewPeriod,
+        month_year: selectedBudgetMonth,
+        ...(budgetViewPeriod === 'yearly' ? { year: String(selectedBudgetYear) } : {})
+      });
+      const res = await fetch(`${API_URL}/budgets/${budgetId}?${params}`, {
         method: 'DELETE'
       });
       if (res.ok) {
         fetchData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gagal menghapus anggaran');
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleViewBudgetTransactions = async (budget: any) => {
+    // Compute date range based on current period view
+    const [yearStr, monthStr] = selectedBudgetMonth.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+
+    let startDate: string;
+    let endDate: string;
+
+    if (budgetViewPeriod === 'yearly') {
+      startDate = `${selectedBudgetYear}-01-01`;
+      endDate = `${selectedBudgetYear}-12-31`;
+    } else if (budgetViewPeriod === 'quarterly') {
+      const q = Math.ceil(month / 3);
+      const sm = (q - 1) * 3 + 1;
+      const em = q * 3;
+      startDate = `${year}-${String(sm).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, em, 0).getDate();
+      endDate = `${year}-${String(em).padStart(2, '0')}-${lastDay}`;
+    } else if (budgetViewPeriod === 'semesterly') {
+      const s = Math.ceil(month / 6);
+      const sm = (s - 1) * 6 + 1;
+      const em = s * 6;
+      startDate = `${year}-${String(sm).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, em, 0).getDate();
+      endDate = `${year}-${String(em).padStart(2, '0')}-${lastDay}`;
+    } else {
+      // monthly
+      startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+    }
+
+    const dateRange = `${startDate} s/d ${endDate}`;
+    setBudgetTxModal({ budget, transactions: [], loading: true, dateRange });
+
+    try {
+      const params = new URLSearchParams({ category: budget.category, start_date: startDate, end_date: endDate });
+      const res = await fetch(`${API_URL}/transactions?${params}`);
+      const data = await res.json();
+      setBudgetTxModal({ budget, transactions: data, loading: false, dateRange });
+    } catch (err) {
+      console.error(err);
+      setBudgetTxModal(prev => prev ? { ...prev, loading: false } : null);
     }
   };
 
@@ -4088,13 +4152,96 @@ export default function App() {
             </div>
 
             {/* Modal Overlay for Add Budget */}
+            {/* Budget Transaction Detail Modal */}
+            {budgetTxModal && (
+              <div className="modal-overlay" onClick={() => setBudgetTxModal(null)}>
+                <div className="modal-content glass-panel" style={{ maxWidth: '700px', width: '95%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexShrink: 0 }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem' }}>📋 Transaksi: {budgetTxModal.budget.category}</h3>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>{budgetTxModal.dateRange}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBudgetTxModal(null)}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer', lineHeight: 1 }}
+                    >×</button>
+                  </div>
+
+                  {/* Summary bar */}
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '0.5rem 0.75rem', flex: 1, minWidth: '120px' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Anggaran</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{renderAmount(budgetTxModal.budget.amount)}</div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '0.5rem 0.75rem', flex: 1, minWidth: '120px' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Terpakai</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: budgetTxModal.budget.spent > budgetTxModal.budget.amount ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                        {renderAmount(budgetTxModal.budget.spent)}
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '0.5rem 0.75rem', flex: 1, minWidth: '120px' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem' }}>Jumlah Transaksi</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{budgetTxModal.loading ? '...' : budgetTxModal.transactions.length}</div>
+                    </div>
+                  </div>
+
+                  {/* Transaction list */}
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {budgetTxModal.loading ? (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Memuat transaksi...</div>
+                    ) : budgetTxModal.transactions.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Tidak ada transaksi pada periode ini.</div>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: 'var(--color-surface)' }}>
+                            <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tanggal</th>
+                            <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Keterangan</th>
+                            <th style={{ padding: '0.4rem 0.5rem', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Akun</th>
+                            <th style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--color-text-muted)' }}>Jumlah</th>
+                            <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--color-text-muted)' }}>Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {budgetTxModal.transactions.map((tx: any) => (
+                            <tr key={tx.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td style={{ padding: '0.5rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>{tx.date}</td>
+                              <td style={{ padding: '0.5rem' }}>
+                                <div>{tx.description}</div>
+                                {tx.note && <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{tx.note}</div>}
+                              </td>
+                              <td style={{ padding: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{tx.account_name}</td>
+                              <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600, color: tx.amount >= 0 ? 'var(--color-income)' : 'var(--color-expense)', whiteSpace: 'nowrap' }}>
+                                {renderAmount(tx.amount)}
+                              </td>
+                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditTransaction(tx)}
+                                  style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '0.15rem 0.4rem', borderRadius: '4px', whiteSpace: 'nowrap' }}
+                                  title="Edit transaksi"
+                                >
+                                  ✏️ Edit
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {isAddBudgetModalOpen && (
               <div className="modal-overlay">
                 <div className="modal-content glass-panel" style={{ maxWidth: '500px', width: '90%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: 0 }}>Atur Anggaran Baru</h3>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsAddBudgetModalOpen(false)}
                       style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer' }}
                     >
@@ -4581,6 +4728,14 @@ export default function App() {
                           </div>
                         ) : (
                           <>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                              onClick={() => handleViewBudgetTransactions(b)}
+                            >
+                              📋 Lihat Transaksi
+                            </button>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>|</span>
                             <button
                               type="button"
                               style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}

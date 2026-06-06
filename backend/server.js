@@ -114,14 +114,33 @@ app.delete('/api/accounts/:id', async (req, res) => {
 
 // Get all transactions
 app.get('/api/transactions', async (req, res) => {
+  const { category, start_date, end_date } = req.query;
   try {
+    const conditions = [];
+    const params = [];
+
+    if (category) {
+      conditions.push('t.category = ?');
+      params.push(category);
+    }
+    if (start_date) {
+      conditions.push('t.date >= ?');
+      params.push(start_date);
+    }
+    if (end_date) {
+      conditions.push('t.date <= ?');
+      params.push(end_date);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `
       SELECT t.*, a.name as account_name, a.type as account_type
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
+      ${where}
       ORDER BY t.date DESC, t.created_at DESC
     `;
-    const transactions = await query.all(sql);
+    const transactions = await query.all(sql, params);
     res.json(transactions);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -938,12 +957,49 @@ app.put('/api/budgets/:id', async (req, res) => {
 // Delete a budget
 app.delete('/api/budgets/:id', async (req, res) => {
   const { id } = req.params;
+  const { period = 'monthly', month_year } = req.query; // optional context to delete from range
   try {
     const existing = await query.get('SELECT * FROM budgets WHERE id = ?', [id]);
     if (!existing) {
       return res.status(404).json({ error: 'Budget not found' });
     }
-    await query.run('DELETE FROM budgets WHERE id = ?', [id]);
+
+    if (month_year) {
+      const [yearStr, monthStr] = month_year.split('-');
+      const year = parseInt(yearStr);
+      const month = parseInt(monthStr); // 1-12
+
+      let startMonth = month;
+      let endMonth = month;
+
+      if (period === 'quarterly') {
+        const q = Math.ceil(month / 3);
+        startMonth = (q - 1) * 3 + 1;
+        endMonth = q * 3;
+      } else if (period === 'semesterly') {
+        const s = Math.ceil(month / 6);
+        startMonth = (s - 1) * 6 + 1;
+        endMonth = s * 6;
+      } else if (period === 'yearly') {
+        startMonth = 1;
+        endMonth = 12;
+      }
+
+      const monthList = [];
+      for (let m = startMonth; m <= endMonth; m++) {
+        monthList.push(`${year}-${String(m).padStart(2, '0')}`);
+      }
+
+      const placeholders = monthList.map(() => '?').join(',');
+      await query.run(
+        `DELETE FROM budgets WHERE category = ? AND month_year IN (${placeholders})`,
+        [existing.category, ...monthList]
+      );
+    } else {
+      // Fallback: Delete all budgets of this category
+      await query.run('DELETE FROM budgets WHERE category = ?', [existing.category]);
+    }
+    
     res.json({ message: 'Budget deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
