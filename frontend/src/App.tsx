@@ -361,6 +361,8 @@ export default function App() {
   }, []);
   const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(currentMonthYear);
   const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
+  const [budgetViewPeriod, setBudgetViewPeriod] = useState<'monthly' | 'quarterly' | 'semesterly' | 'yearly'>('monthly');
+  const [isAddBudgetModalOpen, setIsAddBudgetModalOpen] = useState(false);
   
   // Range & Recurrence States
   const [budgetStartDate, setBudgetStartDate] = useState('');
@@ -581,8 +583,8 @@ export default function App() {
       const catData = await catRes.json();
       setDbCategories(catData);
 
-      // fetch budgets for selected month
-      const bRes = await fetch(`${API_URL}/budgets?month_year=${selectedBudgetMonth}`);
+      // fetch budgets for selected month and period
+      const bRes = await fetch(`${API_URL}/budgets?month_year=${selectedBudgetMonth}&period=${budgetViewPeriod}`);
       const bData = await bRes.json();
       setBudgets(bData);
 
@@ -957,7 +959,7 @@ export default function App() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedBudgetMonth]);
+  }, [selectedBudgetMonth, budgetViewPeriod]);
 
   // Calculated Values
   const totals = useMemo(() => {
@@ -1425,6 +1427,7 @@ export default function App() {
         setBudgetEndDate('');
         setBudgetRecurrence('monthly');
         setBudgetRecurrenceDay('1');
+        setIsAddBudgetModalOpen(false);
         fetchData();
       } else {
         const errorData = await res.json();
@@ -4080,159 +4083,225 @@ export default function App() {
             TAB 4: BUDGETS
             ------------------------------------------------------------- */}
         {activeTab === 'budgets' && (
-          <div className="grid-cols-2">
-            {/* Left Column: forms */}
-            <div>
-              {/* Left: Setup Budget Form */}
-              <div className="glass-panel card-content" style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ marginBottom: '0.5rem' }}>Atur Anggaran / Budget</h3>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                  Tetapkan batas pengeluaran bulanan atau target pemasukan. Anggaran dapat dibuat untuk satu bulan saja atau diduplikasi langsung selama satu tahun penuh.
-                </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0 }}>Pelacakan Anggaran / Budgeting</h2>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                style={{ height: '40px', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                onClick={() => {
+                  // Initialize start date convenience
+                  if (selectedBudgetMonth) {
+                    setBudgetStartDate(`${selectedBudgetMonth}-01`);
+                  }
+                  setIsAddBudgetModalOpen(true);
+                }}
+              >
+                ➕ Tambah Anggaran Baru
+              </button>
+            </div>
 
-                {/* Selectors for Month, Type, and Range/Recurrence */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '120px' }}>Tipe Anggaran:</span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                        type="button"
-                        className={`btn ${budgetType === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
-                        onClick={() => setBudgetType('expense')}
-                      >
-                        💸 Pengeluaran (Expense)
-                      </button>
-                      <button 
-                        type="button"
-                        className={`btn ${budgetType === 'income' ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
-                        onClick={() => setBudgetType('income')}
-                      >
-                        💰 Pemasukan (Income)
-                      </button>
-                    </div>
+            {/* Modal Overlay for Add Budget */}
+            {isAddBudgetModalOpen && (
+              <div className="modal-backdrop" onClick={() => setIsAddBudgetModalOpen(false)}>
+                <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', width: '90%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h3 style={{ margin: 0 }}>Atur Anggaran Baru</h3>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsAddBudgetModalOpen(false)}
+                      style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
                   </div>
 
-
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mulai Tanggal:</label>
-                      <input 
-                        type="date" 
-                        className="form-control" 
-                        value={budgetStartDate}
-                        onChange={(e) => setBudgetStartDate(e.target.value)}
-                      />
+                  {/* Selectors for Type, Range, and Recurrence */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '120px' }}>Tipe Anggaran:</span>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          type="button"
+                          className={`btn ${budgetType === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                          onClick={() => setBudgetType('expense')}
+                        >
+                          💸 Pengeluaran
+                        </button>
+                        <button 
+                          type="button"
+                          className={`btn ${budgetType === 'income' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                          onClick={() => setBudgetType('income')}
+                        >
+                          💰 Pemasukan
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sampai Tanggal:</label>
-                      <input 
-                        type="date" 
-                        className="form-control" 
-                        value={budgetEndDate}
-                        onChange={(e) => setBudgetEndDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Frekuensi:</label>
-                      <select
-                        className="form-control"
-                        value={budgetRecurrence}
-                        onChange={(e) => setBudgetRecurrence(e.target.value as any)}
-                      >
-                        <option value="none">Satu Kali Saja (None)</option>
-                        <option value="monthly">Bulanan (Monthly)</option>
-                        <option value="weekly">Mingguan (Weekly)</option>
-                      </select>
-                    </div>
-                    {budgetRecurrence !== 'none' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          {budgetRecurrence === 'weekly' ? 'Hari Pengulangan:' : 'Tanggal Pengulangan:'}
-                        </label>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mulai Tanggal:</label>
+                        <input 
+                          type="date" 
+                          className="form-control" 
+                          value={budgetStartDate}
+                          onChange={(e) => setBudgetStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Sampai Tanggal:</label>
+                        <input 
+                          type="date" 
+                          className="form-control" 
+                          value={budgetEndDate}
+                          onChange={(e) => setBudgetEndDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Frekuensi:</label>
                         <select
                           className="form-control"
-                          value={budgetRecurrenceDay}
-                          onChange={(e) => setBudgetRecurrenceDay(e.target.value)}
+                          value={budgetRecurrence}
+                          onChange={(e) => setBudgetRecurrence(e.target.value as any)}
                         >
-                          {budgetRecurrence === 'weekly' ? (
-                            <>
-                              <option value="1">Senin</option>
-                              <option value="2">Selasa</option>
-                              <option value="3">Rabu</option>
-                              <option value="4">Kamis</option>
-                              <option value="5">Jumat</option>
-                              <option value="6">Sabtu</option>
-                              <option value="7">Minggu</option>
-                            </>
-                          ) : (
-                            Array.from({ length: 31 }, (_, idx) => (
-                              <option key={idx + 1} value={idx + 1}>Tanggal {idx + 1}</option>
-                            ))
-                          )}
+                          <option value="none">Satu Kali Saja</option>
+                          <option value="monthly">Bulanan</option>
+                          <option value="weekly">Mingguan</option>
                         </select>
                       </div>
-                    )}
+                      {budgetRecurrence !== 'none' && (
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {budgetRecurrence === 'weekly' ? 'Hari Pengulangan:' : 'Tanggal Pengulangan:'}
+                          </label>
+                          <select
+                            className="form-control"
+                            value={budgetRecurrenceDay}
+                            onChange={(e) => setBudgetRecurrenceDay(e.target.value)}
+                          >
+                            {budgetRecurrence === 'weekly' ? (
+                              <>
+                                <option value="1">Senin</option>
+                                <option value="2">Selasa</option>
+                                <option value="3">Rabu</option>
+                                <option value="4">Kamis</option>
+                                <option value="5">Jumat</option>
+                                <option value="6">Sabtu</option>
+                                <option value="7">Minggu</option>
+                              </>
+                            ) : (
+                              Array.from({ length: 31 }, (_, idx) => (
+                                <option key={idx + 1} value={idx + 1}>Tanggal {idx + 1}</option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  <form onSubmit={handleAddBudget}>
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label>Pilih Kategori</label>
+                      <select 
+                        className="form-control"
+                        value={budgetCategory}
+                        onChange={(e) => setBudgetCategory(e.target.value)}
+                      >
+                        {filteredCategoriesForBudget.map(group => (
+                          <optgroup key={group.parent.id} label={group.parent.name}>
+                            <option value={group.parent.name}>{group.parent.name}</option>
+                            {group.subs.map(sub => (
+                              <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                      <label>Nominal Anggaran Bulanan (IDR)</label>
+                      <input 
+                        type="number" 
+                        className="form-control"
+                        placeholder="Contoh: 2000000"
+                        value={budgetAmount}
+                        onChange={(e) => setBudgetAmount(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        style={{ height: '40px', padding: '0 1.5rem' }} 
+                        onClick={() => setIsAddBudgetModalOpen(false)}
+                      >
+                        Batal
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary" 
+                        style={{ height: '40px', padding: '0 1.5rem' }}
+                      >
+                        Pasang Anggaran
+                      </button>
+                    </div>
+                  </form>
                 </div>
-
-                <form onSubmit={handleAddBudget}>
-                  <div className="form-group">
-                    <label>Pilih Kategori</label>
-                    <select 
-                      className="form-control"
-                      value={budgetCategory}
-                      onChange={(e) => setBudgetCategory(e.target.value)}
-                    >
-                      {filteredCategoriesForBudget.map(group => (
-                        <optgroup key={group.parent.id} label={group.parent.name}>
-                          <option value={group.parent.name}>{group.parent.name}</option>
-                          {group.subs.map(sub => (
-                            <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Nominal Anggaran Bulanan (IDR)</label>
-                    <input 
-                      type="number" 
-                      className="form-control"
-                      placeholder="Contoh: 2000000"
-                      value={budgetAmount}
-                      onChange={(e) => setBudgetAmount(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', height: '40px' }}>
-                    Pasang Anggaran
-                  </button>
-                </form>
               </div>
-
-            </div>
+            )}
 
             {/* Right: Budgets Progress Bars */}
             <div className="glass-panel card-content">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0 }}>Progress Anggaran</h3>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Bulan:</span>
-                  <input 
-                    type="month" 
-                    className="form-control"
-                    style={{ width: 'auto', padding: '0.3rem 0.6rem', margin: 0 }}
-                    value={selectedBudgetMonth}
-                    onChange={(e) => setSelectedBudgetMonth(e.target.value)}
-                  />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={{ margin: 0 }}>Progress Anggaran</h3>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Pilih Bulan:</span>
+                    <input 
+                      type="month" 
+                      className="form-control"
+                      style={{ width: 'auto', padding: '0.3rem 0.6rem', margin: 0 }}
+                      value={selectedBudgetMonth}
+                      onChange={(e) => setSelectedBudgetMonth(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Period Selector Tabs */}
+                <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.2)', padding: '0.25rem', borderRadius: '8px' }}>
+                  {(['monthly', 'quarterly', 'semesterly', 'yearly'] as const).map((p) => {
+                    const label = p === 'monthly' ? 'Bulan' : p === 'quarterly' ? 'Quarter' : p === 'semesterly' ? 'Semester' : 'Tahun';
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '0.4rem',
+                          fontSize: '0.78rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: budgetViewPeriod === p ? 'var(--color-primary)' : 'transparent',
+                          color: budgetViewPeriod === p ? '#fff' : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onClick={() => setBudgetViewPeriod(p)}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               
@@ -4309,6 +4378,21 @@ export default function App() {
                           }
                         </span>
                       </div>
+
+                      {/* Display Range & Recurrence Details */}
+                      {(b.start_date || b.recurrence !== 'none') && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.01)', padding: '0.3rem 0.5rem', borderRadius: '4px', marginTop: '0.3rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'space-between' }}>
+                          {b.start_date && (
+                            <span>📅 Range: {b.start_date} s/d {b.end_date || 'selamanya'}</span>
+                          )}
+                          {b.recurrence && b.recurrence !== 'none' && (
+                            <span>
+                              🔄 {b.recurrence === 'weekly' ? 'Mingguan' : 'Bulanan'} 
+                              {b.recurrence_day ? ` (tiap ${b.recurrence === 'weekly' ? ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][b.recurrence_day - 1] : `tanggal ${b.recurrence_day}`})` : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Edit / Delete Inline actions */}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px dashed rgba(255,255,255,0.03)' }}>

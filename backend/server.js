@@ -663,17 +663,53 @@ app.delete('/api/transfers/:id', async (req, res) => {
 // 3. BUDGETS ENDPOINTS
 // -------------------------------------------------------------------
 
-// Get budgets for a specific month
+// Get budgets summary for a specific period (monthly, quarterly, semesterly, or yearly)
 app.get('/api/budgets', async (req, res) => {
-  const { month_year } = req.query; // YYYY-MM
+  const { period = 'monthly', month_year } = req.query; // period: monthly, quarterly, semesterly, yearly
   if (!month_year) {
     return res.status(400).json({ error: 'month_year query parameter is required (e.g. YYYY-MM)' });
   }
 
   try {
-    // Get all budgets for the month
-    const budgets = await query.all('SELECT * FROM budgets WHERE month_year = ?', [month_year]);
-    
+    const [yearStr, monthStr] = month_year.split('-');
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr); // 1-12
+
+    let startMonth = month;
+    let endMonth = month;
+
+    if (period === 'quarterly') {
+      // Q1: 1-3, Q2: 4-6, Q3: 7-9, Q4: 10-12
+      const q = Math.ceil(month / 3);
+      startMonth = (q - 1) * 3 + 1;
+      endMonth = q * 3;
+    } else if (period === 'semesterly') {
+      // S1: 1-6, S2: 7-12
+      const s = Math.ceil(month / 6);
+      startMonth = (s - 1) * 6 + 1;
+      endMonth = s * 6;
+    } else if (period === 'yearly') {
+      startMonth = 1;
+      endMonth = 12;
+    }
+
+    const monthList = [];
+    for (let m = startMonth; m <= endMonth; m++) {
+      monthList.push(`${year}-${String(m).padStart(2, '0')}`);
+    }
+
+    // Prepare SQL placeholder
+    const placeholders = monthList.map(() => '?').join(',');
+
+    // Fetch budget aggregates grouped by category for target months
+    const sqlBudgets = `
+      SELECT category, SUM(amount) as amount, MAX(recurrence) as recurrence, MAX(recurrence_day) as recurrence_day, MAX(start_date) as start_date, MAX(end_date) as end_date
+      FROM budgets
+      WHERE month_year IN (${placeholders})
+      GROUP BY category
+    `;
+    const budgets = await query.all(sqlBudgets, monthList);
+
     // Get categories to determine type (income vs expense)
     const dbCategories = await query.all('SELECT name, type FROM categories');
     const categoryTypeMap = {};
@@ -681,23 +717,27 @@ app.get('/api/budgets', async (req, res) => {
       categoryTypeMap[c.name] = c.type;
     });
 
-    // Get actual expense aggregates per category for that month (amount < 0)
+    // We fetch matching transactions for all months in the target period
+    const transactionMonthPatterns = monthList.map(m => `${m}-%`);
+    const transactionMonthPlaceholders = monthList.map(() => 'date LIKE ?').join(' OR ');
+
+    // Get actual expense aggregates per category
     const sqlExpenses = `
       SELECT category, SUM(-amount) as spent
       FROM transactions
-      WHERE date LIKE ? AND amount < 0
+      WHERE (${transactionMonthPlaceholders}) AND amount < 0
       GROUP BY category
     `;
-    const expenses = await query.all(sqlExpenses, [`${month_year}-%`]);
-    
-    // Get actual income aggregates per category for that month (amount > 0)
+    const expenses = await query.all(sqlExpenses, transactionMonthPatterns);
+
+    // Get actual income aggregates per category
     const sqlIncome = `
       SELECT category, SUM(amount) as received
       FROM transactions
-      WHERE date LIKE ? AND amount > 0
+      WHERE (${transactionMonthPlaceholders}) AND amount > 0
       GROUP BY category
     `;
-    const income = await query.all(sqlIncome, [`${month_year}-%`]);
+    const income = await query.all(sqlIncome, transactionMonthPatterns);
 
     const expenseMap = {};
     expenses.forEach(e => {
@@ -714,7 +754,7 @@ app.get('/api/budgets', async (req, res) => {
       const isIncome = catType === 'income';
       return {
         ...b,
-        type: catType, // attach type for frontend
+        type: catType,
         spent: isIncome ? (incomeMap[b.category] || 0) : (expenseMap[b.category] || 0)
       };
     });
