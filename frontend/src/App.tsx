@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Tesseract from 'tesseract.js';
 
 // API Base URL
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 // Categories List
 const CATEGORIES = [
