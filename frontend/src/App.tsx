@@ -364,6 +364,7 @@ export default function App() {
   const [budgetDuration, setBudgetDuration] = useState<'single' | 'yearly'>('single');
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
+  const [editingBudgetCategory, setEditingBudgetCategory] = useState('');
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1408,28 +1409,32 @@ export default function App() {
   const handleStartEditBudget = (budget: any) => {
     setEditingBudgetId(budget.id);
     setEditingBudgetAmount(String(budget.amount));
+    setEditingBudgetCategory(budget.category);
   };
 
   const handleSaveEditedBudget = async (budget: any) => {
-    if (!editingBudgetAmount || isNaN(parseFloat(editingBudgetAmount))) return;
+    if (!editingBudgetAmount || isNaN(parseFloat(editingBudgetAmount)) || !editingBudgetCategory) return;
     try {
-      const res = await fetch(`${API_URL}/budgets`, {
-        method: 'POST',
+      const res = await fetch(`${API_URL}/budgets/${budget.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          category: budget.category,
-          amount: parseFloat(editingBudgetAmount),
-          month_year: budget.month_year,
-          duration: 'single'
+          category: editingBudgetCategory,
+          amount: parseFloat(editingBudgetAmount)
         })
       });
       if (res.ok) {
         setEditingBudgetId(null);
         setEditingBudgetAmount('');
+        setEditingBudgetCategory('');
         fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Gagal menyimpan perubahan anggaran.');
       }
     } catch (err) {
       console.error(err);
+      alert('Terjadi kesalahan jaringan saat memperbarui anggaran.');
     }
   };
 
@@ -4222,32 +4227,54 @@ export default function App() {
                       {/* Edit / Delete Inline actions */}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px dashed rgba(255,255,255,0.03)' }}>
                         {editingBudgetId === b.id ? (
-                          <div style={{ display: 'flex', gap: '0.3rem', width: '100%', alignItems: 'center' }}>
-                            <input
-                              type="number"
-                              className="form-control"
-                              style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1 }}
-                              value={editingBudgetAmount}
-                              onChange={(e) => setEditingBudgetAmount(e.target.value)}
-                              placeholder="Nominal baru"
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-primary"
-                              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '26px' }}
-                              onClick={() => handleSaveEditedBudget(b)}
-                            >
-                              💾 Simpan
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '26px' }}
-                              onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); }}
-                            >
-                              Batal
-                            </button>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
+                            <div style={{ display: 'flex', gap: '0.3rem', width: '100%', alignItems: 'center' }}>
+                              <select
+                                className="form-control"
+                                style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1.2 }}
+                                value={editingBudgetCategory}
+                                onChange={(e) => setEditingBudgetCategory(e.target.value)}
+                              >
+                                {groupedCategories.map(group => {
+                                  // Show all categories in edit mode for maximum flexibility
+                                  return (
+                                    <optgroup key={group.parent.id} label={group.parent.name}>
+                                      <option value={group.parent.name}>{group.parent.name}</option>
+                                      {group.subs.map(sub => (
+                                        <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
+                                      ))}
+                                    </optgroup>
+                                  );
+                                })}
+                              </select>
+                              <input
+                                type="number"
+                                className="form-control"
+                                style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1 }}
+                                value={editingBudgetAmount}
+                                onChange={(e) => setEditingBudgetAmount(e.target.value)}
+                                placeholder="Nominal baru"
+                                autoFocus
+                              />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem' }}>
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
+                                onClick={() => handleSaveEditedBudget(b)}
+                              >
+                                💾 Simpan
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
+                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); }}
+                              >
+                                Batal
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <>

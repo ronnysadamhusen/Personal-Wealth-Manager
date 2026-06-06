@@ -773,6 +773,41 @@ app.post('/api/budgets', async (req, res) => {
   }
 });
 
+// Update an existing budget (allows editing both category and amount)
+app.put('/api/budgets/:id', async (req, res) => {
+  const { id } = req.params;
+  const { category, amount } = req.body;
+  if (!category || amount === undefined) {
+    return res.status(400).json({ error: 'category and amount are required' });
+  }
+
+  try {
+    const existing = await query.get('SELECT * FROM budgets WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Budget not found' });
+    }
+
+    // Check if another budget with the target category already exists in the same month
+    const duplicate = await query.get(
+      'SELECT * FROM budgets WHERE category = ? AND month_year = ? AND id != ?',
+      [category, existing.month_year, id]
+    );
+    if (duplicate) {
+      return res.status(400).json({ error: 'Anggaran untuk kategori ini sudah terdaftar di bulan yang sama. Silakan edit anggaran kategori tersebut atau hapus salah satunya.' });
+    }
+
+    await query.run(
+      'UPDATE budgets SET category = ?, amount = ? WHERE id = ?',
+      [category, amount, id]
+    );
+
+    const updated = await query.get('SELECT * FROM budgets WHERE id = ?', [id]);
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete a budget
 app.delete('/api/budgets/:id', async (req, res) => {
   const { id } = req.params;
