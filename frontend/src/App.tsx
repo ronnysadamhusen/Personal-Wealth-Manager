@@ -4107,7 +4107,7 @@ export default function App() {
 
             {/* Modal Overlay for Add Budget */}
             {isAddBudgetModalOpen && (
-              <div className="modal-backdrop" onClick={() => setIsAddBudgetModalOpen(false)}>
+              <div className="modal-overlay" onClick={() => setIsAddBudgetModalOpen(false)}>
                 <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', width: '90%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: 0 }}>Atur Anggaran Baru</h3>
