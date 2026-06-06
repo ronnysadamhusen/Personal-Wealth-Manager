@@ -365,6 +365,7 @@ export default function App() {
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
   const [editingBudgetCategory, setEditingBudgetCategory] = useState('');
+  const [editingBudgetDuration, setEditingBudgetDuration] = useState<'single' | 'yearly'>('single');
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1410,6 +1411,7 @@ export default function App() {
     setEditingBudgetId(budget.id);
     setEditingBudgetAmount(String(budget.amount));
     setEditingBudgetCategory(budget.category);
+    setEditingBudgetDuration('single');
   };
 
   const handleSaveEditedBudget = async (budget: any) => {
@@ -1420,13 +1422,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: editingBudgetCategory,
-          amount: parseFloat(editingBudgetAmount)
+          amount: parseFloat(editingBudgetAmount),
+          duration: editingBudgetDuration
         })
       });
       if (res.ok) {
         setEditingBudgetId(null);
         setEditingBudgetAmount('');
         setEditingBudgetCategory('');
+        setEditingBudgetDuration('single');
         fetchData();
       } else {
         const errorData = await res.json();
@@ -4257,7 +4261,26 @@ export default function App() {
                                 autoFocus
                               />
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem' }}>
+                            <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'flex-start', marginTop: '0.2rem' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Terapkan ke:</span>
+                              <button
+                                type="button"
+                                className={`btn ${editingBudgetDuration === 'single' ? 'btn-primary' : 'btn-secondary'}`}
+                                style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', height: '20px' }}
+                                onClick={() => setEditingBudgetDuration('single')}
+                              >
+                                Bulan Ini
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn ${editingBudgetDuration === 'yearly' ? 'btn-primary' : 'btn-secondary'}`}
+                                style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', height: '20px' }}
+                                onClick={() => setEditingBudgetDuration('yearly')}
+                              >
+                                Ulangi 1 Tahun
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
                               <button
                                 type="button"
                                 className="btn btn-primary"
@@ -4270,7 +4293,7 @@ export default function App() {
                                 type="button"
                                 className="btn btn-secondary"
                                 style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
-                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); }}
+                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); setEditingBudgetDuration('single'); }}
                               >
                                 Batal
                               </button>

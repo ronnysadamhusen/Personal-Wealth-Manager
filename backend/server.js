@@ -773,10 +773,10 @@ app.post('/api/budgets', async (req, res) => {
   }
 });
 
-// Update an existing budget (allows editing both category and amount)
+// Update an existing budget (allows editing both category and amount, and repeating the update for 12 months)
 app.put('/api/budgets/:id', async (req, res) => {
   const { id } = req.params;
-  const { category, amount } = req.body;
+  const { category, amount, duration } = req.body;
   if (!category || amount === undefined) {
     return res.status(400).json({ error: 'category and amount are required' });
   }
@@ -787,24 +787,66 @@ app.put('/api/budgets/:id', async (req, res) => {
       return res.status(404).json({ error: 'Budget not found' });
     }
 
-    // Check if another budget with the target category already exists in the same month
-    const duplicate = await query.get(
-      'SELECT * FROM budgets WHERE category = ? AND month_year = ? AND id != ?',
-      [category, existing.month_year, id]
-    );
-    if (duplicate) {
-      return res.status(400).json({ error: 'Anggaran untuk kategori ini sudah terdaftar di bulan yang sama. Silakan edit anggaran kategori tersebut atau hapus salah satunya.' });
+    const monthsToProcess = [];
+    if (duration === 'yearly') {
+      const [yearStr, monthStr] = existing.month_year.split('-');
+      let year = parseInt(yearStr);
+      let month = parseInt(monthStr) - 1; // 0-indexed month
+      
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(year, month + i, 1);
+        const yVal = d.getFullYear();
+        const mVal = String(d.getMonth() + 1).padStart(2, '0');
+        monthsToProcess.push(`${yVal}-${mVal}`);
+      }
+    } else {
+      monthsToProcess.push(existing.month_year);
     }
 
-    await query.run(
-      'UPDATE budgets SET category = ?, amount = ? WHERE id = ?',
-      [category, amount, id]
-    );
+    await query.exec('BEGIN TRANSACTION');
+
+    for (const mStr of monthsToProcess) {
+      // Check if another budget with the target category already exists in this specific month
+      const duplicate = await query.get(
+        'SELECT * FROM budgets WHERE category = ? AND month_year = ? AND id != ? AND id != (SELECT id FROM budgets WHERE category = ? AND month_year = ?)',
+        [category, mStr, id, existing.category, mStr]
+      );
+      if (duplicate) {
+        throw new Error(`Kategori ${category} sudah terdaftar pada bulan ${mStr}. Silakan hapus atau edit kategori tersebut terlebih dahulu.`);
+      }
+
+      // We either update the corresponding budget for (existing.category, mStr) if exists,
+      // or we insert a new one, or if it is the current ID, we update it directly.
+      const match = await query.get(
+        'SELECT * FROM budgets WHERE category = ? AND month_year = ?',
+        [existing.category, mStr]
+      );
+
+      if (match) {
+        await query.run(
+          'UPDATE budgets SET category = ?, amount = ? WHERE id = ?',
+          [category, amount, match.id]
+        );
+      } else {
+        // If it doesn't exist for that month, insert a new one
+        const newId = generateUUID();
+        await query.run(
+          `INSERT INTO budgets (id, category, amount, month_year)
+           VALUES (?, ?, ?, ?)
+           ON CONFLICT(category, month_year)
+           DO UPDATE SET amount = excluded.amount`,
+          [newId, category, amount, mStr]
+        );
+      }
+    }
+
+    await query.exec('COMMIT');
 
     const updated = await query.get('SELECT * FROM budgets WHERE id = ?', [id]);
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    await query.exec('ROLLBACK');
+    res.status(400).json({ error: error.message });
   }
 });
 
