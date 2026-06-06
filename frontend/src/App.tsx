@@ -2327,6 +2327,16 @@ export default function App() {
             {navOpen ? '✕' : '☰'}
           </button>
 
+          {/* Privacy toggle visible in header on mobile */}
+          <button
+            type="button"
+            className="mobile-privacy-btn"
+            onClick={cyclePrivacyMode}
+            title="Toggle Privacy Masking"
+          >
+            <span>{privacyMode === 'blur' ? '🔒' : privacyMode === 'hover' ? '🫣' : '🔓'}</span>
+          </button>
+
           <nav className={`nav-links${navOpen ? ' open' : ''}`} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Menu:</span>
             <select
@@ -7820,6 +7830,37 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        <div className="mobile-bottom-nav-inner">
+          {([
+            { tab: 'dashboard',     icon: '📊', label: 'Dashboard' },
+            { tab: 'accounts',      icon: '💳', label: 'Akun' },
+            { tab: 'transactions',  icon: '📝', label: 'Ledger' },
+            { tab: 'budgets',       icon: '💸', label: 'Budget' },
+            { tab: 'liabilities',   icon: '🤝', label: 'Liabiliti' },
+            { tab: 'goals',         icon: '🎯', label: 'Goals' },
+            { tab: 'investments',   icon: '📈', label: 'Investasi' },
+            { tab: 'ai',            icon: '🤖', label: 'AI' },
+            { tab: 'settings',      icon: '⚙️', label: 'Setelan' },
+          ] as { tab: typeof activeTab; icon: string; label: string }[]).map(({ tab, icon, label }) => (
+            <button
+              key={tab}
+              type="button"
+              className={`mobile-nav-item${activeTab === tab ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'transactions') setTransactionSubTab('ledger');
+              }}
+              aria-current={activeTab === tab ? 'page' : undefined}
+            >
+              <span className="mobile-nav-icon">{icon}</span>
+              <span className="mobile-nav-label">{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
