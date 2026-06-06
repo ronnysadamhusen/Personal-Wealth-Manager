@@ -4518,246 +4518,185 @@ export default function App() {
               
               {budgets.length === 0 ? (
                 <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                  Belum ada anggaran yang diatur untuk bulan ini. Pasang limit di panel kiri untuk memulai pelacakan.
+                  Belum ada anggaran yang diatur untuk periode ini. Pasang limit di panel kiri untuk memulai pelacakan.
                 </div>
-              ) : (
-                budgets.map(b => {
-                  const isIncome = b.type === 'income';
-                  const percentage = Math.min(100, b.amount > 0 ? (b.spent / b.amount) * 100 : 0);
-                  
-                  let fillClass = 'success'; // default green
-                  let isOver = false;
-                  let isNear = false;
-                  
-                  if (!isIncome) {
-                    isOver = b.spent > b.amount;
-                    isNear = !isOver && percentage >= 80;
-                    
-                    if (isOver) fillClass = 'danger';
-                    else if (isNear) fillClass = 'warning';
-                    else fillClass = 'primary'; // indigo-ish for safe expense budget
-                  } else {
-                    // For income: green is good! We just track progress toward target
-                    fillClass = 'success';
-                  }
+              ) : (() => {
+                const incomeBudgets  = budgets.filter(b => b.type === 'income');
+                const expenseBudgets = budgets.filter(b => b.type !== 'income');
+                const totalIncomeBudget  = incomeBudgets.reduce((s, b) => s + b.amount, 0);
+                const totalIncomeSpent   = incomeBudgets.reduce((s, b) => s + b.spent,  0);
+                const totalExpenseBudget = expenseBudgets.reduce((s, b) => s + b.amount, 0);
+                const totalExpenseSpent  = expenseBudgets.reduce((s, b) => s + b.spent,  0);
+                const netBudget = totalIncomeBudget - totalExpenseBudget;
+                const netActual = totalIncomeSpent  - totalExpenseSpent;
+
+                const renderCompactRow = (b: any) => {
+                  const isIncome  = b.type === 'income';
+                  const pct       = Math.min(100, b.amount > 0 ? (b.spent / b.amount) * 100 : 0);
+                  const isOver    = !isIncome && b.spent > b.amount;
+                  const isNear    = !isIncome && !isOver && pct >= 80;
+                  const barColor  = isOver ? 'var(--color-danger)' : isNear ? 'var(--color-warning)' : isIncome ? 'var(--color-success)' : 'var(--color-primary)';
+                  const amtColor  = isOver ? 'var(--color-danger)' : isNear ? 'var(--color-warning)' : isIncome ? 'var(--color-income)' : 'var(--color-text)';
 
                   return (
-                    <div key={b.id} className="budget-item" style={{ marginBottom: '1.25rem' }}>
-                      <div className="budget-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                        <div>
-                          <strong>{getFullCategoryName(b.category)}</strong>
-                          <span style={{ 
-                            fontSize: '0.68rem', 
-                            padding: '0.15rem 0.4rem', 
-                            borderRadius: '4px', 
-                            marginLeft: '0.5rem',
-                            fontWeight: 600,
-                            background: isIncome ? 'rgba(34,197,94,0.1)' : 'rgba(99,102,241,0.1)',
-                            color: isIncome ? 'var(--color-income)' : 'var(--color-primary)'
-                          }}>
-                            {isIncome ? 'Pemasukan' : 'Pengeluaran'}
-                          </span>
-                          {!isIncome && isOver && <span className="text-danger" style={{ fontSize: '0.75rem', marginLeft: '0.5rem', fontWeight: 600 }}>(MELEBIHI LIMIT!)</span>}
-                        </div>
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                          <span style={{ fontWeight: 600 }} className={!isIncome && isOver ? 'text-danger' : !isIncome && isNear ? 'text-warning' : 'text-success'}>
-                            {renderAmount(b.spent)}
-                          </span>
-                          <span> / {renderAmount(b.amount)}</span>
-                        </div>
-                      </div>
+                    <div key={b.id}>
+                      {/* Compact row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px auto', gap: '0.6rem', alignItems: 'center', padding: '0.45rem 0.6rem', borderRadius: '6px', background: editingBudgetId === b.id ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
 
-                      <div className="progress-track" style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div 
-                          className={`progress-fill ${fillClass}`}
-                          style={{ 
-                            width: `${percentage}%`,
-                            height: '100%',
-                            background: fillClass === 'danger' ? 'var(--color-danger)' : fillClass === 'warning' ? 'var(--color-warning)' : fillClass === 'primary' ? 'var(--color-primary)' : 'var(--color-success)',
-                            borderRadius: '4px',
-                            transition: 'width 0.4s ease'
-                          }}
-                        />
-                      </div>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', alignItems: 'center' }}>
-                        <span>{isIncome ? 'Pencapaian Target' : 'Utilisasi'}: {percentage.toFixed(0)}%</span>
-                        <span>
-                          {isIncome 
-                            ? (b.spent >= b.amount ? 'Target Tercapai!' : <>Kekurangan: {renderAmount(b.amount - b.spent)}</>)
-                            : <>Sisa: {renderAmount(Math.max(0, b.amount - b.spent))}</>
-                          }
-                        </span>
-                      </div>
-
-                      {/* Display Range & Recurrence Details */}
-                      {(b.start_date || b.recurrence !== 'none') && (
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.01)', padding: '0.3rem 0.5rem', borderRadius: '4px', marginTop: '0.3rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'space-between' }}>
-                          {b.start_date && (
-                            <span>📅 Range: {b.start_date} s/d {b.end_date || 'selamanya'}</span>
-                          )}
-                          {b.recurrence && b.recurrence !== 'none' && (
-                            <span>
-                              🔄 {b.recurrence === 'weekly' ? 'Mingguan' : 'Bulanan'} 
-                              {b.recurrence_day ? ` (tiap ${b.recurrence === 'weekly' ? ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'][b.recurrence_day - 1] : `tanggal ${b.recurrence_day}`})` : ''}
+                        {/* Left: name + progress */}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getFullCategoryName(b.category)}</span>
+                            <span style={{ fontSize: '0.6rem', padding: '0.08rem 0.3rem', borderRadius: '3px', fontWeight: 600, flexShrink: 0, background: isIncome ? 'rgba(34,197,94,0.12)' : 'rgba(99,102,241,0.12)', color: isIncome ? 'var(--color-income)' : 'var(--color-primary)' }}>
+                              {isIncome ? 'Income' : 'Expense'}
                             </span>
-                          )}
+                            {isOver && <span style={{ fontSize: '0.6rem', color: 'var(--color-danger)', fontWeight: 700, flexShrink: 0 }}>⚠ OVER</span>}
+                            {b.start_date && <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', flexShrink: 0 }}>📅 {b.start_date.slice(0,7)}→{b.end_date ? b.end_date.slice(0,7) : '∞'}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <div style={{ flex: 1, height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', flexShrink: 0, width: '30px', textAlign: 'right' }}>{pct.toFixed(0)}%</span>
+                          </div>
                         </div>
-                      )}
 
-                      {/* Edit / Delete Inline actions */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px dashed rgba(255,255,255,0.03)' }}>
-                        {editingBudgetId === b.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                            <div style={{ display: 'flex', gap: '0.3rem', width: '100%', alignItems: 'center' }}>
-                              <select
-                                className="form-control"
-                                style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1.2 }}
-                                value={editingBudgetCategory}
-                                onChange={(e) => setEditingBudgetCategory(e.target.value)}
-                              >
-                                {groupedCategories.map(group => {
-                                  // Show all categories in edit mode for maximum flexibility
-                                  return (
-                                    <optgroup key={group.parent.id} label={group.parent.name}>
-                                      <option value={group.parent.name}>{group.parent.name}</option>
-                                      {group.subs.map(sub => (
-                                        <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                                      ))}
-                                    </optgroup>
-                                  );
-                                })}
+                        {/* Center: amounts */}
+                        <div style={{ textAlign: 'right', lineHeight: 1.3 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: amtColor }}>{renderAmount(b.spent)}</div>
+                          <div style={{ fontSize: '0.67rem', color: 'var(--color-text-muted)' }}>/ {renderAmount(b.amount)}</div>
+                        </div>
+
+                        {/* Right: action icons */}
+                        <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexShrink: 0 }}>
+                          <button type="button" title="Lihat Transaksi" onClick={() => handleViewBudgetTransactions(b)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', padding: '0.15rem', opacity: 0.6, lineHeight: 1 }}>📋</button>
+                          <button type="button" title="Edit Anggaran" onClick={() => handleStartEditBudget(b)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', padding: '0.15rem', opacity: 0.6, lineHeight: 1 }}>✏️</button>
+                          <button type="button" title="Hapus Anggaran" onClick={() => handleDeleteBudget(b.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', padding: '0.15rem', opacity: 0.6, lineHeight: 1 }}>🗑️</button>
+                        </div>
+                      </div>
+
+                      {/* Inline edit form — expands below the row */}
+                      {editingBudgetId === b.id && (
+                        <div style={{ padding: '0.6rem 0.6rem 0.7rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0 0 6px 6px', marginTop: '-2px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.4rem' }}>
+                            <select className="form-control" style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1.5 }}
+                              value={editingBudgetCategory} onChange={(e) => setEditingBudgetCategory(e.target.value)}>
+                              {groupedCategories.map(group => (
+                                <optgroup key={group.parent.id} label={group.parent.name}>
+                                  <option value={group.parent.name}>{group.parent.name}</option>
+                                  {group.subs.map(sub => <option key={sub.id} value={sub.name}>↳ {sub.name}</option>)}
+                                </optgroup>
+                              ))}
+                            </select>
+                            <input type="number" className="form-control" style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1 }}
+                              value={editingBudgetAmount} onChange={(e) => setEditingBudgetAmount(e.target.value)} placeholder="Nominal" autoFocus />
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.3rem', marginBottom: '0.4rem' }}>
+                            <div>
+                              <label style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'block' }}>Mulai</label>
+                              <input type="date" className="form-control" style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                value={editingBudgetStartDate} onChange={(e) => setEditingBudgetStartDate(e.target.value)} />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'block' }}>Sampai</label>
+                              <input type="date" className="form-control" style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                value={editingBudgetEndDate} onChange={(e) => setEditingBudgetEndDate(e.target.value)} />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.62rem', color: 'var(--color-text-muted)', display: 'block' }}>Frekuensi</label>
+                              <select className="form-control" style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
+                                value={editingBudgetRecurrence} onChange={(e) => setEditingBudgetRecurrence(e.target.value as any)}>
+                                <option value="none">Satu Kali</option>
+                                <option value="monthly">Bulanan</option>
+                                <option value="weekly">Mingguan</option>
                               </select>
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ height: '26px', fontSize: '0.75rem', padding: '0.1rem 0.4rem', margin: 0, flex: 1 }}
-                                value={editingBudgetAmount}
-                                onChange={(e) => setEditingBudgetAmount(e.target.value)}
-                                placeholder="Nominal baru"
-                                autoFocus
-                              />
-                            </div>
-                            {/* Edit Range and Recurrence Options */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.2rem' }}>
-                              <div>
-                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Mulai:</label>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
-                                  value={editingBudgetStartDate}
-                                  onChange={(e) => setEditingBudgetStartDate(e.target.value)}
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Sampai:</label>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
-                                  value={editingBudgetEndDate}
-                                  onChange={(e) => setEditingBudgetEndDate(e.target.value)}
-                                />
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.2rem' }}>
-                              <div>
-                                <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>Frekuensi:</label>
-                                <select
-                                  className="form-control"
-                                  style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
-                                  value={editingBudgetRecurrence}
-                                  onChange={(e) => setEditingBudgetRecurrence(e.target.value as any)}
-                                >
-                                  <option value="none">Satu Kali Saja</option>
-                                  <option value="monthly">Bulanan</option>
-                                  <option value="weekly">Mingguan</option>
-                                </select>
-                              </div>
-                              {editingBudgetRecurrence !== 'none' && (
-                                <div>
-                                  <label style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block' }}>
-                                    {editingBudgetRecurrence === 'weekly' ? 'Hari:' : 'Tanggal:'}
-                                  </label>
-                                  <select
-                                    className="form-control"
-                                    style={{ height: '24px', fontSize: '0.7rem', padding: '0.1rem 0.3rem', margin: 0 }}
-                                    value={editingBudgetRecurrenceDay}
-                                    onChange={(e) => setEditingBudgetRecurrenceDay(e.target.value)}
-                                  >
-                                    {editingBudgetRecurrence === 'weekly' ? (
-                                      <>
-                                        <option value="1">Senin</option>
-                                        <option value="2">Selasa</option>
-                                        <option value="3">Rabu</option>
-                                        <option value="4">Kamis</option>
-                                        <option value="5">Jumat</option>
-                                        <option value="6">Sabtu</option>
-                                        <option value="7">Minggu</option>
-                                      </>
-                                    ) : (
-                                      Array.from({ length: 31 }, (_, idx) => (
-                                        <option key={idx + 1} value={idx + 1}>Tanggal {idx + 1}</option>
-                                      ))
-                                    )}
-                                  </select>
-                                </div>
-                              )}
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.4rem' }}>
-                              <button
-                                type="button"
-                                className="btn btn-primary"
-                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
-                                onClick={() => handleSaveEditedBudget(b)}
-                              >
-                                💾 Simpan
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-secondary"
-                                style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem', height: '24px' }}
-                                onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); setEditingBudgetStartDate(''); setEditingBudgetEndDate(''); setEditingBudgetRecurrence('monthly'); setEditingBudgetRecurrenceDay('1'); }}
-                              >
-                                Batal
-                              </button>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
-                              onClick={() => handleViewBudgetTransactions(b)}
-                            >
-                              📋 Lihat Transaksi
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem' }}>
+                            <button type="button" className="btn btn-primary" style={{ padding: '0.15rem 0.6rem', fontSize: '0.72rem', height: '24px' }} onClick={() => handleSaveEditedBudget(b)}>💾 Simpan</button>
+                            <button type="button" className="btn btn-secondary" style={{ padding: '0.15rem 0.6rem', fontSize: '0.72rem', height: '24px' }}
+                              onClick={() => { setEditingBudgetId(null); setEditingBudgetAmount(''); setEditingBudgetCategory(''); setEditingBudgetStartDate(''); setEditingBudgetEndDate(''); setEditingBudgetRecurrence('monthly'); setEditingBudgetRecurrenceDay('1'); }}>
+                              Batal
                             </button>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>|</span>
-                            <button
-                              type="button"
-                              style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
-                              onClick={() => handleStartEditBudget(b)}
-                            >
-                              ✏️ Edit
-                            </button>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: '0.72rem' }}>|</span>
-                            <button
-                              type="button"
-                              style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
-                              onClick={() => handleDeleteBudget(b.id)}
-                            >
-                              🗑️ Hapus
-                            </button>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
-                })
-              )}
+                };
+
+                return (
+                  <>
+                    {/* ── Summary totals ── */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                      {/* Income total */}
+                      <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '8px', padding: '0.65rem 0.8rem' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total Pemasukan</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-income)' }}>{renderAmount(totalIncomeSpent)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari {renderAmount(totalIncomeBudget)}</div>
+                        <div style={{ marginTop: '0.35rem', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, totalIncomeBudget > 0 ? (totalIncomeSpent / totalIncomeBudget) * 100 : 0)}%`, height: '100%', background: 'var(--color-success)', borderRadius: '2px' }} />
+                        </div>
+                      </div>
+
+                      {/* Expense total */}
+                      <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', padding: '0.65rem 0.8rem' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total Pengeluaran</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: totalExpenseSpent > totalExpenseBudget ? 'var(--color-danger)' : 'var(--color-expense, var(--color-danger))' }}>{renderAmount(totalExpenseSpent)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari {renderAmount(totalExpenseBudget)}</div>
+                        <div style={{ marginTop: '0.35rem', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, totalExpenseBudget > 0 ? (totalExpenseSpent / totalExpenseBudget) * 100 : 0)}%`, height: '100%', background: totalExpenseSpent > totalExpenseBudget ? 'var(--color-danger)' : 'var(--color-primary)', borderRadius: '2px' }} />
+                        </div>
+                      </div>
+
+                      {/* Net */}
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '0.65rem 0.8rem' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginBottom: '0.2rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selisih Aktual</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: netActual >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{renderAmount(netActual)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>target {renderAmount(netBudget)}</div>
+                        <div style={{ marginTop: '0.35rem', fontSize: '0.65rem', color: netActual >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                          {netActual >= 0 ? '✓ Surplus' : '✗ Defisit'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Income budgets ── */}
+                    {incomeBudgets.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-income)', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 0.6rem', marginBottom: '0.25rem' }}>
+                          Pemasukan · {incomeBudgets.length} kategori
+                        </div>
+                        <div style={{ background: 'rgba(34,197,94,0.03)', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.08)', overflow: 'hidden' }}>
+                          {incomeBudgets.map((b, i) => (
+                            <div key={b.id} style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                              {renderCompactRow(b)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Expense budgets ── */}
+                    {expenseBudgets.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 0.6rem', marginBottom: '0.25rem' }}>
+                          Pengeluaran · {expenseBudgets.length} kategori
+                        </div>
+                        <div style={{ background: 'rgba(99,102,241,0.03)', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.08)', overflow: 'hidden' }}>
+                          {expenseBudgets.map((b, i) => (
+                            <div key={b.id} style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                              {renderCompactRow(b)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
