@@ -4521,8 +4521,8 @@ export default function App() {
                   Belum ada anggaran yang diatur untuk periode ini. Pasang limit di panel kiri untuk memulai pelacakan.
                 </div>
               ) : (() => {
-                const incomeBudgets  = budgets.filter(b => b.type === 'income').sort((a, b) => a.category.localeCompare(b.category, 'id'));
-                const expenseBudgets = budgets.filter(b => b.type !== 'income').sort((a, b) => a.category.localeCompare(b.category, 'id'));
+                const incomeBudgets  = budgets.filter(b => b.type === 'income').sort((a, b) => getFullCategoryName(a.category).localeCompare(getFullCategoryName(b.category), 'id'));
+                const expenseBudgets = budgets.filter(b => b.type !== 'income').sort((a, b) => getFullCategoryName(a.category).localeCompare(getFullCategoryName(b.category), 'id'));
                 const totalIncomeBudget  = incomeBudgets.reduce((s, b) => s + b.amount, 0);
                 const totalIncomeSpent   = incomeBudgets.reduce((s, b) => s + b.spent,  0);
                 const totalExpenseBudget = expenseBudgets.reduce((s, b) => s + b.amount, 0);
