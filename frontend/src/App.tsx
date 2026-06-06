@@ -4750,18 +4750,22 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* Legend */}
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.28rem', minWidth: 0 }}>
+                              {/* Bar chart legend */}
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.32rem', minWidth: 0 }}>
                                 {slices.map((s, i) => (
-                                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto auto', gap: '0.3rem', alignItems: 'center' }}>
-                                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: s.color, flexShrink: 0, display: 'block' }} />
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                      {s.val >= 1_000_000 ? `${(s.val / 1_000_000).toFixed(1)}M` : s.val >= 1_000 ? `${(s.val / 1_000).toFixed(0)}K` : s.val}
-                                    </span>
-                                    <span style={{ fontSize: '0.62rem', color: accentColor, fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap', minWidth: '28px' }}>
-                                      {(s.pct * 100).toFixed(0)}%
-                                    </span>
+                                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                    {/* Label row */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.3rem' }}>
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{s.name}</span>
+                                      <span style={{ fontSize: '0.63rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                                        {s.val >= 1_000_000 ? `${(s.val / 1_000_000).toFixed(1)}M` : s.val >= 1_000 ? `${(s.val / 1_000).toFixed(0)}K` : s.val}
+                                        <span style={{ color: accentColor, fontWeight: 600, marginLeft: '0.25rem' }}>{(s.pct * 100).toFixed(0)}%</span>
+                                      </span>
+                                    </div>
+                                    {/* Bar track */}
+                                    <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', borderRadius: '3px', background: s.color, width: `${(s.pct * 100).toFixed(1)}%`, transition: 'width 0.4s ease' }} />
+                                    </div>
                                   </div>
                                 ))}
                               </div>
