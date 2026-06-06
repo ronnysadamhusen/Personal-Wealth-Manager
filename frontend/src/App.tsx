@@ -2928,6 +2928,22 @@ export default function App() {
             const expenseBudgetsTotal = budgets.filter((b: any) => b.type !== 'income').reduce((s: number, b: any) => s + b.amount, 0);
             const monthSaldo = monthIncome - monthExpense;
 
+            // ── Bulan lalu derived values ──
+            const prevDate = new Date(currentMonthYear + '-01');
+            prevDate.setMonth(prevDate.getMonth() - 1);
+            const prevMonthYear = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+            const prevMonthTx   = transactions.filter((t: any) => t.date?.startsWith(prevMonthYear));
+            const prevIncome    = prevMonthTx.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + t.amount, 0);
+            const prevExpense   = prevMonthTx.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
+
+            const momDiff = (curr: number, prev: number) => {
+              if (prev === 0) return null;
+              const pct = ((curr - prev) / prev) * 100;
+              return { pct: Math.abs(pct), up: pct > 0 };
+            };
+            const incomeDiff  = momDiff(monthIncome, prevIncome);
+            const expenseDiff = momDiff(monthExpense, prevExpense);
+
             // ── Transaksi terbaru ──
             const recentTx = [...transactions]
               .sort((a: any, b: any) => b.date.localeCompare(a.date))
@@ -2972,13 +2988,31 @@ export default function App() {
                 <Panel>
                   <SectionTitle icon="📅" label={`Bulan Ini — ${monthLabel}`} />
                   <div style={{ display: 'flex', gap: '0.6rem', marginBottom: monthSaldo !== 0 ? '0.75rem' : 0 }}>
+                    {/* Pemasukan */}
                     <div style={{ flex: 1, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: '10px', padding: '0.65rem 0.85rem' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>Pemasukan</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-success)' }}>{renderAmount(monthIncome)}</div>
+                      {incomeDiff && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: incomeDiff.up ? 'var(--color-success)' : 'var(--color-danger)', fontWeight: 600 }}>
+                            {incomeDiff.up ? '▲' : '▼'} {incomeDiff.pct.toFixed(1)}%
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>vs bln lalu</span>
+                        </div>
+                      )}
                     </div>
+                    {/* Pengeluaran */}
                     <div style={{ flex: 1, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '10px', padding: '0.65rem 0.85rem' }}>
                       <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.2rem' }}>Pengeluaran</div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-danger)' }}>{renderAmount(monthExpense)}</div>
+                      {expenseDiff && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: expenseDiff.up ? 'var(--color-danger)' : 'var(--color-success)', fontWeight: 600 }}>
+                            {expenseDiff.up ? '▲' : '▼'} {expenseDiff.pct.toFixed(1)}%
+                          </span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>vs bln lalu</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   {monthSaldo !== 0 && (
