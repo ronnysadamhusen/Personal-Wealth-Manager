@@ -209,6 +209,14 @@ db.serialize(() => {
       // Ignored if column already exists
     });
 
+    // Dynamically add Eisenhower Matrix fields
+    db.run("ALTER TABLE categories ADD COLUMN importance TEXT CHECK(importance IN ('penting', 'tidak_penting')) DEFAULT NULL", (alterErr) => {
+      // Ignored if column already exists
+    });
+    db.run("ALTER TABLE categories ADD COLUMN urgency TEXT CHECK(urgency IN ('mendesak', 'tidak_mendesak')) DEFAULT NULL", (alterErr) => {
+      // Ignored if column already exists
+    });
+
     if (!err) {
       db.get('SELECT COUNT(*) as count FROM categories', (errCount, row) => {
         if (!errCount && row && row.count === 0) {

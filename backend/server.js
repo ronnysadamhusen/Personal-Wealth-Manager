@@ -1163,14 +1163,14 @@ app.get('/api/categories', async (req, res) => {
 
 // Add a custom category
 app.post('/api/categories', async (req, res) => {
-  const { name, parent_id = null, type = 'expense' } = req.body;
+  const { name, parent_id = null, type = 'expense', importance = null, urgency = null } = req.body;
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Category name is required' });
   }
 
   const id = generateUUID();
   try {
-    await query.run('INSERT INTO categories (id, name, parent_id, type) VALUES (?, ?, ?, ?)', [id, name.trim(), parent_id, type]);
+    await query.run('INSERT INTO categories (id, name, parent_id, type, importance, urgency) VALUES (?, ?, ?, ?, ?, ?)', [id, name.trim(), parent_id, type, importance, urgency]);
     const created = await query.get('SELECT * FROM categories WHERE id = ?', [id]);
     res.status(201).json(created);
   } catch (error) {
@@ -1183,7 +1183,7 @@ app.post('/api/categories', async (req, res) => {
 
 app.put('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, type, parent_id } = req.body;
+  const { name, type, parent_id, importance, urgency } = req.body;
   if (!name || name.trim() === '') {
     return res.status(400).json({ error: 'Category name is required' });
   }
@@ -1207,12 +1207,14 @@ app.put('/api/categories/:id', async (req, res) => {
 
     const oldName = existing.name;
     const finalType = type || existing.type;
+    const finalImportance = importance !== undefined ? (importance || null) : existing.importance;
+    const finalUrgency    = urgency    !== undefined ? (urgency    || null) : existing.urgency;
 
     // Start database transaction
     await query.exec('BEGIN TRANSACTION');
 
     // 1. Update the categories table
-    await query.run('UPDATE categories SET name = ?, type = ?, parent_id = ? WHERE id = ?', [newName, finalType, finalParentId, id]);
+    await query.run('UPDATE categories SET name = ?, type = ?, parent_id = ?, importance = ?, urgency = ? WHERE id = ?', [newName, finalType, finalParentId, finalImportance, finalUrgency, id]);
 
     // 2. Cascade changes to transactions table
     await query.run('UPDATE transactions SET category = ? WHERE category = ?', [newName, oldName]);

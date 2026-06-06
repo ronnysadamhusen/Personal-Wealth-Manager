@@ -1569,6 +1569,8 @@ export default function App() {
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [editingCategoryType, setEditingCategoryType] = useState<'expense' | 'income' | 'both'>('expense');
   const [editingCategoryParentId, setEditingCategoryParentId] = useState('');
+  const [editingCategoryImportance, setEditingCategoryImportance] = useState<string>('');
+  const [editingCategoryUrgency, setEditingCategoryUrgency] = useState<string>('');
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1598,6 +1600,23 @@ export default function App() {
     }
   };
 
+  const handleQuickUpdateCategoryMatrix = async (cat: any, importance: string | null, urgency: string | null) => {
+    try {
+      await fetch(`${API_URL}/categories/${cat.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cat.name,
+          type: cat.type,
+          parent_id: cat.parent_id || null,
+          importance: importance,
+          urgency: urgency,
+        })
+      });
+      fetchData();
+    } catch (err) { console.error(err); }
+  };
+
   const handleEditCategory = async (id: string) => {
     if (!editingCategoryName.trim()) return;
 
@@ -1608,7 +1627,9 @@ export default function App() {
         body: JSON.stringify({
           name: editingCategoryName.trim(),
           type: editingCategoryType,
-          parent_id: editingCategoryParentId || null
+          parent_id: editingCategoryParentId || null,
+          importance: editingCategoryImportance || null,
+          urgency: editingCategoryUrgency || null,
         })
       });
       if (res.ok) {
@@ -2912,6 +2933,91 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                {/* ── Eisenhower Matrix ── */}
+                {(() => {
+                  // Build category lookup: name → {importance, urgency}
+                  const catMap: Record<string, { importance: string | null; urgency: string | null; parent_id: string | null }> = {};
+                  dbCategories.forEach((c: any) => { catMap[c.name] = { importance: c.importance, urgency: c.urgency, parent_id: c.parent_id }; });
+
+                  const getEffective = (catName: string) => {
+                    const cat = catMap[catName];
+                    if (!cat) return { importance: null, urgency: null };
+                    // inherit from parent if own is null
+                    if ((!cat.importance || !cat.urgency) && cat.parent_id) {
+                      const parent = dbCategories.find((c: any) => c.id === cat.parent_id);
+                      if (parent) return { importance: cat.importance || parent.importance, urgency: cat.urgency || parent.urgency };
+                    }
+                    return { importance: cat.importance, urgency: cat.urgency };
+                  };
+
+                  const currentYear = new Date().getFullYear();
+                  const expenseTx = transactions.filter((t: any) => t.type === 'expense' && t.date?.startsWith(String(currentYear)));
+
+                  // Quadrant totals & top cats
+                  const quadrants: Record<string, { total: number; cats: Record<string, number> }> = {
+                    'penting-mendesak':      { total: 0, cats: {} },
+                    'penting-tidak_mendesak':{ total: 0, cats: {} },
+                    'tidak_penting-mendesak':{ total: 0, cats: {} },
+                    'tidak_penting-tidak_mendesak': { total: 0, cats: {} },
+                  };
+                  let classified = 0;
+
+                  expenseTx.forEach((t: any) => {
+                    const { importance, urgency } = getEffective(t.category);
+                    if (!importance || !urgency) return;
+                    const key = `${importance}-${urgency}`;
+                    if (!quadrants[key]) return;
+                    quadrants[key].total += t.amount;
+                    quadrants[key].cats[t.category] = (quadrants[key].cats[t.category] || 0) + t.amount;
+                    classified++;
+                  });
+
+                  if (classified === 0) return null; // hide if nothing classified yet
+
+                  const grandTotal = Object.values(quadrants).reduce((s, q) => s + q.total, 0);
+
+                  const QCard = ({ qKey, title, subtitle, border, bg, titleColor }: { qKey: string; title: string; subtitle: string; border: string; bg: string; titleColor: string }) => {
+                    const q = quadrants[qKey];
+                    const pct = grandTotal > 0 ? (q.total / grandTotal * 100) : 0;
+                    const topCats = Object.entries(q.cats).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                    return (
+                      <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: '8px', padding: '0.75rem 0.9rem' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: titleColor, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{title}</div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{subtitle}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: titleColor, lineHeight: 1 }}>{renderAmount(q.total)}</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{pct.toFixed(1)}% dari total pengeluaran</div>
+                        {topCats.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            {topCats.map(([cat, amt]) => (
+                              <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}>
+                                <span style={{ color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '0.4rem' }}>{cat}</span>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{renderAmount(amt)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>⊞ Eisenhower Matrix · Pengeluaran {currentYear}</span>
+                        <button type="button" onClick={() => setActiveTab('settings')} style={{ fontSize: '0.65rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          Atur kategori →
+                        </button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <QCard qKey="penting-mendesak"           title="Penting · Mendesak"           subtitle="Lakukan Sekarang — kebutuhan mendesak"         border="rgba(239,68,68,0.3)"   bg="rgba(239,68,68,0.05)"   titleColor="#f87171" />
+                        <QCard qKey="penting-tidak_mendesak"     title="Penting · Tidak Mendesak"     subtitle="Rencanakan — investasi jangka panjang"          border="rgba(99,102,241,0.3)"  bg="rgba(99,102,241,0.05)"  titleColor="#818cf8" />
+                        <QCard qKey="tidak_penting-mendesak"     title="Tidak Penting · Mendesak"     subtitle="Pertimbangkan ulang — bisa dikurangi"           border="rgba(245,158,11,0.3)"  bg="rgba(245,158,11,0.05)"  titleColor="#fbbf24" />
+                        <QCard qKey="tidak_penting-tidak_mendesak" title="Tidak Penting · Tidak Mendesak" subtitle="Eliminasi — kandidat penghematan terbesar" border="rgba(107,114,128,0.3)" bg="rgba(107,114,128,0.05)" titleColor="#9ca3af" />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* ── Main Grid: 2 columns ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -6299,37 +6405,34 @@ export default function App() {
                             <tr>
                               <td colSpan={2}>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0', flexWrap: 'wrap' }}>
-                                  <input 
-                                    type="text" 
-                                    className="form-control" 
-                                    value={editingCategoryName} 
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={editingCategoryName}
                                     onChange={(e) => setEditingCategoryName(e.target.value)}
                                     style={{ flex: 2, margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}
                                     required
                                   />
-                                  <select
-                                    className="form-control"
-                                    value={editingCategoryType}
-                                    onChange={(e) => setEditingCategoryType(e.target.value as any)}
-                                    style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}
-                                  >
+                                  <select className="form-control" value={editingCategoryType} onChange={(e) => setEditingCategoryType(e.target.value as any)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}>
                                     <option value="expense">Expense</option>
                                     <option value="income">Income</option>
                                     <option value="both">Both</option>
                                   </select>
-                                  <select
-                                    className="form-control"
-                                    value={editingCategoryParentId}
-                                    onChange={(e) => setEditingCategoryParentId(e.target.value)}
-                                    style={{ flex: 1.5, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}
-                                  >
+                                  <select className="form-control" value={editingCategoryImportance} onChange={(e) => setEditingCategoryImportance(e.target.value)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '120px' }}>
+                                    <option value="">— Kepentingan —</option>
+                                    <option value="penting">Penting</option>
+                                    <option value="tidak_penting">Tidak Penting</option>
+                                  </select>
+                                  <select className="form-control" value={editingCategoryUrgency} onChange={(e) => setEditingCategoryUrgency(e.target.value)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '120px' }}>
+                                    <option value="">— Urgensi —</option>
+                                    <option value="mendesak">Mendesak</option>
+                                    <option value="tidak_mendesak">Tidak Mendesak</option>
+                                  </select>
+                                  <select className="form-control" value={editingCategoryParentId} onChange={(e) => setEditingCategoryParentId(e.target.value)} style={{ flex: 1.5, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}>
                                     <option value="">None (Parent Category)</option>
-                                    {dbCategories
-                                      .filter(c => !c.parent_id && c.id !== group.parent.id)
-                                      .map(p => (
-                                        <option key={p.id} value={p.id}>Move under: {p.name}</option>
-                                      ))
-                                    }
+                                    {dbCategories.filter(c => !c.parent_id && c.id !== group.parent.id).map(p => (
+                                      <option key={p.id} value={p.id}>Move under: {p.name}</option>
+                                    ))}
                                   </select>
                                   <button type="button" className="btn btn-primary" onClick={() => handleEditCategory(group.parent.id)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', margin: 0 }}>Save</button>
                                   <button type="button" className="btn btn-secondary" onClick={() => setEditingCategoryId(null)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', margin: 0 }}>Cancel</button>
@@ -6339,38 +6442,32 @@ export default function App() {
                           ) : (
                             <tr>
                               <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                                📁 {group.parent.name}
-                                <span className="badge" style={{
-                                  marginLeft: '0.5rem',
-                                  fontSize: '0.65rem',
-                                  padding: '0.1rem 0.35rem',
-                                  background: group.parent.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : group.parent.type === 'both' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                  color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)'
-                                }}>
-                                  {(group.parent.type || 'expense').toUpperCase()}
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  <span>📁 {group.parent.name}</span>
+                                  <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: group.parent.type === 'income' ? 'rgba(16,185,129,0.1)' : group.parent.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                    {(group.parent.type || 'expense').toUpperCase()}
+                                  </span>
+                                  {/* Inline importance/urgency selectors */}
+                                  <select value={group.parent.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(group.parent, e.target.value || null, group.parent.urgency || null)}
+                                    style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: group.parent.importance === 'penting' ? 'rgba(99,102,241,0.15)' : group.parent.importance === 'tidak_penting' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
+                                    <option value="">— Kepentingan —</option>
+                                    <option value="penting">⭐ Penting</option>
+                                    <option value="tidak_penting">◌ Tidak Penting</option>
+                                  </select>
+                                  <select value={group.parent.urgency || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(group.parent, group.parent.importance || null, e.target.value || null)}
+                                    style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: group.parent.urgency === 'mendesak' ? 'rgba(239,68,68,0.15)' : group.parent.urgency === 'tidak_mendesak' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
+                                    <option value="">— Urgensi —</option>
+                                    <option value="mendesak">🔴 Mendesak</option>
+                                    <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
+                                  </select>
+                                </div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <button 
-                                  type="button"
-                                  className="btn" 
-                                  style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
-                                  onClick={() => {
-                                    setEditingCategoryId(group.parent.id);
-                                    setEditingCategoryName(group.parent.name);
-                                    setEditingCategoryType(group.parent.type || 'expense');
-                                    setEditingCategoryParentId(group.parent.parent_id || '');
-                                  }}
-                                  title="Rename / Change Category Type"
-                                >
-                                  ✏️
+                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
+                                  onClick={() => { setEditingCategoryId(group.parent.id); setEditingCategoryName(group.parent.name); setEditingCategoryType(group.parent.type || 'expense'); setEditingCategoryParentId(group.parent.parent_id || ''); setEditingCategoryImportance(group.parent.importance || ''); setEditingCategoryUrgency(group.parent.urgency || ''); }}
+                                  title="Rename / Change Category Type">✏️
                                 </button>
-                                <button 
-                                  type="button"
-                                  className="btn" 
-                                  style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
-                                  onClick={() => handleDeleteCategory(group.parent.id)}
-                                >
+                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }} onClick={() => handleDeleteCategory(group.parent.id)}>
                                   <Icons.Delete />
                                 </button>
                               </td>
@@ -6384,37 +6481,27 @@ export default function App() {
                                 <tr>
                                   <td colSpan={2}>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0 0.25rem 2rem', flexWrap: 'wrap' }}>
-                                      <input 
-                                        type="text" 
-                                        className="form-control" 
-                                        value={editingCategoryName} 
-                                        onChange={(e) => setEditingCategoryName(e.target.value)}
-                                        style={{ flex: 2, margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}
-                                        required
-                                      />
-                                      <select
-                                        className="form-control"
-                                        value={editingCategoryType}
-                                        onChange={(e) => setEditingCategoryType(e.target.value as any)}
-                                        style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}
-                                      >
+                                      <input type="text" className="form-control" value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} style={{ flex: 2, margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }} required />
+                                      <select className="form-control" value={editingCategoryType} onChange={(e) => setEditingCategoryType(e.target.value as any)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}>
                                         <option value="expense">Expense</option>
                                         <option value="income">Income</option>
                                         <option value="both">Both</option>
                                       </select>
-                                      <select
-                                        className="form-control"
-                                        value={editingCategoryParentId}
-                                        onChange={(e) => setEditingCategoryParentId(e.target.value)}
-                                        style={{ flex: 1.5, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}
-                                      >
+                                      <select className="form-control" value={editingCategoryImportance} onChange={(e) => setEditingCategoryImportance(e.target.value)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '120px' }}>
+                                        <option value="">— Kepentingan —</option>
+                                        <option value="penting">Penting</option>
+                                        <option value="tidak_penting">Tidak Penting</option>
+                                      </select>
+                                      <select className="form-control" value={editingCategoryUrgency} onChange={(e) => setEditingCategoryUrgency(e.target.value)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '120px' }}>
+                                        <option value="">— Urgensi —</option>
+                                        <option value="mendesak">Mendesak</option>
+                                        <option value="tidak_mendesak">Tidak Mendesak</option>
+                                      </select>
+                                      <select className="form-control" value={editingCategoryParentId} onChange={(e) => setEditingCategoryParentId(e.target.value)} style={{ flex: 1.5, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }}>
                                         <option value="">None (Parent Category)</option>
-                                        {dbCategories
-                                          .filter(c => !c.parent_id && c.id !== sub.id)
-                                          .map(p => (
-                                            <option key={p.id} value={p.id}>Move under: {p.name}</option>
-                                          ))
-                                        }
+                                        {dbCategories.filter(c => !c.parent_id && c.id !== sub.id).map(p => (
+                                          <option key={p.id} value={p.id}>Move under: {p.name}</option>
+                                        ))}
                                       </select>
                                       <button type="button" className="btn btn-primary" onClick={() => handleEditCategory(sub.id)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', margin: 0 }}>Save</button>
                                       <button type="button" className="btn btn-secondary" onClick={() => setEditingCategoryId(null)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', margin: 0 }}>Cancel</button>
@@ -6424,38 +6511,31 @@ export default function App() {
                               ) : (
                                 <tr>
                                   <td style={{ paddingLeft: '2rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                                    ↳ {sub.name}
-                                    <span className="badge" style={{
-                                      marginLeft: '0.5rem',
-                                      fontSize: '0.6rem',
-                                      padding: '0.05rem 0.25rem',
-                                      background: sub.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : sub.type === 'both' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                      color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)'
-                                    }}>
-                                      {(sub.type || 'expense').toUpperCase()}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                      <span>↳ {sub.name}</span>
+                                      <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                        {(sub.type || 'expense').toUpperCase()}
+                                      </span>
+                                      <select value={sub.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, e.target.value || null, sub.urgency || null)}
+                                        style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: sub.importance === 'penting' ? 'rgba(99,102,241,0.15)' : sub.importance === 'tidak_penting' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
+                                        <option value="">— Kepentingan —</option>
+                                        <option value="penting">⭐ Penting</option>
+                                        <option value="tidak_penting">◌ Tidak Penting</option>
+                                      </select>
+                                      <select value={sub.urgency || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, sub.importance || null, e.target.value || null)}
+                                        style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: sub.urgency === 'mendesak' ? 'rgba(239,68,68,0.15)' : sub.urgency === 'tidak_mendesak' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
+                                        <option value="">— Urgensi —</option>
+                                        <option value="mendesak">🔴 Mendesak</option>
+                                        <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
+                                      </select>
+                                    </div>
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
-                                    <button 
-                                      type="button"
-                                      className="btn" 
-                                      style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
-                                      onClick={() => {
-                                        setEditingCategoryId(sub.id);
-                                        setEditingCategoryName(sub.name);
-                                        setEditingCategoryType(sub.type || 'expense');
-                                        setEditingCategoryParentId(sub.parent_id || '');
-                                      }}
-                                      title="Rename / Change Subcategory Type"
-                                    >
-                                      ✏️
+                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
+                                      onClick={() => { setEditingCategoryId(sub.id); setEditingCategoryName(sub.name); setEditingCategoryType(sub.type || 'expense'); setEditingCategoryParentId(sub.parent_id || ''); setEditingCategoryImportance(sub.importance || ''); setEditingCategoryUrgency(sub.urgency || ''); }}
+                                      title="Rename / Change Subcategory Type">✏️
                                     </button>
-                                    <button 
-                                      type="button"
-                                      className="btn" 
-                                      style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
-                                      onClick={() => handleDeleteCategory(sub.id)}
-                                    >
+                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }} onClick={() => handleDeleteCategory(sub.id)}>
                                       <Icons.Delete />
                                     </button>
                                   </td>
