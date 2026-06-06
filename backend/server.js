@@ -674,8 +674,14 @@ app.get('/api/budgets', async (req, res) => {
     // Get all budgets for the month
     const budgets = await query.all('SELECT * FROM budgets WHERE month_year = ?', [month_year]);
     
-    // Get actual expense aggregates per category for that month
-    // Note: Transaction amounts are negative for expenses, so we SUM(-amount)
+    // Get categories to determine type (income vs expense)
+    const dbCategories = await query.all('SELECT name, type FROM categories');
+    const categoryTypeMap = {};
+    dbCategories.forEach(c => {
+      categoryTypeMap[c.name] = c.type;
+    });
+
+    // Get actual expense aggregates per category for that month (amount < 0)
     const sqlExpenses = `
       SELECT category, SUM(-amount) as spent
       FROM transactions
@@ -684,15 +690,34 @@ app.get('/api/budgets', async (req, res) => {
     `;
     const expenses = await query.all(sqlExpenses, [`${month_year}-%`]);
     
+    // Get actual income aggregates per category for that month (amount > 0)
+    const sqlIncome = `
+      SELECT category, SUM(amount) as received
+      FROM transactions
+      WHERE date LIKE ? AND amount > 0
+      GROUP BY category
+    `;
+    const income = await query.all(sqlIncome, [`${month_year}-%`]);
+
     const expenseMap = {};
     expenses.forEach(e => {
       expenseMap[e.category] = e.spent;
     });
 
-    const budgetSummary = budgets.map(b => ({
-      ...b,
-      spent: expenseMap[b.category] || 0
-    }));
+    const incomeMap = {};
+    income.forEach(i => {
+      incomeMap[i.category] = i.received;
+    });
+
+    const budgetSummary = budgets.map(b => {
+      const catType = categoryTypeMap[b.category] || 'expense';
+      const isIncome = catType === 'income';
+      return {
+        ...b,
+        type: catType, // attach type for frontend
+        spent: isIncome ? (incomeMap[b.category] || 0) : (expenseMap[b.category] || 0)
+      };
+    });
 
     res.json(budgetSummary);
   } catch (error) {
@@ -700,26 +725,50 @@ app.get('/api/budgets', async (req, res) => {
   }
 });
 
-// Create/Update a budget
+// Create/Update a budget (supports single month or 12 months duplicate)
 app.post('/api/budgets', async (req, res) => {
-  const { category, amount, month_year } = req.body;
+  const { category, amount, month_year, duration } = req.body;
   if (!category || amount === undefined || !month_year) {
     return res.status(400).json({ error: 'Required: category, amount, month_year' });
   }
 
-  const id = generateUUID();
   try {
-    // UPSERT style for SQLite
-    await query.run(
-      `INSERT INTO budgets (id, category, amount, month_year)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(category, month_year)
-       DO UPDATE SET amount = excluded.amount`,
-      [id, category, amount, month_year]
-    );
+    const monthsToProcess = [];
+    
+    if (duration === 'yearly') {
+      const [yearStr, monthStr] = month_year.split('-');
+      let year = parseInt(yearStr);
+      let month = parseInt(monthStr) - 1; // 0-indexed month
+      
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(year, month + i, 1);
+        const yVal = d.getFullYear();
+        const mVal = String(d.getMonth() + 1).padStart(2, '0');
+        monthsToProcess.push(`${yVal}-${mVal}`);
+      }
+    } else {
+      monthsToProcess.push(month_year);
+    }
+
+    await query.exec('BEGIN TRANSACTION');
+    
+    for (const mStr of monthsToProcess) {
+      const id = generateUUID();
+      await query.run(
+        `INSERT INTO budgets (id, category, amount, month_year)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(category, month_year)
+         DO UPDATE SET amount = excluded.amount`,
+        [id, category, amount, mStr]
+      );
+    }
+
+    await query.exec('COMMIT');
+
     const saved = await query.get('SELECT * FROM budgets WHERE category = ? AND month_year = ?', [category, month_year]);
     res.json(saved);
   } catch (error) {
+    await query.exec('ROLLBACK');
     res.status(500).json({ error: error.message });
   }
 });

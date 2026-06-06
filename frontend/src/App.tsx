@@ -360,6 +360,8 @@ export default function App() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   }, []);
   const [selectedBudgetMonth, setSelectedBudgetMonth] = useState(currentMonthYear);
+  const [budgetType, setBudgetType] = useState<'expense' | 'income'>('expense');
+  const [budgetDuration, setBudgetDuration] = useState<'single' | 'yearly'>('single');
 
   // Transaction Ledger Filters
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -1051,12 +1053,12 @@ export default function App() {
     return result;
   }, [groupedCategories, txType]);
 
-  // Filter categories dynamically for budget setup (expenses only)
+  // Filter categories dynamically for budget setup (based on budgetType)
   const filteredCategoriesForBudget = useMemo(() => {
     const result: typeof groupedCategories = [];
     groupedCategories.forEach(group => {
-      const parentMatch = group.parent.type === 'both' || group.parent.type === 'expense';
-      const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === 'expense');
+      const parentMatch = group.parent.type === 'both' || group.parent.type === budgetType;
+      const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === budgetType);
       
       if (parentMatch || matchedSubs.length > 0) {
         result.push({
@@ -1066,7 +1068,7 @@ export default function App() {
       }
     });
     return result;
-  }, [groupedCategories]);
+  }, [groupedCategories, budgetType]);
 
 
 
@@ -1365,6 +1367,18 @@ export default function App() {
   const [budgetCategory, setBudgetCategory] = useState(CATEGORIES[0]);
   const [budgetAmount, setBudgetAmount] = useState('');
 
+  // Automatically update selected category when filtered categories list changes
+  useEffect(() => {
+    if (filteredCategoriesForBudget.length > 0) {
+      const firstGroup = filteredCategoriesForBudget[0];
+      if (firstGroup.subs.length > 0) {
+        setBudgetCategory(firstGroup.subs[0].name);
+      } else {
+        setBudgetCategory(firstGroup.parent.name);
+      }
+    }
+  }, [filteredCategoriesForBudget]);
+
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!budgetAmount) return;
@@ -1376,7 +1390,8 @@ export default function App() {
         body: JSON.stringify({
           category: budgetCategory,
           amount: parseFloat(budgetAmount),
-          month_year: selectedBudgetMonth
+          month_year: selectedBudgetMonth,
+          duration: budgetDuration
         })
       });
       if (res.ok) {
@@ -2680,7 +2695,7 @@ export default function App() {
         {activeTab === 'dashboard' && (() => {
             /* ── derived values ── */
             const totalInvestmentValue = investments.reduce((s: number, inv: any) =>
-              s + (inv.current_units > 0 ? inv.current_units * inv.current_price : inv.total_invested || 0), 0);
+              s + (inv.current_units > 0 ? inv.current_units * (inv.current_price_per_unit || 0) : inv.total_invested || 0), 0);
             const totalInvestmentCost  = investments.reduce((s: number, inv: any) => s + (inv.total_invested || 0), 0);
             const investmentPnL        = totalInvestmentValue - totalInvestmentCost;
             const totalGoalTarget      = goals.filter((g: any) => g.status === 'active').reduce((s: number, g: any) => s + g.target_amount, 0);
@@ -2800,20 +2815,20 @@ export default function App() {
                         </div>
                       ) : (
                         <>
-                          {investments.map((inv: any) => {
-                            const mktVal = inv.current_units > 0 ? inv.current_units * inv.current_price : inv.total_invested || 0;
-                            const pnl = mktVal - (inv.total_invested || 0);
-                            const pnlPct = inv.total_invested > 0 ? (pnl / inv.total_invested) * 100 : 0;
-                            return (
-                              <Row
-                                key={inv.id}
-                                label={inv.name}
-                                value={renderAmount(mktVal)}
-                                sub={pnl !== 0 ? `${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnl >= 0 ? '+' : ''}${renderAmount(pnl)})` : undefined}
-                                color={pnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-                              />
-                            );
-                          })}
+                           {investments.map((inv: any) => {
+                             const mktVal = inv.current_units > 0 ? inv.current_units * (inv.current_price_per_unit || 0) : inv.total_invested || 0;
+                             const pnl = mktVal - (inv.total_invested || 0);
+                             const pnlPct = inv.total_invested > 0 ? (pnl / inv.total_invested) * 100 : 0;
+                             return (
+                               <Row
+                                 key={inv.id}
+                                 label={inv.name}
+                                 value={renderAmount(mktVal)}
+                                 sub={pnl !== 0 ? `${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(1)}% (${pnl >= 0 ? '+' : ''}${formatIDR(pnl)})` : undefined}
+                                 color={pnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                               />
+                             );
+                           })}
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.08)', alignItems: 'center' }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Total Portfolio</span>
                             <div style={{ textAlign: 'right' }}>
@@ -3980,25 +3995,72 @@ export default function App() {
             <div>
               {/* Left: Setup Budget Form */}
               <div className="glass-panel card-content" style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ marginBottom: '0.5rem' }}>Setup Spending Budget</h3>
+                <h3 style={{ marginBottom: '0.5rem' }}>Atur Anggaran / Budget</h3>
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                  Set monthly limits on specific categories. Budgets help control card utilization and flag excessive expenses.
+                  Tetapkan batas pengeluaran bulanan atau target pemasukan. Anggaran dapat dibuat untuk satu bulan saja atau diduplikasi langsung selama satu tahun penuh.
                 </p>
 
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Budget Month:</span>
-                  <input 
-                    type="month" 
-                    className="form-control"
-                    style={{ width: 'auto', padding: '0.4rem 0.8rem', margin: 0 }}
-                    value={selectedBudgetMonth}
-                    onChange={(e) => setSelectedBudgetMonth(e.target.value)}
-                  />
+                {/* Selectors for Month, Type, and Duration */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Bulan Awal:</span>
+                    <input 
+                      type="month" 
+                      className="form-control"
+                      style={{ width: 'auto', padding: '0.4rem 0.8rem', margin: 0 }}
+                      value={selectedBudgetMonth}
+                      onChange={(e) => setSelectedBudgetMonth(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Tipe Anggaran:</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        type="button"
+                        className={`btn ${budgetType === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => setBudgetType('expense')}
+                      >
+                        💸 Pengeluaran (Expense)
+                      </button>
+                      <button 
+                        type="button"
+                        className={`btn ${budgetType === 'income' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => setBudgetType('income')}
+                      >
+                        💰 Pemasukan (Income)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', width: '100px' }}>Durasi:</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        type="button"
+                        className={`btn ${budgetDuration === 'single' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => setBudgetDuration('single')}
+                      >
+                        Hanya Bulan Ini
+                      </button>
+                      <button 
+                        type="button"
+                        className={`btn ${budgetDuration === 'yearly' ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => setBudgetDuration('yearly')}
+                      >
+                        Ulangi 1 Tahun (12 Bulan)
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <form onSubmit={handleAddBudget}>
                   <div className="form-group">
-                    <label>Select Category</label>
+                    <label>Pilih Kategori</label>
                     <select 
                       className="form-control"
                       value={budgetCategory}
@@ -4016,19 +4078,19 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>Monthly Budget Amount (IDR)</label>
+                    <label>Nominal Anggaran {budgetType === 'income' ? 'Pemasukan' : 'Pengeluaran'} Bulanan (IDR)</label>
                     <input 
                       type="number" 
                       className="form-control"
-                      placeholder="e.g. 2000000"
+                      placeholder="Contoh: 2000000"
                       value={budgetAmount}
                       onChange={(e) => setBudgetAmount(e.target.value)}
                       required
                     />
                   </div>
 
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                    Set Budget limit
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', height: '40px' }}>
+                    Pasang Anggaran
                   </button>
                 </form>
               </div>
@@ -4037,47 +4099,80 @@ export default function App() {
 
             {/* Right: Budgets Progress Bars */}
             <div className="glass-panel card-content">
-              <h3 style={{ marginBottom: '1.5rem' }}>Monthly Budget Progress ({selectedBudgetMonth})</h3>
+              <h3 style={{ marginBottom: '1.5rem' }}>Progress Anggaran Bulan ({selectedBudgetMonth})</h3>
               
               {budgets.length === 0 ? (
                 <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                  No budgets set for this month. Set limits in the left panel to begin tracking.
+                  Belum ada anggaran yang diatur untuk bulan ini. Pasang limit di panel kiri untuk memulai pelacakan.
                 </div>
               ) : (
                 budgets.map(b => {
+                  const isIncome = b.type === 'income';
                   const percentage = Math.min(100, b.amount > 0 ? (b.spent / b.amount) * 100 : 0);
-                  const isOver = b.spent > b.amount;
-                  const isNear = !isOver && percentage >= 80;
                   
-                  let fillClass = 'success';
-                  if (isOver) fillClass = 'danger';
-                  else if (isNear) fillClass = 'warning';
+                  let fillClass = 'success'; // default green
+                  let isOver = false;
+                  let isNear = false;
+                  
+                  if (!isIncome) {
+                    isOver = b.spent > b.amount;
+                    isNear = !isOver && percentage >= 80;
+                    
+                    if (isOver) fillClass = 'danger';
+                    else if (isNear) fillClass = 'warning';
+                    else fillClass = 'primary'; // indigo-ish for safe expense budget
+                  } else {
+                    // For income: green is good! We just track progress toward target
+                    fillClass = 'success';
+                  }
 
                   return (
-                    <div key={b.id} className="budget-item">
-                      <div className="budget-header">
+                    <div key={b.id} className="budget-item" style={{ marginBottom: '1.25rem' }}>
+                      <div className="budget-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                         <div>
                           <strong>{getFullCategoryName(b.category)}</strong>
-                          {isOver && <span className="text-danger" style={{ fontSize: '0.75rem', marginLeft: '0.5rem', fontWeight: 600 }}>(OVER BUDGET!)</span>}
+                          <span style={{ 
+                            fontSize: '0.68rem', 
+                            padding: '0.15rem 0.4rem', 
+                            borderRadius: '4px', 
+                            marginLeft: '0.5rem',
+                            fontWeight: 600,
+                            background: isIncome ? 'rgba(34,197,94,0.1)' : 'rgba(99,102,241,0.1)',
+                            color: isIncome ? 'var(--color-income)' : 'var(--color-primary)'
+                          }}>
+                            {isIncome ? 'Pemasukan' : 'Pengeluaran'}
+                          </span>
+                          {!isIncome && isOver && <span className="text-danger" style={{ fontSize: '0.75rem', marginLeft: '0.5rem', fontWeight: 600 }}>(MELEBIHI LIMIT!)</span>}
                         </div>
-                        <div style={{ color: 'var(--color-text-muted)' }}>
-                          <span className={isOver ? 'text-danger' : isNear ? 'text-warning' : 'text-success'}>
+                        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                          <span style={{ fontWeight: 600 }} className={!isIncome && isOver ? 'text-danger' : !isIncome && isNear ? 'text-warning' : 'text-success'}>
                             {renderAmount(b.spent)}
                           </span>
                           <span> / {renderAmount(b.amount)}</span>
                         </div>
                       </div>
 
-                      <div className="progress-track">
+                      <div className="progress-track" style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                         <div 
                           className={`progress-fill ${fillClass}`}
-                          style={{ width: `${percentage}%` }}
+                          style={{ 
+                            width: `${percentage}%`,
+                            height: '100%',
+                            background: fillClass === 'danger' ? 'var(--color-danger)' : fillClass === 'warning' ? 'var(--color-warning)' : fillClass === 'primary' ? 'var(--color-primary)' : 'var(--color-success)',
+                            borderRadius: '4px',
+                            transition: 'width 0.4s ease'
+                          }}
                         />
                       </div>
                       
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
-                        <span>Utilization: {percentage.toFixed(0)}%</span>
-                        <span>Remaining: {renderAmount(Math.max(0, b.amount - b.spent))}</span>
+                        <span>{isIncome ? 'Pencapaian Target' : 'Utilisasi'}: {percentage.toFixed(0)}%</span>
+                        <span>
+                          {isIncome 
+                            ? (b.spent >= b.amount ? 'Target Tercapai!' : `Kekurangan: ${renderAmount(b.amount - b.spent)}`)
+                            : `Sisa: ${renderAmount(Math.max(0, b.amount - b.spent))}`
+                          }
+                        </span>
                       </div>
                     </div>
                   );
