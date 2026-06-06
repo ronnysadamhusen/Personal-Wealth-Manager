@@ -3469,7 +3469,7 @@ export default function App() {
                     </div>
 
                     {a.type === 'credit_card' && (
-                      <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <div className="cc-details-row" style={{ display: 'flex', gap: '2rem', marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.85rem' }}>
                         <div>
                           <span style={{ color: 'var(--color-text-muted)' }}>Billing Date:</span> <strong>Day {a.billing_cycle_date}</strong>
                         </div>

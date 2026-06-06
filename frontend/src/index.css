@@ -1136,4 +1136,33 @@ table.data-table input.grid-input:focus {
     background: rgba(17, 24, 39, 0.6);
     border-radius: 14px;
   }
+
+  /* ── Collapse inline multi-column grids on mobile ──────────── */
+  /* React renders camelCase gridTemplateColumns as the kebab-case
+     HTML style attribute, so these attribute selectors work */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr 1fr"],
+  [style*="grid-template-columns: repeat(3, 1fr)"],
+  [style*="grid-template-columns: repeat(2, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Transaction table: hide less important columns ─────────── */
+  table.data-table th:nth-child(3),
+  table.data-table td:nth-child(3),
+  table.data-table th:nth-child(5),
+  table.data-table td:nth-child(5) {
+    display: none;
+  }
+
+  /* ── Credit card detail row: allow wrapping ─────────────────── */
+  .cc-details-row {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .cc-details-row > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
