@@ -4363,14 +4363,12 @@ export default function App() {
             ------------------------------------------------------------- */}
         {activeTab === 'budgets' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>Pelacakan Anggaran / Budgeting</h2>
-              <button 
-                type="button" 
-                className="btn btn-primary" 
-                style={{ height: '40px', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+            <div className="page-header-row">
+              <h2>Pelacakan Anggaran / Budgeting</h2>
+              <button
+                type="button"
+                className="btn btn-primary"
                 onClick={() => {
-                  // Initialize start date convenience
                   if (selectedBudgetMonth) {
                     setBudgetStartDate(`${selectedBudgetMonth}-01`);
                   }
@@ -5005,27 +5003,24 @@ export default function App() {
         {activeTab === 'liabilities' && (
           <div>
             {/* Sub-Tab Navigation Header */}
-            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '2rem', paddingBottom: '0.5rem' }}>
-              <button 
-                className={`tab-btn ${liabilitiesSubTab === 'overview' ? 'active' : ''}`}
+            <div className="sub-tab-bar">
+              <button
+                className={`sub-tab-btn${liabilitiesSubTab === 'overview' ? ' active' : ''}`}
                 onClick={() => setLiabilitiesSubTab('overview')}
-                style={{ background: 'transparent', border: 'none', color: liabilitiesSubTab === 'overview' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: liabilitiesSubTab === 'overview' ? '2px solid var(--color-primary)' : 'none', outline: 'none' }}
               >
-                📊 Ringkasan (Overview)
+                📊 Overview
               </button>
-              <button 
-                className={`tab-btn ${liabilitiesSubTab === 'installments' ? 'active' : ''}`}
+              <button
+                className={`sub-tab-btn${liabilitiesSubTab === 'installments' ? ' active' : ''}`}
                 onClick={() => setLiabilitiesSubTab('installments')}
-                style={{ background: 'transparent', border: 'none', color: liabilitiesSubTab === 'installments' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: liabilitiesSubTab === 'installments' ? '2px solid var(--color-primary)' : 'none', outline: 'none' }}
               >
-                💳 Cicilan Kartu Kredit (CC Installments)
+                💳 CC Cicilan
               </button>
-              <button 
-                className={`tab-btn ${liabilitiesSubTab === 'loans' ? 'active' : ''}`}
+              <button
+                className={`sub-tab-btn${liabilitiesSubTab === 'loans' ? ' active' : ''}`}
                 onClick={() => setLiabilitiesSubTab('loans')}
-                style={{ background: 'transparent', border: 'none', color: liabilitiesSubTab === 'loans' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: liabilitiesSubTab === 'loans' ? '2px solid var(--color-primary)' : 'none', outline: 'none' }}
               >
-                🤝 Pinjaman & Piutang (Debts & Receivables)
+                🤝 Hutang & Piutang
               </button>
             </div>
 
@@ -5690,7 +5685,7 @@ export default function App() {
             </div>
 
             {/* Layout Grid: Daftar Rencana (Kiri) & Form Rencana Baru (Kanan) */}
-            <div className="grid-cols-2" style={{ gridTemplateColumns: '1.7fr 1.3fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="grid-cols-2" style={{ gap: '1.25rem', alignItems: 'start' }}>
               {/* Daftar Target Rencana Dana */}
               <div className="glass-panel card-content">
                 <h3 style={{ marginBottom: '1.5rem' }}>Daftar Rencana Dana</h3>
@@ -5978,8 +5973,8 @@ export default function App() {
 
           return (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
+              <div className="page-header-row" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h2 style={{ margin: 0 }}>📈 Investments Tracker</h2>
                   <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.25rem', marginBottom: 0 }}>
                     Pantau aset investasi: emas, saham, reksa dana, dan lainnya. Update harga kapan saja secara manual.
@@ -6388,21 +6383,19 @@ export default function App() {
 
             {/* AI Health Advisor Report Renders */}
             <div className="glass-panel card-content" style={{ minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
-                <div>
+              <div className="page-header-row" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span>🛡️</span> AI Financial Health Advisor
                   </h3>
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginTop: '0.25rem', margin: 0 }}>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginTop: '0.25rem', marginBottom: 0 }}>
                     Receive a full financial health diagnostic score and tactical action recommendations.
                   </p>
                 </div>
-
                 <button
                   onClick={handleGenerateAiAnalysis}
                   className="btn btn-primary"
                   disabled={aiLoading}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                   {aiLoading ? 'Analyzing...' : 'Generate New Report'}
                 </button>
@@ -6466,7 +6459,7 @@ export default function App() {
               </p>
             </div>
 
-            <div className="grid-cols-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', gap: '2rem', alignItems: 'start' }}>
+            <div className="grid-cols-2" style={{ gap: '1.25rem', alignItems: 'start' }}>
               
               {/* Left Column: Manage Categories */}
               <div className="glass-panel card-content">
@@ -6476,14 +6469,14 @@ export default function App() {
                 </p>
 
                 <form onSubmit={handleAddCategory} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <select
                       className="form-control"
                       value={newCatParentId}
                       onChange={(e) => setNewCatParentId(e.target.value)}
-                      style={{ flex: 1.2, margin: 0 }}
+                      style={{ flex: '1 1 160px', margin: 0 }}
                     >
-                      <option value="">None (Create Parent Category)</option>
+                      <option value="">None (Parent Category)</option>
                       {dbCategories.filter(c => !c.parent_id).map(p => (
                         <option key={p.id} value={p.id}>Under: {p.name}</option>
                       ))}
@@ -6492,20 +6485,20 @@ export default function App() {
                       className="form-control"
                       value={newCatType}
                       onChange={(e) => setNewCatType(e.target.value as any)}
-                      style={{ flex: 0.8, margin: 0 }}
+                      style={{ flex: '1 1 100px', margin: 0 }}
                     >
                       <option value="expense">Expense</option>
                       <option value="income">Income</option>
                       <option value="both">Both</option>
                     </select>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="Category Name" 
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Category Name"
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       required
-                      style={{ flex: 1.5, margin: 0 }}
+                      style={{ flex: '2 1 160px', margin: 0 }}
                     />
                   </div>
                   <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
