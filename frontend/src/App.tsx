@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import Tesseract from 'tesseract.js';
 
 // API Base URL
 const API_URL = '/api';
@@ -224,6 +223,7 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 // Defined outside App so its identity is stable across re-renders,
 // preserving the tapped state when App re-renders.
 const PrivacySpan = React.memo(({ text, privacyMode }: { text: string; privacyMode: 'blur' | 'hover' | 'visible' }) => {
+  const style: React.CSSProperties = { whiteSpace: 'nowrap' };
   const [tapped, setTapped] = useState(false);
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -232,10 +232,11 @@ const PrivacySpan = React.memo(({ text, privacyMode }: { text: string; privacyMo
   };
 
   if (privacyMode !== 'hover') {
-    return <span className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
+    return <span style={style} className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
   }
   return (
     <span
+      style={style}
       className={`privacy-hover${tapped ? ' privacy-revealed' : ''}`}
       onTouchEnd={handleTouchEnd}
       onClick={() => setTapped(t => !t)}
@@ -1738,6 +1739,7 @@ export default function App() {
   const [savePasswordCheckbox, setSavePasswordCheckbox] = useState(false);
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [importLogs, setImportLogs] = useState<any[]>([]);
+  const [showAllLogs, setShowAllLogs] = useState(false);
   
   // Password Locker State
   const [lockerBank, setLockerBank] = useState('BCA');
@@ -1812,7 +1814,10 @@ export default function App() {
   const [ocrProgress, setOcrProgress] = useState<string>('');
   const [ocrProgressPct, setOcrProgressPct] = useState<number>(0);
   const [ocrRawText, setOcrRawText] = useState<string>('');
-  
+  const [ocrParseMethod, setOcrParseMethod] = useState<'rule-based' | 'llm' | ''>('');
+  const [ocrDetectedBank, setOcrDetectedBank] = useState<string>('');
+  const [ocrReferenceNumber, setOcrReferenceNumber] = useState<string>('');
+
   // OCR Form States (for edit/verification before saving)
   const [ocrFormAccId, setOcrFormAccId] = useState<string>('');
   const [ocrFormDate, setOcrFormDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -1820,132 +1825,47 @@ export default function App() {
   const [ocrFormAmount, setOcrFormAmount] = useState<string>('');
   const [ocrFormCategory, setOcrFormCategory] = useState<string>('Others');
 
-  // OCR Text Extraction Parser Helper
-  const parseReceiptText = (text: string) => {
-    const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-    
-    // Heuristic 1: Store/Merchant Name
-    let merchant = 'Unknown Merchant';
-    if (lines.length > 0) {
-      const candidate = lines[0].replace(/[^a-zA-Z0-9\s&.-]/g, '').trim();
-      if (candidate.length > 2) {
-        merchant = candidate;
-      } else if (lines.length > 1) {
-        const candidate2 = lines[1].replace(/[^a-zA-Z0-9\s&.-]/g, '').trim();
-        if (candidate2.length > 2) merchant = candidate2;
-      }
-    }
-    
-    // Heuristic 2: Total Amount
-    let amount = 0;
-    const allNumbers: number[] = [];
-    
-    lines.forEach(line => {
-      if (/total|grand|bayar|netto|amount|rp|idr|subtotal/i.test(line)) {
-        const match = line.match(/([\d.,\s]+)/);
-        if (match) {
-          const cleaned = match[0].replace(/[^\d]/g, '');
-          const val = parseInt(cleaned, 10);
-          if (val > 100 && val < 100000000) {
-            allNumbers.push(val);
-          }
-        }
-      }
-    });
-
-    if (allNumbers.length === 0) {
-      lines.forEach(line => {
-        const matches = line.match(/\b\d{1,3}(?:[.,]\d{3})+\b/g) || line.match(/\b\d{4,9}\b/g);
-        if (matches) {
-          matches.forEach(m => {
-            const cleaned = m.replace(/[^\d]/g, '');
-            const val = parseInt(cleaned, 10);
-            if (val > 100 && val < 100000000) {
-              allNumbers.push(val);
-            }
-          });
-        }
-      });
-    }
-
-    if (allNumbers.length > 0) {
-      allNumbers.sort((a, b) => b - a);
-      amount = allNumbers[0];
-    }
-    
-    // Heuristic 3: Transaction Date
-    let dateStr = new Date().toISOString().split('T')[0];
-    const dateRegex = /\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\b/;
-    const dateRegex2 = /\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b/;
-    
-    for (const line of lines) {
-      let m = line.match(dateRegex);
-      if (m) {
-        let day = m[1].padStart(2, '0');
-        let month = m[2].padStart(2, '0');
-        let year = m[3];
-        if (parseInt(month) <= 12 && parseInt(day) <= 31) {
-          dateStr = `${year}-${month}-${day}`;
-          break;
-        }
-      }
-      m = line.match(dateRegex2);
-      if (m) {
-        dateStr = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-        break;
-      }
-    }
-
-    // Heuristic 4: Category mapping
-    let category = 'Others';
-    const textLower = text.toLowerCase();
-    if (textLower.includes('kopi') || textLower.includes('coffee') || textLower.includes('resto') || textLower.includes('cafe') || textLower.includes('food') || textLower.includes('makan') || textLower.includes('bakery') || textLower.includes('starbucks')) {
-      category = 'Food & Dining';
-    } else if (textLower.includes('baju') || textLower.includes('kaos') || textLower.includes('cell') || textLower.includes('mall') || textLower.includes('fashion') || textLower.includes('indomaret') || textLower.includes('alfamart') || textLower.includes('supermarket')) {
-      category = 'Shopping & Groceries';
-    } else if (textLower.includes('bensin') || textLower.includes('pertamina') || textLower.includes('grab') || textLower.includes('gojek') || textLower.includes('taxi') || textLower.includes('travel') || textLower.includes('tiket')) {
-      category = 'Transportation & Travel';
-    } else if (textLower.includes('apotek') || textLower.includes('obat') || textLower.includes('farmasi') || textLower.includes('doctor') || textLower.includes('clinic') || textLower.includes('sehat')) {
-      category = 'Medical & Health';
-    } else if (textLower.includes('bioskop') || textLower.includes('cinema') || textLower.includes('game') || textLower.includes('movie')) {
-      category = 'Entertainment';
-    }
-
-    return { merchant, amount: amount > 0 ? String(amount) : '', date: dateStr, category };
-  };
-
   const handleOcrScan = async (file: File) => {
     setOcrImageFile(file);
     setOcrPreviewUrl(URL.createObjectURL(file));
-    setOcrProgress('Initializing OCR Engine...');
-    setOcrProgressPct(10);
+    setOcrProgress('Uploading and scanning receipt...');
+    setOcrProgressPct(20);
     setOcrRawText('');
+    setOcrParseMethod('');
+    setOcrDetectedBank('');
+    setOcrReferenceNumber('');
 
     try {
-      const result = await Tesseract.recognize(
-        file,
-        'eng', // load English language by default for fast in-browser scanning
-        {
-          logger: (m: any) => {
-            if (m.status === 'recognizing text') {
-              setOcrProgress('Scanning receipt screenshot...');
-              setOcrProgressPct(Math.round(20 + m.progress * 70));
-            }
-          }
-        }
-      );
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const rawText = result.data.text;
-      setOcrRawText(rawText);
+      setOcrProgress('Analyzing receipt...');
+      setOcrProgressPct(50);
+
+      const res = await fetch(`${API_URL}/receipt/parse`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Parsing failed');
+      }
+
+      const data = await res.json();
+
       setOcrProgressPct(100);
-      setOcrProgress('Scan completed successfully!');
+      setOcrProgress(data.method === 'llm' ? 'Analyzed with AI' : 'Analyzed with smart parser');
+      setOcrParseMethod(data.method || 'rule-based');
+      setOcrDetectedBank(data.bank || '');
+      setOcrReferenceNumber(data.reference_number || '');
+      setOcrRawText(data.raw_text || '');
 
-      const parsed = parseReceiptText(rawText);
-      setOcrFormMerchant(parsed.merchant);
-      setOcrFormAmount(parsed.amount);
-      setOcrFormDate(parsed.date);
-      
-      const bestCat = dbCategories.find(c => c.name.toLowerCase() === parsed.category.toLowerCase())?.name || parsed.category;
+      setOcrFormMerchant(data.merchant || '');
+      setOcrFormAmount(data.amount ? String(data.amount) : '');
+      setOcrFormDate(data.date || new Date().toISOString().split('T')[0]);
+
+      const bestCat = dbCategories.find(c => c.name.toLowerCase() === (data.category || '').toLowerCase())?.name || data.category || 'Others';
       setOcrFormCategory(bestCat);
 
       if (accounts.length > 0 && !ocrFormAccId) {
@@ -1954,8 +1874,9 @@ export default function App() {
 
     } catch (err: any) {
       console.error(err);
-      setErrorMsg('Receipt OCR scan failed: ' + err.message);
+      setErrorMsg('Receipt scan failed: ' + err.message);
       setOcrProgress('Error occurred during scanning.');
+      setOcrProgressPct(0);
     }
   };
 
@@ -1970,9 +1891,10 @@ export default function App() {
         body: JSON.stringify({
           account_id: ocrFormAccId,
           date: ocrFormDate,
-          description: `Receipt: ${ocrFormMerchant}`,
+          description: ocrFormMerchant,
           amount: -parseFloat(ocrFormAmount),
-          category: ocrFormCategory
+          category: ocrFormCategory,
+          note: ocrReferenceNumber ? `Ref: ${ocrReferenceNumber}` : ''
         })
       });
 
@@ -1984,6 +1906,9 @@ export default function App() {
         setOcrFormAmount('');
         setOcrProgress('');
         setOcrProgressPct(0);
+        setOcrParseMethod('');
+        setOcrDetectedBank('');
+        setOcrReferenceNumber('');
         navigateTo('dashboard');
         fetchData();
       } else {
@@ -2482,10 +2407,11 @@ export default function App() {
         {activeTab === 'transactions' && (
           <div>
             {/* Sub-tab header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ display: 'flex', gap: '0', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '4px', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="tx-subtab-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="tx-subtab-bar" style={{ display: 'flex', gap: '0', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '4px', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <button
                   onClick={() => switchTxSubTab('ledger')}
+                  className="tx-subtab-btn"
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'ledger' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -2497,6 +2423,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => switchTxSubTab('import')}
+                  className="tx-subtab-btn"
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'import' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -2508,6 +2435,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => switchTxSubTab('ocr')}
+                  className="tx-subtab-btn"
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
                     background: transactionSubTab === 'ocr' ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -3479,7 +3407,7 @@ export default function App() {
               ) : (
                 accounts.map(a => (
                   <div key={a.id} className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div className="account-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                       <div>
                         <h4 style={{ fontSize: '1.1rem', fontWeight: '700' }}>{a.name}</h4>
                         <span className="badge" style={{ background: a.type === 'bank' ? 'rgba(16, 185, 129, 0.1)' : a.type === 'cash' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: a.type === 'bank' ? 'var(--color-success)' : a.type === 'cash' ? 'var(--color-warning)' : 'var(--color-primary)', marginTop: '0.4rem' }}>
@@ -3487,7 +3415,7 @@ export default function App() {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div className="account-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <button
                           type="button"
                           className="btn btn-primary"
@@ -3495,11 +3423,11 @@ export default function App() {
                           onClick={() => handleStartReconcile(a)}
                           title="Adjust Balance / Reconcile Account"
                         >
-                          ⚖️ Reconcile
+                          ⚖️ <span className="btn-reconcile-label">Reconcile</span>
                         </button>
-                        <button 
+                        <button
                           type="button"
-                          className="btn btn-secondary" 
+                          className="btn btn-secondary"
                           style={{ padding: '0.4rem', borderRadius: '8px', color: 'var(--color-danger)' }}
                           onClick={() => handleDeleteAccount(a.id)}
                           title="Delete Account"
@@ -3512,7 +3440,7 @@ export default function App() {
                     <div className="summary-widget">
                       <div className="widget-item">
                         <div className="card-desc">Current Balance</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash') ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        <div className="account-balance-main" style={{ fontSize: '1rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash') ? 'var(--color-success)' : 'var(--color-danger)' }}>
                           {renderAmount(a.current_balance)}
                         </div>
                       </div>
@@ -3520,14 +3448,14 @@ export default function App() {
                       {(a.type === 'bank' || a.type === 'cash') ? (
                         <div className="widget-item">
                           <div className="card-desc">Initial Balance</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                          <div className="account-balance-secondary" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
                             {renderAmount(a.balance)}
                           </div>
                         </div>
                       ) : (
                         <div className="widget-item">
                           <div className="card-desc">Available Credit Limit</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                          <div className="account-balance-secondary" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
                             {renderAmount(Math.floor(((a.credit_limit || 0) + a.current_balance - (a.installment_debt || 0)) / 100) * 100)}
                           </div>
                         </div>
@@ -3840,12 +3768,16 @@ export default function App() {
 
               {/* Import History Logs */}
               <div className="glass-panel card-content" style={{ marginTop: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>Import Statement History Log</h3>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                  A chronological history of all bank statement or credit card files uploaded, parsed, and successfully integrated.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3>Import Statement History Log</h3>
+                  {importLogs.length > 15 && (
+                    <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem' }} onClick={() => setShowAllLogs(v => !v)}>
+                      {showAllLogs ? 'Tampilkan Lebih Sedikit' : `Lihat Semua (${importLogs.length})`}
+                    </button>
+                  )}
+                </div>
                 <div className="table-container">
-                  <table className="data-table">
+                  <table className="data-table import-log-table">
                     <thead>
                       <tr>
                         <th>Import Date & Time</th>
@@ -3862,26 +3794,21 @@ export default function App() {
                           </td>
                         </tr>
                       ) : (
-                        importLogs.map((log: any) => {
+                        (showAllLogs ? importLogs : importLogs.slice(0, 15)).map((log: any) => {
                           const fileNames = (log.file_name || '').split(',').map((f: string) => f.trim()).filter(Boolean);
+                          const firstName = fileNames[0] || '-';
+                          const extraCount = fileNames.length - 1;
                           return (
-                            <tr key={log.id}>
-                              <td style={{ whiteSpace: 'nowrap' }}>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
-                              <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                                  {fileNames.map((name: string, idx: number) => (
-                                    <span key={idx} style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.4rem',
-                                      fontWeight: 600,
-                                      fontSize: '0.85rem'
-                                    }}>
-                                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', minWidth: '1rem' }}>📄</span>
-                                      {name}
-                                    </span>
-                                  ))}
-                                </div>
+                            <tr key={log.id} className="import-log-row">
+                              <td>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td title={fileNames.join(', ')}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600, fontSize: '0.82rem' }}>
+                                  <span style={{ color: 'var(--color-text-muted)' }}>📄</span>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>{firstName}</span>
+                                </span>
+                                {extraCount > 0 && (
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.1rem', display: 'block' }}>+{extraCount} file lainnya</span>
+                                )}
                               </td>
                               <td>
                                 <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>
@@ -3903,7 +3830,7 @@ export default function App() {
             ) : (
               /* Stage 2: Verification and Editing Grid */
               <div className="glass-panel card-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div className="import-verify-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
                   <div>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ color: 'var(--color-success)' }}>✓</span> Verify Parsed Transactions
@@ -3911,6 +3838,18 @@ export default function App() {
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
                       We detected a **{parsedData.bankName} {parsedData.statementType}** statement with **{parsedData.transactionCount} transactions**. Please review, edit, or tag installments below before saving.
                     </p>
+                    {(() => {
+                      const uniqueFiles = [...new Set(parsedData.transactions.map((t: any) => t.file_name).filter(Boolean))];
+                      return uniqueFiles.length > 0 ? (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                          {uniqueFiles.map((f: any) => (
+                            <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '5px', padding: '0.1rem 0.45rem' }}>
+                              📄 {f}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     {parsedData.creditLimit && (
                       <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--color-success)', fontWeight: 'bold' }}>
                         ℹ Batas kredit terdeteksi di PDF: {renderAmount(parsedData.creditLimit)} (akan di-update otomatis setelah disimpan)
@@ -3925,10 +3864,10 @@ export default function App() {
                     )}
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div className="import-verify-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label style={{ marginBottom: '0.25rem' }}>Save to Account</label>
-                      <select 
+                      <select
                         className="form-control"
                         value={importTargetAccId}
                         onChange={(e) => setImportTargetAccId(e.target.value)}
@@ -3945,20 +3884,20 @@ export default function App() {
                     <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId}>
                       Save All to Database ({parsedData.transactions.length})
                     </button>
-                    
+
                     <button className="btn btn-secondary" onClick={() => setParsedData(null)}>
                       Cancel
                     </button>
                   </div>
                 </div>
 
-                <div className="table-container">
-                  <table className="data-table">
+                <div className="table-container import-parsed-table-wrap">
+                  <table className="data-table import-parsed-table">
                     <thead>
                       <tr>
                         <th style={{ width: '6%', textAlign: 'center' }}>
-                          <input 
-                            type="checkbox" 
+                          <input
+                            type="checkbox"
                             checked={parsedData.transactions.length > 0 && parsedData.transactions.every((t: any) => !t.exclude)} 
                             onChange={(e) => {
                               const checkVal = e.target.checked;
@@ -3987,19 +3926,24 @@ export default function App() {
                       {parsedData.transactions.map((tx: any, index: number) => (
                         <tr key={index} style={{ opacity: tx.exclude ? 0.5 : 1, transition: 'opacity 0.2s' }}>
                           {/* Import? Checkbox */}
-                          <td style={{ textAlign: 'center' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={!tx.exclude} 
-                              onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
-                            />
+                          <td data-label="Import?">
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', userSelect: 'none' }}>
+                              <input
+                                type="checkbox"
+                                checked={!tx.exclude}
+                                onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
+                              />
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                {tx.exclude ? 'Lewati' : 'Sertakan'}
+                              </span>
+                            </label>
                           </td>
                           {/* Transaction Date Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              value={tx.date} 
+                          <td data-label="Tgl Transaksi">
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={tx.date}
                               onChange={(e) => {
                                 handleGridChange(index, 'date', e.target.value);
                                 if (!tx.booking_date || tx.booking_date === tx.date) {
@@ -4009,38 +3953,34 @@ export default function App() {
                             />
                           </td>
                           {/* Booking Date Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              value={tx.booking_date || tx.date} 
+                          <td data-label="Tgl Booking">
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={tx.booking_date || tx.date}
                               onChange={(e) => handleGridChange(index, 'booking_date', e.target.value)}
                             />
                           </td>
                           {/* Description Input */}
-                          <td>
+                          <td data-label="Deskripsi">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              <input 
-                                type="text" 
-                                className="grid-input" 
-                                value={tx.description} 
+                              <textarea
+                                className="grid-input"
+                                value={tx.description}
                                 onChange={(e) => handleGridChange(index, 'description', e.target.value)}
+                                rows={2}
+                                style={{ resize: 'none', lineHeight: '1.4' }}
                               />
                               {tx.is_duplicate && (
                                 <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', fontSize: '0.7rem', padding: '0.1rem 0.4rem', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '4px' }}>
                                   ⚠️ Potential Duplicate
                                 </span>
                               )}
-                              {tx.file_name && (
-                                <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', fontSize: '0.65rem', padding: '0.05rem 0.25rem', borderRadius: '4px', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '180px' }} title={tx.file_name}>
-                                  📄 {tx.file_name}
-                                </span>
-                              )}
                             </div>
                           </td>
                           {/* Category Selector */}
-                          <td>
-                            <select 
+                          <td data-label="Kategori">
+                            <select
                               className="form-control"
                               value={tx.category}
                               onChange={(e) => handleGridChange(index, 'category', e.target.value)}
@@ -4063,59 +4003,76 @@ export default function App() {
                             </select>
                           </td>
                           {/* Location/Merchant Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
+                          <td data-label="Merchant">
+                            <input
+                              type="text"
+                              className="grid-input"
                               placeholder="e.g. Starbucks"
-                              value={tx.location_merchant || ''} 
+                              value={tx.location_merchant || ''}
                               onChange={(e) => handleGridChange(index, 'location_merchant', e.target.value)}
                             />
                           </td>
                           {/* Product/Service Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
+                          <td data-label="Produk/Layanan">
+                            <input
+                              type="text"
+                              className="grid-input"
                               placeholder="e.g. Coffee"
-                              value={tx.product_service || ''} 
+                              value={tx.product_service || ''}
                               onChange={(e) => handleGridChange(index, 'product_service', e.target.value)}
                             />
                           </td>
                           {/* Amount Input */}
-                          <td>
-                            <input 
-                              type="number" 
-                              className="grid-input" 
-                              value={tx.amount} 
-                              onChange={(e) => handleGridChange(index, 'amount', parseFloat(e.target.value) || 0)}
+                          <td data-label="Nominal (IDR)">
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={(() => {
+                                const abs = Math.abs(tx.amount);
+                                const formatted = abs.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                return tx.amount < 0 ? `-${formatted}` : formatted;
+                              })()}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+                                const num = parseFloat(raw);
+                                if (!isNaN(num)) handleGridChange(index, 'amount', num);
+                              }}
+                              onBlur={(e) => {
+                                const raw = e.target.value.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
+                                const num = parseFloat(raw);
+                                if (!isNaN(num)) handleGridChange(index, 'amount', num);
+                              }}
                               style={{ fontWeight: 600, color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
                             />
                           </td>
                           {/* Note Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
+                          <td data-label="Catatan">
+                            <input
+                              type="text"
+                              className="grid-input"
                               placeholder="Keterangan..."
-                              value={tx.note || ''} 
+                              value={tx.note || ''}
                               onChange={(e) => handleGridChange(index, 'note', e.target.value)}
                             />
                           </td>
-                          {/* CC Installment Tags */}
-                          <td>
+                          {/* CC Installment Tags — only for credit card accounts */}
+                          {accounts.find(a => a.id === importTargetAccId)?.type === 'credit_card' && (
+                          <td data-label="Cicilan CC?">
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              {tx.amount < 0 ? ( // Only expenses can be installments
+                              {tx.amount < 0 ? (
                                 <>
-                                  <input 
-                                    type="checkbox" 
-                                    checked={tx.is_installment}
-                                    onChange={(e) => handleGridChange(index, 'is_installment', e.target.checked)}
-                                  />
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', userSelect: 'none' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={tx.is_installment}
+                                      onChange={(e) => handleGridChange(index, 'is_installment', e.target.checked)}
+                                    />
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Cicilan CC</span>
+                                  </label>
                                   {tx.is_installment && (
-                                    <input 
-                                      type="number" 
-                                      className="grid-input" 
+                                    <input
+                                      type="number"
+                                      className="grid-input"
                                       value={tx.installment_months}
                                       onChange={(e) => handleGridChange(index, 'installment_months', parseInt(e.target.value) || 12)}
                                       style={{ width: '50px', background: 'var(--bg-input)', textAlign: 'center', padding: '0.1rem' }}
@@ -4130,19 +4087,20 @@ export default function App() {
                               )}
                             </div>
                           </td>
+                          )}
                           {/* Actions (Split/Delete) */}
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <button 
+                          <td data-label="Aksi" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
                               type="button"
-                              className="btn" 
+                              className="btn"
                               style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
                               onClick={() => handleStartSplit(index)}
                               title="Split Transaction Category/Amount"
                             >
                               ✂️
                             </button>
-                            <button 
-                              className="btn" 
+                            <button
+                              className="btn"
                               style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
                               onClick={() => handleGridDelete(index)}
                               title="Delete Row"
@@ -4234,9 +4192,9 @@ export default function App() {
                 {/* Left Column: Image upload & progress */}
                 <div className="glass-panel card-content" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <div>
-                    <h3 style={{ marginBottom: '0.5rem' }}>Receipt OCR Scanner</h3>
+                    <h3 style={{ marginBottom: '0.5rem' }}>Scan Bukti Transaksi</h3>
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                      Upload a photo or screenshot of your shopping receipt. Our local OCR engine will read it and auto-fill the expense transaction details.
+                      Upload screenshot bukti transfer / pembayaran dari mobile banking (BCA, Mandiri, BNI, BRI, GoPay, OVO, DANA, ShopeePay). Data akan diekstrak otomatis.
                     </p>
                   </div>
 
@@ -4265,8 +4223,8 @@ export default function App() {
                       style={{ minHeight: '200px' }}
                     >
                       <div className="drag-icon">📷</div>
-                      <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Upload Receipt Screenshot</strong>
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>or drag & drop image here</span>
+                      <strong style={{ display: 'block', marginBottom: '0.5rem' }}>Upload Bukti Transaksi</strong>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>atau drag & drop gambar di sini</span>
                     </div>
                   ) : (
                     <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
@@ -4283,6 +4241,9 @@ export default function App() {
                           setOcrFormAmount('');
                           setOcrProgress('');
                           setOcrProgressPct(0);
+                          setOcrParseMethod('');
+                          setOcrDetectedBank('');
+                          setOcrReferenceNumber('');
                         }}
                       >
                         Clear Image
@@ -4311,20 +4272,47 @@ export default function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {ocrPreviewUrl && (
                     <div className="glass-panel card-content">
-                      <h3 style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: 'var(--color-success)' }}>✓</span> Verify Extracted Expense
+                      <h3 style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--color-success)' }}>✓</span> Verifikasi Transaksi
+                        {ocrParseMethod && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '999px',
+                            background: ocrParseMethod === 'llm' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.15)',
+                            color: ocrParseMethod === 'llm' ? '#a78bfa' : 'var(--color-success)',
+                            border: `1px solid ${ocrParseMethod === 'llm' ? 'rgba(139,92,246,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                            fontWeight: 600,
+                            letterSpacing: '0.02em'
+                          }}>
+                            {ocrParseMethod === 'llm' ? '✦ AI' : '⚡ Smart Parser'}
+                          </span>
+                        )}
+                        {ocrDetectedBank && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '999px',
+                            background: 'rgba(255,255,255,0.07)',
+                            color: 'var(--color-text-muted)',
+                            border: '1px solid var(--border-color)',
+                            fontWeight: 500
+                          }}>
+                            {ocrDetectedBank}
+                          </span>
+                        )}
                       </h3>
 
                       <form onSubmit={handleSaveOcrTransaction}>
                         <div className="form-group">
-                          <label>Charge to Account / Card</label>
-                          <select 
+                          <label>Bebankan ke Akun / Kartu</label>
+                          <select
                             className="form-control"
                             value={ocrFormAccId}
                             onChange={(e) => setOcrFormAccId(e.target.value)}
                             required
                           >
-                            <option value="">-- Choose Account --</option>
+                            <option value="">-- Pilih Akun --</option>
                             {accounts.map(a => (
                               <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash' : 'CC'})</option>
                             ))}
@@ -4333,21 +4321,21 @@ export default function App() {
 
                         <div className="grid-cols-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', margin: 0, gap: '1rem' }}>
                           <div className="form-group">
-                            <label>Merchant / Store Name</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              placeholder="Store Name"
+                            <label>Merchant / Penerima</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Nama merchant"
                               value={ocrFormMerchant}
                               onChange={(e) => setOcrFormMerchant(e.target.value)}
                               required
                             />
                           </div>
                           <div className="form-group">
-                            <label>Transaction Date</label>
-                            <input 
-                              type="date" 
-                              className="form-control" 
+                            <label>Tanggal Transaksi</label>
+                            <input
+                              type="date"
+                              className="form-control"
                               value={ocrFormDate}
                               onChange={(e) => setOcrFormDate(e.target.value)}
                               required
@@ -4357,11 +4345,11 @@ export default function App() {
 
                         <div className="grid-cols-2" style={{ gridTemplateColumns: '1.2fr 0.8fr', margin: 0, gap: '1rem' }}>
                           <div className="form-group">
-                            <label>Total Expense Amount (IDR)</label>
-                            <input 
-                              type="number" 
-                              className="form-control" 
-                              placeholder="Amount in IDR"
+                            <label>Jumlah (IDR)</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="Nominal dalam IDR"
                               value={ocrFormAmount}
                               onChange={(e) => setOcrFormAmount(e.target.value)}
                               style={{ fontWeight: 700, color: 'var(--color-danger)' }}
@@ -4369,8 +4357,8 @@ export default function App() {
                             />
                           </div>
                           <div className="form-group">
-                            <label>Category</label>
-                            <select 
+                            <label>Kategori</label>
+                            <select
                               className="form-control"
                               value={ocrFormCategory}
                               onChange={(e) => setOcrFormCategory(e.target.value)}
@@ -4388,13 +4376,26 @@ export default function App() {
                           </div>
                         </div>
 
-                        <button 
-                          type="submit" 
-                          className="btn btn-primary" 
-                          style={{ width: '100%', padding: '0.8rem', fontSize: '1rem', marginTop: '1rem' }}
+                        {ocrReferenceNumber && (
+                          <div className="form-group">
+                            <label style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>No. Referensi</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={ocrReferenceNumber}
+                              onChange={(e) => setOcrReferenceNumber(e.target.value)}
+                              style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}
+                            />
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="btn btn-primary"
+                          style={{ width: '100%', padding: '0.8rem', fontSize: '1rem', marginTop: '0.5rem' }}
                           disabled={loading || !ocrFormAccId}
                         >
-                          Save Scanned Expense Transaction
+                          Simpan Transaksi
                         </button>
                       </form>
                     </div>
@@ -4403,14 +4404,14 @@ export default function App() {
                   {/* Raw Extracted Text Reference Panel */}
                   {ocrRawText && (
                     <div className="glass-panel card-content">
-                      <h4 style={{ marginBottom: '0.75rem', color: 'var(--color-text-muted)' }}>Raw Extracted Receipt Text</h4>
-                      <pre style={{ 
-                        whiteSpace: 'pre-wrap', 
-                        background: 'rgba(0,0,0,0.3)', 
-                        padding: '1rem', 
-                        borderRadius: '8px', 
-                        fontSize: '0.8rem', 
-                        maxHeight: '180px', 
+                      <h4 style={{ marginBottom: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Teks OCR (Referensi)</h4>
+                      <pre style={{
+                        whiteSpace: 'pre-wrap',
+                        background: 'rgba(0,0,0,0.3)',
+                        padding: '1rem',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        maxHeight: '150px',
                         overflowY: 'auto',
                         border: '1px solid var(--border-color)',
                         fontFamily: 'monospace',
