@@ -17,11 +17,38 @@ A premium, glassmorphism-designed **Personal Financial Management & Investment T
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React 18, TypeScript, Vite, Vanilla CSS (Custom Glassmorphic design).
+- **Frontend:** React 19, TypeScript, Vite, Vanilla CSS (Custom Glassmorphic design).
 - **Backend:** Node.js, Express.js.
 - **Database:** SQLite (SQL-based persistence).
 - **Libraries & OCR:** Tesseract.js (OCR), PDF.js (PDF parsing).
 - **Containerization:** Docker & Docker Compose.
+
+---
+
+## 📁 Project Structure
+
+```
+backend/
+  server.js              # Express entry point: middleware, static serving, router mounting
+  database.js            # SQLite connection, schema creation & self-healing migrations
+  pdfParser.js           # Bank statement PDF parsers (BCA, Mandiri, BNI, generic)
+  middleware/upload.js   # Multer in-memory upload (PDF & backup files)
+  utils/                 # generateUUID (crypto), default category seed data
+  routes/                # One router per API domain:
+    accounts.js  transactions.js  transfers.js  budgets.js  installments.js
+    categories.js  pdf.js  ai.js  debtsReceivables.js  goals.js  investments.js  system.js
+
+frontend/src/
+  main.tsx               # React entry point
+  App.tsx                # Header, navigation & tab switching shell
+  constants.ts           # API_URL, category & bank name lists
+  utils/format.ts        # IDR currency formatting
+  context/AppContext.tsx # Shared state: API data, fetchers, privacy mode, category helpers
+  components/            # Icons, AutocompleteInput, TransactionEditModal, SplitTransactionModal
+  pages/                 # One component per feature page:
+    DashboardPage  AccountsPage  TransactionsPage (+ ImportView, OcrView)
+    BudgetsPage  LiabilitiesPage  GoalsPage  InvestmentsPage  AdvisorPage  SettingsPage
+```
 
 ---
 
@@ -50,19 +77,23 @@ A premium, glassmorphism-designed **Personal Financial Management & Investment T
 
 ### Local Development Setup
 
-#### Backend Setup
+#### Backend Setup (port 3000)
 ```bash
 cd backend
 npm install
 npm run dev
 ```
 
-#### Frontend Setup
+#### Frontend Setup (port 5173, proxies /api to the backend)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+Open `http://localhost:5173` for development with hot reload. The Vite dev server forwards all `/api` requests to the backend on port 3000.
+
+To serve the production build directly from the backend instead, run `npm run build` in `frontend/` and copy `frontend/dist/*` into `backend/public/`, then open `http://localhost:3000`.
 
 ---
 

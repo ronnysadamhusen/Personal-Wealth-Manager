@@ -23,10 +23,9 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm install --omit=dev
 
-# Copy backend source files
-COPY backend/database.js ./
-COPY backend/pdfParser.js ./
-COPY backend/server.js ./
+# Copy backend source files (routes/, middleware/, utils/, database.js, pdfParser.js, server.js)
+# node_modules and data are excluded via .dockerignore
+COPY backend/ ./
 
 # Copy compiled frontend from Stage 1 into the public static folder
 COPY --from=frontend-builder /app/frontend/dist ./public

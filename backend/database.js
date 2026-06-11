@@ -1,6 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const { generateUUID } = require('./utils/id');
+const { DEFAULT_CATEGORIES, subCategoryType } = require('./utils/defaultCategories');
 
 // Ensure data directory exists
 const dbDir = path.join(__dirname, 'data');
@@ -220,76 +222,14 @@ db.serialize(() => {
     if (!err) {
       db.get('SELECT COUNT(*) as count FROM categories', (errCount, row) => {
         if (!errCount && row && row.count === 0) {
-          const defaultCategories = [
-            {
-              name: 'Food & Dining',
-              subs: ['Restaurants', 'Cafe & Coffee', 'Groceries'],
-              type: 'expense'
-            },
-            {
-              name: 'Shopping & Groceries',
-              subs: ['Clothing', 'Electronics', 'Supermarket'],
-              type: 'expense'
-            },
-            {
-              name: 'Utilities',
-              subs: ['Electricity & Water', 'Internet & Phone'],
-              type: 'expense'
-            },
-            {
-              name: 'Transportation & Travel',
-              subs: ['Fuel & Gas', 'Public Transport', 'Flights & Lodging'],
-              type: 'expense'
-            },
-            {
-              name: 'Entertainment',
-              subs: ['Movies & Streaming', 'Gaming & Hobbies'],
-              type: 'expense'
-            },
-            {
-              name: 'Medical & Health',
-              subs: ['Pharmacy & Meds', 'Doctor & Clinic'],
-              type: 'expense'
-            },
-            {
-              name: 'Credit Card Payment',
-              subs: [],
-              type: 'both'
-            },
-            {
-              name: 'Transfers & Salary',
-              subs: ['Salary & Bonus', 'Investment Income'],
-              type: 'both'
-            },
-            {
-              name: 'Fees & Taxes',
-              subs: ['Bank Fees', 'Late Fees & Taxes'],
-              type: 'expense'
-            },
-            {
-              name: 'Others',
-              subs: [],
-              type: 'both'
-            }
-          ];
-
           db.serialize(() => {
             const stmt = db.prepare('INSERT INTO categories (id, name, parent_id, type) VALUES (?, ?, ?, ?)');
-            defaultCategories.forEach(cat => {
-              const parentUuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            DEFAULT_CATEGORIES.forEach(cat => {
+              const parentUuid = generateUUID();
               stmt.run(parentUuid, cat.name, null, cat.type);
 
               cat.subs.forEach(sub => {
-                const subUuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                let subType = 'expense';
-                if (sub === 'Salary & Bonus' || sub === 'Investment Income') {
-                  subType = 'income';
-                } else if (cat.type === 'expense') {
-                  subType = 'expense';
-                } else {
-                  subType = cat.type;
-                }
-                stmt.run(subUuid, sub, parentUuid, subType);
+                stmt.run(generateUUID(), sub, parentUuid, subCategoryType(sub, cat.type));
               });
             });
             stmt.finalize();
@@ -569,7 +509,8 @@ function restoreDatabaseFile(tempPath) {
 }
 
 module.exports = {
-  db,
   query,
-  restoreDatabaseFile
+  restoreDatabaseFile,
+  dbPath,
+  dbDir
 };
