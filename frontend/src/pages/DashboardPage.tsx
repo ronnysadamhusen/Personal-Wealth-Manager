@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 export default function DashboardPage() {
   const {
     accounts, transactions, dbCategories, debtsReceivables, goals, investments,
-    renderAmount, setActiveTab, setNavOpen,
+    renderAmount, navigateTo, setNavOpen,
   } = useApp();
 
   // Calculated Values
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                     <div style={{ marginBottom: '0.75rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>⊞ Eisenhower Matrix · Pengeluaran {currentYear}</span>
-                        <button type="button" onClick={() => setActiveTab('settings')} style={{ fontSize: '0.65rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <button type="button" onClick={() => navigateTo('settings')} style={{ fontSize: '0.65rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                           Atur kategori →
                         </button>
                       </div>
@@ -323,7 +323,7 @@ export default function DashboardPage() {
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
                           Belum ada rekening.{' '}
                           <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => setActiveTab('accounts')}>Tambah →</button>
+                            onClick={() => navigateTo('accounts')}>Tambah →</button>
                         </div>
                       ) : (
                         <>
@@ -350,7 +350,7 @@ export default function DashboardPage() {
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '0.5rem 0' }}>
                           Belum ada investasi.{' '}
                           <button style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}
-                            onClick={() => setActiveTab('investments')}>Tambah →</button>
+                            onClick={() => navigateTo('investments')}>Tambah →</button>
                         </div>
                       ) : (
                         <>
@@ -551,7 +551,7 @@ export default function DashboardPage() {
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(99,102,241,0.2)'; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)'; }}
-                            onClick={() => { setActiveTab(tab); setNavOpen(false); }}
+                            onClick={() => { navigateTo(tab as any); setNavOpen(false); }}
                           >{label}</button>
                         ))}
                       </div>

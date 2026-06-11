@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 export default function ImportView() {
   const {
     accounts, savedPasswords, importLogs, groupedCategories,
-    renderAmount, loading, setLoading, setErrorMsg, fetchData, setActiveTab,
+    renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo,
   } = useApp();
 
   // PDF IMPORT STATES
@@ -255,7 +255,7 @@ export default function ImportView() {
         setPdfFile(null);
         setPdfFiles([]);
         setParsedTxList([]);
-        setActiveTab('dashboard');
+        navigateTo('dashboard');
         fetchData();
       } else {
         const errJ = await res.json();
@@ -289,7 +289,7 @@ export default function ImportView() {
                     <button 
                       type="button"
                       className="btn btn-primary" 
-                      onClick={() => setActiveTab('accounts')}
+                      onClick={() => navigateTo('accounts')}
                       style={{ padding: '0.6rem 1.5rem', fontWeight: 600, display: 'inline-flex', alignSelf: 'center' }}
                     >
                       🏦 Register Account Now

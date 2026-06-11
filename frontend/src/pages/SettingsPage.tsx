@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 
 export default function SettingsPage() {
   const {
-    dbCategories, groupedCategories, fetchData, setActiveTab, setLoading,
+    dbCategories, groupedCategories, fetchData, navigateTo, setLoading,
     aiProvider, setAiProvider, aiApiKey, setAiApiKey, aiModelName, setAiModelName, aiBaseUrl, setAiBaseUrl,
   } = useApp();
 
@@ -177,7 +177,7 @@ export default function SettingsPage() {
       if (res.ok) {
         alert('Application data reset successfully!');
         fetchData();
-        setActiveTab('dashboard');
+        navigateTo('dashboard');
       } else {
         const errJ = await res.json();
         alert(errJ.error || 'Failed to reset application.');
