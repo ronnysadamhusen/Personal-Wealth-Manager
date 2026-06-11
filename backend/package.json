@@ -12,7 +12,8 @@
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
     "pdfjs-dist": "^3.11.174",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

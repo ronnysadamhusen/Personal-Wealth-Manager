@@ -10,10 +10,22 @@ import InvestmentsPage from './pages/InvestmentsPage';
 import AdvisorPage from './pages/AdvisorPage';
 import SettingsPage from './pages/SettingsPage';
 
+const NAV_ITEMS = [
+  { id: 'dashboard',    icon: '📊', label: 'Dashboard' },
+  { id: 'accounts',     icon: '💳', label: 'Accounts' },
+  { id: 'transactions', icon: '📝', label: 'Transactions' },
+  { id: 'budgets',      icon: '💸', label: 'Budgets' },
+  { id: 'liabilities',  icon: '🤝', label: 'Liabilities' },
+  { id: 'goals',        icon: '🎯', label: 'Goals' },
+  { id: 'investments',  icon: '📈', label: 'Investments' },
+  { id: 'ai',           icon: '🤖', label: 'AI Advisor' },
+  { id: 'settings',     icon: '⚙️', label: 'Settings' },
+] as const;
+
 function AppShell() {
   const {
-    activeTab, setActiveTab,
-    setTransactionSubTab,
+    activeTab, navigateTo,
+    switchTxSubTab,
     navOpen, setNavOpen,
     privacyMode, cyclePrivacyMode,
     loading, errorMsg,
@@ -25,9 +37,19 @@ function AppShell() {
       <header>
         <div className="header-content">
           <div className="brand">
-            <span style={{ fontSize: '1.8rem' }}>💰</span>
-            <span>Personal Wealth Manager</span>
+            <span className="brand-icon">💰</span>
+            <span className="brand-text">Personal Wealth Manager</span>
           </div>
+
+          {/* Mobile-only privacy toggle */}
+          <button
+            type="button"
+            className="mobile-privacy-btn"
+            onClick={cyclePrivacyMode}
+            title="Toggle Privacy Masking"
+          >
+            <span>{privacyMode === 'blur' ? '🔒' : privacyMode === 'hover' ? '🫣' : '🔓'}</span>
+          </button>
 
           <button
             className="nav-hamburger"
@@ -57,23 +79,15 @@ function AppShell() {
               }}
               value={activeTab}
               onChange={(e) => {
-                const tab = e.target.value;
-                setActiveTab(tab as any);
-                if (tab === 'transactions') {
-                  setTransactionSubTab('ledger');
-                }
+                const tab = e.target.value as typeof activeTab;
+                navigateTo(tab);
+                if (tab === 'transactions') switchTxSubTab('ledger');
                 setNavOpen(false);
               }}
             >
-              <option value="dashboard">📊 Dashboard Summary</option>
-              <option value="accounts">💳 Accounts & Balance</option>
-              <option value="transactions">📝 Transactions Ledger</option>
-              <option value="budgets">💸 Anggaran / Budgets</option>
-              <option value="liabilities">🤝 Liabilities & Receivables</option>
-              <option value="goals">🎯 Future Financial Goals</option>
-              <option value="investments">📈 Investments Modules</option>
-              <option value="ai">🤖 AI Financial Advisor</option>
-              <option value="settings">⚙️ Settings & System</option>
+              {NAV_ITEMS.map(item => (
+                <option key={item.id} value={item.id}>{item.icon} {item.label}</option>
+              ))}
             </select>
             <span style={{ borderLeft: '1px solid var(--border-color)', margin: '0 0.25rem', alignSelf: 'center', height: '20px' }} />
             <button
@@ -93,9 +107,8 @@ function AppShell() {
                 alignItems: 'center',
                 gap: '0.4rem',
                 transition: 'all 0.25s ease',
-                boxShadow: privacyMode === 'blur' ? '0 0 8px rgba(239, 68, 68, 0.05)' : privacyMode === 'hover' ? '0 0 8px rgba(245, 158, 11, 0.05)' : '0 0 8px rgba(16, 185, 129, 0.05)'
               }}
-              title="Toggle Privacy Masking (Strict Blur -> Display on Hover -> Display All)"
+              title="Toggle Privacy Masking"
             >
               <span>{privacyMode === 'blur' ? '🔒' : privacyMode === 'hover' ? '🫣' : '🔓'}</span>
               <span>{privacyMode === 'blur' ? 'Strict Blur' : privacyMode === 'hover' ? 'Display on Hover' : 'Display All'}</span>
@@ -106,7 +119,6 @@ function AppShell() {
 
       {/* Main Body */}
       <main className="main-content">
-        {/* Loading Indicator */}
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '2rem 0', gap: '0.75rem' }}>
             <div style={{
@@ -116,13 +128,10 @@ function AppShell() {
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
             }} />
-            <style>{`
-              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            `}</style>
+            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
-        {/* Global Error Banner */}
         {errorMsg && (
           <div className="glass-panel text-danger" style={{ display: 'flex', gap: '0.75rem', padding: '1.25rem', marginBottom: '2rem', background: 'rgba(244, 63, 94, 0.08)', borderColor: 'var(--color-danger)' }}>
             <Icons.Alert />
@@ -139,15 +148,35 @@ function AppShell() {
           <TransactionsPage />
         </div>
 
-        {activeTab === 'dashboard' && <DashboardPage />}
-        {activeTab === 'accounts' && <AccountsPage />}
-        {activeTab === 'budgets' && <BudgetsPage />}
-        {activeTab === 'liabilities' && <LiabilitiesPage />}
-        {activeTab === 'goals' && <GoalsPage />}
-        {activeTab === 'investments' && <InvestmentsPage />}
-        {activeTab === 'ai' && <AdvisorPage />}
-        {activeTab === 'settings' && <SettingsPage />}
+        {activeTab === 'dashboard'    && <DashboardPage />}
+        {activeTab === 'accounts'     && <AccountsPage />}
+        {activeTab === 'budgets'      && <BudgetsPage />}
+        {activeTab === 'liabilities'  && <LiabilitiesPage />}
+        {activeTab === 'goals'        && <GoalsPage />}
+        {activeTab === 'investments'  && <InvestmentsPage />}
+        {activeTab === 'ai'           && <AdvisorPage />}
+        {activeTab === 'settings'     && <SettingsPage />}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-bottom-nav" aria-label="Bottom navigation">
+        <div className="mobile-bottom-nav-inner">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              className={`mobile-nav-item${activeTab === item.id ? ' active' : ''}`}
+              onClick={() => {
+                navigateTo(item.id);
+                if (item.id === 'transactions') switchTxSubTab('ledger');
+              }}
+            >
+              <span className="mobile-nav-icon">{item.icon}</span>
+              <span className="mobile-nav-label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

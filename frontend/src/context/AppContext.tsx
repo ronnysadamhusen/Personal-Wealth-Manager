@@ -1,10 +1,37 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, memo } from 'react';
 import { API_URL } from '../constants';
 import { formatIDR } from '../utils/format';
 
 export type TabId = 'dashboard' | 'accounts' | 'budgets' | 'liabilities' | 'goals' | 'investments' | 'transactions' | 'ai' | 'settings';
 export type TransactionSubTab = 'ledger' | 'import' | 'ocr';
+export type LiabilitiesSubTab = 'overview' | 'installments' | 'loans';
 export type PrivacyMode = 'blur' | 'hover' | 'visible';
+
+// Defined outside AppProvider so its identity stays stable across re-renders,
+// preserving the tapped state when the provider re-renders.
+const PrivacySpan = memo(({ text, privacyMode }: { text: string; privacyMode: PrivacyMode }) => {
+  const style: React.CSSProperties = { whiteSpace: 'nowrap' };
+  const [tapped, setTapped] = useState(false);
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setTapped(t => !t);
+  };
+
+  if (privacyMode !== 'hover') {
+    return <span style={style} className={privacyMode === 'blur' ? 'privacy-strict' : ''}>{text}</span>;
+  }
+  return (
+    <span
+      style={style}
+      className={`privacy-hover${tapped ? ' privacy-revealed' : ''}`}
+      onTouchEnd={handleTouchEnd}
+      onClick={() => setTapped(t => !t)}
+    >
+      {text}
+    </span>
+  );
+});
 
 // Shared application state: API data collections, privacy masking, category
 // helpers, and cross-page navigation. Feature pages own their local form and
@@ -12,8 +39,10 @@ export type PrivacyMode = 'blur' | 'hover' | 'visible';
 export interface AppContextValue {
   activeTab: TabId;
   setActiveTab: (tab: TabId) => void;
+  navigateTo: (tab: TabId) => void;
   transactionSubTab: TransactionSubTab;
   setTransactionSubTab: (sub: TransactionSubTab) => void;
+  switchTxSubTab: (sub: TransactionSubTab) => void;
   navOpen: boolean;
   setNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -84,9 +113,22 @@ export function useApp(): AppContextValue {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-  const [transactionSubTab, setTransactionSubTab] = useState<TransactionSubTab>('ledger');
+  const [activeTab, setActiveTab] = useState<TabId>(
+    () => (localStorage.getItem('pfm_active_tab') as TabId) || 'dashboard'
+  );
+  const [transactionSubTab, setTransactionSubTab] = useState<TransactionSubTab>(
+    () => (localStorage.getItem('pfm_tx_sub_tab') as TransactionSubTab) || 'ledger'
+  );
   const [navOpen, setNavOpen] = useState(false);
+
+  const navigateTo = (tab: TabId) => {
+    setActiveTab(tab);
+    localStorage.setItem('pfm_active_tab', tab);
+  };
+  const switchTxSubTab = (sub: TransactionSubTab) => {
+    setTransactionSubTab(sub);
+    localStorage.setItem('pfm_tx_sub_tab', sub);
+  };
 
   const [goals, setGoals] = useState<any[]>([]);
 
@@ -211,11 +253,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const renderAmount = (value: number) => {
-    const text = formatIDR(value);
-    const privacyClass = privacyMode === 'blur' ? 'privacy-strict' : privacyMode === 'hover' ? 'privacy-hover' : '';
-    return <span className={privacyClass}>{text}</span>;
-  };
+  const renderAmount = (value: number) => <PrivacySpan text={formatIDR(value)} privacyMode={privacyMode} />;
 
   // 1. Fetch all essential data
   const fetchData = async () => {
@@ -320,8 +358,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [selectedBudgetMonth, budgetViewPeriod, selectedBudgetYear, budgetStartYear, budgetEndYear]);
 
   const value = {
-    activeTab, setActiveTab,
-    transactionSubTab, setTransactionSubTab,
+    activeTab, setActiveTab, navigateTo,
+    transactionSubTab, setTransactionSubTab, switchTxSubTab,
     navOpen, setNavOpen,
     accounts, transactions, budgets, installments, projections, savedPasswords, dbCategories,
     debtsReceivables, loadingDR,

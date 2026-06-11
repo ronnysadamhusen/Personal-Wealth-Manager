@@ -24,6 +24,7 @@ app.use(require('./routes/ai'));
 app.use(require('./routes/debtsReceivables'));
 app.use(require('./routes/goals'));
 app.use(require('./routes/investments'));
+app.use(require('./routes/receipt'));
 app.use(require('./routes/system'));
 
 // All other requests get served the index.html from the Vite-built frontend
