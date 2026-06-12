@@ -245,7 +245,34 @@ const Parsers = {
       });
     }
 
-    return { transactions, dueDate, billingCycleDate, creditLimit };
+    // Build detectedInstallments from active CICILAN transactions (same as BNI CC logic).
+    // Each CICILAN row tells us current month/total, so we infer start date and remaining months.
+    const detectedInstallments = [];
+    for (const tx of transactions) {
+      const m = tx.description.match(/CICILAN\s+\S+\s+KE\s+0*(\d+)\s+DARI\s+0*(\d+)[,\s]+(.+)/i);
+      if (!m) continue;
+      const currentMonth = parseInt(m[1]);
+      const totalMonths  = parseInt(m[2]);
+      const merchantName = m[3].trim();
+      const monthlyAmount = Math.abs(tx.amount);
+      const alreadyTracked = detectedInstallments.some(inst =>
+        inst.description.toLowerCase().substring(0, 10) === merchantName.toLowerCase().substring(0, 10) &&
+        Math.abs(inst.monthly_amount - monthlyAmount) < 10
+      );
+      if (!alreadyTracked) {
+        const txDate = new Date(tx.date);
+        txDate.setMonth(txDate.getMonth() - (currentMonth - 1));
+        detectedInstallments.push({
+          description: merchantName,
+          total_amount: monthlyAmount * totalMonths,
+          monthly_amount: monthlyAmount,
+          total_months: totalMonths,
+          start_date: txDate.toISOString().split('T')[0]
+        });
+      }
+    }
+
+    return { transactions, dueDate, billingCycleDate, creditLimit, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -613,6 +640,7 @@ async function parseStatement(pdfBuffer, password = '') {
     dueDate = bcaResult.dueDate;
     billingCycleDate = bcaResult.billingCycleDate;
     creditLimit = bcaResult.creditLimit;
+    detectedInstallments = bcaResult.detectedInstallments || [];
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
     statementType = 'Bank Account';
