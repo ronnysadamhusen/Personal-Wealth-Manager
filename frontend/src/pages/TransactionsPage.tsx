@@ -97,6 +97,7 @@ export default function TransactionsPage() {
     let expense = 0;
     
     list.forEach(tx => {
+      if (tx.is_transfer === 1) return;
       if (tx.amount > 0) {
         income += tx.amount;
       } else {
