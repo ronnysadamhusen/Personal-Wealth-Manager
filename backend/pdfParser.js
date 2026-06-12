@@ -190,6 +190,8 @@ const Parsers = {
 
   // 2. BCA Credit Card Statement
   // Supports both old format (DD MMM DD MMM) and new "REKENING KARTU KREDIT" multi-card format (DD-MMM DD-MMM)
+  // NOTE: pdfjs-dist extracts all text items joined by spaces into one long string per page,
+  // so we use a global regex with lookahead instead of line-by-line matching.
   bcaCreditCard(text) {
     const transactions = [];
     const year = extractYear(text);
@@ -205,38 +207,20 @@ const Parsers = {
     const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})/i);
     const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
 
-    const lines = text.split('\n');
+    // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
+    // Lookahead stops the description before the next transaction, section header, or end of string.
+    // This handles the case where all transactions on a page are concatenated into one long string.
+    const regex = /(\d{2})[-\s]([A-Z]{3})\s+(\d{2})[-\s]([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR)?\s*(?=\d{2}[-\s][A-Z]{3}|\bSUBTOTAL\b|\bTOTAL\b|\bSALDO\b|\bINFORMASI\b|$)/gi;
 
-    // Noise rows to skip: balance lines, subtotals, interest headers, card number rows, page markers
-    const skipPatterns = [
-      /^SALDO SEBELUMNYA/i,
-      /^SUBTOTAL/i,
-      /^%\s*SUKU BUNGA/i,
-      /^TAGIHAN\s+LAIN/i,
-      /^GRAND\s+TOTAL/i,
-      /^HALAMAN\s+\d+/i,
-      /^\d{4}-\d{2}XX-XXXX-\d{4}/i,  // masked card number row
-    ];
-
-    // Pattern: DD[-]MMM DD[-]MMM DESCRIPTION AMOUNT [CR|-]
-    // Handles both "12 JUN 13 JUN ..." (old) and "26-FEB 28-FEB ..." (new multi-card format)
-    const regex = /(\d{2})[-\s]([A-Z]{3})\s+(\d{2})[-\s]([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR|-)?$/i;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (skipPatterns.some(p => p.test(trimmed))) continue;
-
-      const match = trimmed.match(regex);
-      if (!match) continue;
-
+    let match;
+    while ((match = regex.exec(text)) !== null) {
       const [_, dayStr, monthName, postDay, postMonthName, descRaw, amountStr, crMarker] = match;
       const monthNum = months[monthName.toUpperCase()] || '01';
       const formattedDate = `${year}-${monthNum}-${dayStr.padStart(2, '0')}`;
 
       const amountValue = parseAmount(amountStr);
-      // CC charges = expense (negative). Payments/refunds marked CR or trailing "-" = positive.
-      const isCredit = crMarker && (crMarker.toUpperCase() === 'CR' || crMarker === '-');
+      // CC charges = expense (negative). Payments/refunds marked CR = positive.
+      const isCredit = crMarker && crMarker.toUpperCase() === 'CR';
       const finalAmount = isCredit ? amountValue : -amountValue;
 
       const cleanDesc = cleanDescription(descRaw);
