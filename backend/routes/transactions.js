@@ -39,6 +39,64 @@ router.get('/api/transactions', async (req, res) => {
   }
 });
 
+// Detect transactions that look like unlinked transfers
+router.get('/api/transactions/transfer-suspects', async (req, res) => {
+  try {
+    const sql = `
+      SELECT t.*, a.name as account_name, a.type as account_type
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE t.id NOT IN (
+        SELECT source_transaction_id      FROM transfers WHERE source_transaction_id IS NOT NULL
+        UNION
+        SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
+      )
+      AND (
+        t.category IN ('Transfers & Salary', 'Credit Card Payment')
+        OR LOWER(t.description) LIKE '%transfer%'
+        OR LOWER(t.description) LIKE '% trf %'
+        OR LOWER(t.description) LIKE 'trf %'
+        OR LOWER(t.description) LIKE '%trsf%'
+        OR LOWER(t.description) LIKE '%top up%'
+        OR LOWER(t.description) LIKE '%topup%'
+        OR LOWER(t.description) LIKE '%top-up%'
+      )
+      ORDER BY t.date DESC, t.created_at DESC
+    `;
+    const suspects = await query.all(sql);
+    res.json(suspects);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Find matching counterpart for a suspected transfer
+router.get('/api/transactions/transfer-match', async (req, res) => {
+  const { amount, date, account_id } = req.query;
+  if (!amount || !date) return res.status(400).json({ error: 'amount and date required' });
+  try {
+    const sql = `
+      SELECT t.*, a.name as account_name
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE t.account_id != ?
+        AND ABS(t.amount) = ABS(?)
+        AND t.date BETWEEN date(?, '-2 days') AND date(?, '+2 days')
+        AND t.id NOT IN (
+          SELECT source_transaction_id      FROM transfers WHERE source_transaction_id IS NOT NULL
+          UNION
+          SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
+        )
+      ORDER BY ABS(julianday(t.date) - julianday(?)) ASC
+      LIMIT 5
+    `;
+    const matches = await query.all(sql, [account_id, amount, date, date, date]);
+    res.json(matches);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add a transaction
 router.post('/api/transactions', async (req, res) => {
   const { account_id, date, booking_date = null, description, amount, category, is_installment = 0, installment_id = null, note = null, location_merchant = null, product_service = null } = req.body;

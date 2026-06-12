@@ -84,6 +84,65 @@ router.post('/api/transfers', async (req, res) => {
   }
 });
 
+// Link existing transactions as a transfer (convert suspected transfer tx)
+router.post('/api/transfers/link', async (req, res) => {
+  const { tx_id, counterpart_id, description } = req.body;
+  if (!tx_id) return res.status(400).json({ error: 'tx_id is required' });
+
+  try {
+    const mainTx = await query.get(
+      'SELECT t.*, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
+      [tx_id]
+    );
+    if (!mainTx) return res.status(404).json({ error: 'Transaction not found' });
+
+    let counterpartTx = null;
+    if (counterpart_id) {
+      counterpartTx = await query.get(
+        'SELECT t.*, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
+        [counterpart_id]
+      );
+      if (!counterpartTx) return res.status(404).json({ error: 'Counterpart transaction not found' });
+    }
+
+    // Determine source (debit) and destination (credit)
+    const srcTx  = mainTx.amount < 0 ? mainTx        : counterpartTx;
+    const destTx = mainTx.amount < 0 ? counterpartTx : mainTx;
+
+    const srcAccountId  = srcTx?.account_id  || mainTx.account_id;
+    const destAccountId = destTx?.account_id || mainTx.account_id;
+    const amount = Math.abs(mainTx.amount);
+    const date   = mainTx.date;
+    const desc   = description || mainTx.description;
+    const transferId = generateUUID();
+
+    await query.exec('BEGIN TRANSACTION');
+
+    // Update source tx category
+    if (srcTx) {
+      await query.run(`UPDATE transactions SET category = 'Transfers & Salary' WHERE id = ?`, [srcTx.id]);
+    }
+
+    // Update destination tx category
+    if (destTx) {
+      const destCategory = destTx.account_type === 'credit_card' ? 'Credit Card Payment' : 'Transfers & Salary';
+      await query.run(`UPDATE transactions SET category = ? WHERE id = ?`, [destCategory, destTx.id]);
+    }
+
+    await query.run(
+      `INSERT INTO transfers (id, source_account_id, destination_account_id, amount, fee, date, description, source_transaction_id, destination_transaction_id, fee_transaction_id)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NULL)`,
+      [transferId, srcAccountId, destAccountId, amount, date, desc, srcTx?.id || null, destTx?.id || null]
+    );
+
+    await query.exec('COMMIT');
+    res.status(201).json({ id: transferId, message: 'Transfer linked successfully' });
+  } catch (error) {
+    await query.exec('ROLLBACK').catch(() => {});
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete a transfer
 router.delete('/api/transfers/:id', async (req, res) => {
   try {

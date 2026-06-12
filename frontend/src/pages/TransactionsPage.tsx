@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { API_URL, CATEGORIES } from '../constants';
 import Icons from '../components/Icons';
 import AutocompleteInput from '../components/AutocompleteInput';
 import TransactionEditModal from '../components/TransactionEditModal';
 import SplitTransactionModal from '../components/SplitTransactionModal';
+import ConvertToTransferModal from '../components/ConvertToTransferModal';
 import ImportView from './ImportView';
 import OcrView from './OcrView';
 import { useApp } from '../context/AppContext';
@@ -145,6 +146,19 @@ export default function TransactionsPage() {
     });
     return result;
   }, [groupedCategories, txType]);
+
+  // Transfer detection
+  const [transferSuspectIds, setTransferSuspectIds] = useState<Set<string>>(new Set());
+  const [convertingTx, setConvertingTx] = useState<any | null>(null);
+
+  const fetchTransferSuspects = () => {
+    fetch(`${API_URL}/transactions/transfer-suspects`)
+      .then(r => r.json())
+      .then(data => setTransferSuspectIds(new Set(Array.isArray(data) ? data.map((t: any) => t.id) : [])))
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchTransferSuspects(); }, []);
 
   // Edit / split dialogs (shared modal components)
   const [editingTx, setEditingTx] = useState<any | null>(null);
@@ -648,7 +662,7 @@ export default function TransactionsPage() {
                           <td style={{ fontWeight: 500 }}>{tx.account_name}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{tx.description}</div>
-                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.2rem' }}>
+                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                               {tx.is_installment === 1 && (
                                 <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', fontSize: '0.6rem', padding: '0.05rem 0.3rem' }}>
                                   INSTALLMENT
@@ -658,6 +672,21 @@ export default function TransactionsPage() {
                                 <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontSize: '0.6rem', padding: '0.05rem 0.3rem' }}>
                                   TRANSFER
                                 </span>
+                              )}
+                              {transferSuspectIds.has(tx.id) && (
+                                <button
+                                  onClick={() => setConvertingTx(tx)}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+                                    background: 'rgba(245,158,11,0.12)', color: '#fbbf24',
+                                    border: '1px solid rgba(245,158,11,0.3)', borderRadius: '4px',
+                                    fontSize: '0.6rem', fontWeight: 700, padding: '0.05rem 0.35rem',
+                                    cursor: 'pointer', lineHeight: 1.4, letterSpacing: '0.02em',
+                                  }}
+                                  title="Terdeteksi sebagai transfer — klik untuk mengkonversi"
+                                >
+                                  ⚡ Transfer?
+                                </button>
                               )}
                             </div>
                           </td>
@@ -895,6 +924,18 @@ export default function TransactionsPage() {
           targetTx={splittingLedgerTx}
           onConfirm={handleConfirmLedgerSplit}
           onCancel={() => setSplittingLedgerTx(null)}
+        />
+      )}
+
+      {convertingTx && (
+        <ConvertToTransferModal
+          tx={convertingTx}
+          onClose={() => setConvertingTx(null)}
+          onConverted={() => {
+            setConvertingTx(null);
+            fetchTransferSuspects();
+            fetchData();
+          }}
         />
       )}
     </div>
