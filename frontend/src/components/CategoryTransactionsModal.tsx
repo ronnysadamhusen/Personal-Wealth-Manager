@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { API_URL } from '../constants';
 import { formatIDR } from '../utils/format';
 import { useApp } from '../context/AppContext';
