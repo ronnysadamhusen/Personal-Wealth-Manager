@@ -27,12 +27,19 @@ router.get('/api/transactions', async (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `
       SELECT t.*, a.name as account_name, a.type as account_type,
-        CASE WHEN EXISTS (
-          SELECT 1 FROM transfers
-          WHERE source_transaction_id = t.id OR destination_transaction_id = t.id
-        ) THEN 1 ELSE 0 END as is_transfer
+        CASE WHEN tr_src.id IS NOT NULL OR tr_dst.id IS NOT NULL THEN 1 ELSE 0 END as is_transfer,
+        CASE WHEN tr_src.id IS NOT NULL THEN 'out'
+             WHEN tr_dst.id IS NOT NULL THEN 'in'
+             ELSE NULL END as transfer_direction,
+        CASE WHEN tr_src.id IS NOT NULL THEN a_dst.name
+             WHEN tr_dst.id IS NOT NULL THEN a_src.name
+             ELSE NULL END as transfer_counterpart_account
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
+      LEFT JOIN transfers tr_src ON tr_src.source_transaction_id = t.id
+      LEFT JOIN transfers tr_dst ON tr_dst.destination_transaction_id = t.id
+      LEFT JOIN accounts a_dst ON a_dst.id = tr_src.destination_account_id
+      LEFT JOIN accounts a_src ON a_src.id = tr_dst.source_account_id
       ${where}
       ORDER BY t.date DESC, t.created_at DESC
     `;

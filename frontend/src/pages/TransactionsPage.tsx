@@ -674,9 +674,11 @@ export default function TransactionsPage() {
                                   background: 'rgba(16,185,129,0.1)', color: '#6ee7b7',
                                   border: '1px solid rgba(16,185,129,0.25)', borderRadius: '4px',
                                   fontSize: '0.6rem', fontWeight: 700, padding: '0.05rem 0.35rem',
-                                  letterSpacing: '0.02em',
+                                  letterSpacing: '0.02em', whiteSpace: 'nowrap',
                                 }}>
-                                  🔁 TRANSFER
+                                  🔁 {tx.transfer_direction === 'out'
+                                    ? `Transfer to ${tx.transfer_counterpart_account || '—'}`
+                                    : `Transfer from ${tx.transfer_counterpart_account || '—'}`}
                                 </span>
                               )}
                               {transferSuspectIds.has(tx.id) && (
