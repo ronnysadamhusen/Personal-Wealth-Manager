@@ -210,7 +210,11 @@ const Parsers = {
     // "SISA KREDIT LIMIT" is the last header, so the first number after it is KREDIT LIMIT GABUNGAN.
     const limitMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)/i);
     const creditLimit = limitMatch ? parseFloat(limitMatch[1].replace(/\./g, '')) : null;
-    const billMatch = text.match(/TAGIHAN BARU\s*:\s*RP\s*([\d.,]+)/i);
+    // Primary: "TAGIHAN BARU   :   RP 3.092.670" (labeled format)
+    // Fallback: table format where all headers precede all values — after "TAGIHAN BARU"
+    //   (no colon) the first number is the TAGIHAN SEBELUMNYA value, used as initial billing.
+    const billMatch = text.match(/TAGIHAN BARU\s*:\s*RP\s*([\d.,]+)/i)
+                   || text.match(/TAGIHAN BARU\s+([\d.,]+)/i);
     const currentBill = billMatch ? parseAmount(billMatch[1]) : null;
 
     // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
