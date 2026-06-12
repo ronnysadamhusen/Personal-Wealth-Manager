@@ -8,9 +8,23 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.0',
+    date: '2026-06-12',
+    highlights: 'Deteksi otomatis transaksi transfer antar akun — tandai, konversi, dan filter dengan mudah.',
+    changes: [
+      { type: 'feat', description: 'Deteksi otomatis transaksi yang kemungkinan transfer — badge ⚡ Transfer? muncul jika ada counterpart yang cocok di akun lain' },
+      { type: 'feat', description: 'Modal konversi transfer: pilih counterpart, konfirmasi, dan transaksi langsung terlink sebagai transfer' },
+      { type: 'feat', description: 'Badge 🔁 Transfer to/from [nama akun] pada transaksi yang sudah terlink sebagai transfer' },
+      { type: 'feat', description: 'Filter Tipe (Income / Expense / Transfer) di panel Search & Filters' },
+      { type: 'fix', description: 'Total Income, Expense, dan Net Cash Flow tidak lagi menghitung transaksi bertipe transfer' },
+      { type: 'improvement', description: 'Tag Kepentingan & Urgensi di Manage Categories diubah ke dropdown select' },
+      { type: 'improvement', description: 'Popup edit kategori transaksi: transaksi yang dipindah langsung menghilang dari list' },
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-06-12',
