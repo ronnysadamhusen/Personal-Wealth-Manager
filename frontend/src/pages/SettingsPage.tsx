@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_URL } from '../constants';
 import Icons from '../components/Icons';
 import { useApp } from '../context/AppContext';
+import CategoryTransactionsModal from '../components/CategoryTransactionsModal';
 
 export default function SettingsPage() {
   const {
@@ -10,13 +11,16 @@ export default function SettingsPage() {
   } = useApp();
 
   const [txCounts, setTxCounts] = useState<Record<string, number>>({});
+  const [viewTxCategory, setViewTxCategory] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchTxCounts = () => {
     fetch(`${API_URL}/categories/transaction-counts`)
       .then(r => r.json())
       .then(data => setTxCounts(data))
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => { fetchTxCounts(); }, []);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCatParentId, setNewCatParentId] = useState('');
@@ -255,6 +259,13 @@ export default function SettingsPage() {
 
   return (
           <div>
+            {viewTxCategory && (
+              <CategoryTransactionsModal
+                categoryName={viewTxCategory}
+                onClose={() => setViewTxCategory(null)}
+                onCategoryChanged={() => { fetchTxCounts(); fetchData(); }}
+              />
+            )}
             <div style={{ marginBottom: '2rem' }}>
               <h2>Application Settings</h2>
               <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
@@ -386,7 +397,13 @@ export default function SettingsPage() {
                                 )}
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
+                                {(txCounts[group.parent.name] ?? 0) > 0 && (
+                                  <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-text-muted)', background: 'transparent', marginRight: '0.25rem' }}
+                                    onClick={() => setViewTxCategory(group.parent.name)}
+                                    title="Lihat daftar transaksi">📋
+                                  </button>
+                                )}
+                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.25rem' }}
                                   onClick={() => { setEditingCategoryId(group.parent.id); setEditingCategoryName(group.parent.name); setEditingCategoryType(group.parent.type || 'expense'); setEditingCategoryParentId(group.parent.parent_id || ''); setEditingCategoryImportance(group.parent.importance || ''); setEditingCategoryUrgency(group.parent.urgency || ''); }}
                                   title="Rename / Change Category Type">✏️
                                 </button>
@@ -457,7 +474,13 @@ export default function SettingsPage() {
                                     )}
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
-                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
+                                    {(txCounts[sub.name] ?? 0) > 0 && (
+                                      <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-text-muted)', background: 'transparent', marginRight: '0.25rem' }}
+                                        onClick={() => setViewTxCategory(sub.name)}
+                                        title="Lihat daftar transaksi">📋
+                                      </button>
+                                    )}
+                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.25rem' }}
                                       onClick={() => { setEditingCategoryId(sub.id); setEditingCategoryName(sub.name); setEditingCategoryType(sub.type || 'expense'); setEditingCategoryParentId(sub.parent_id || ''); setEditingCategoryImportance(sub.importance || ''); setEditingCategoryUrgency(sub.urgency || ''); }}
                                       title="Rename / Change Subcategory Type">✏️
                                     </button>
