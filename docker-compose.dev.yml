@@ -1,0 +1,21 @@
+services:
+  personal-wealth-manager-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: personal-wealth-manager:dev
+    container_name: personal-wealth-manager-dev
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./data-dev:/app/data
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/accounts"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
