@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../constants';
 import Icons from '../components/Icons';
 import { useApp } from '../context/AppContext';
@@ -8,6 +8,15 @@ export default function SettingsPage() {
     dbCategories, groupedCategories, fetchData, navigateTo, setLoading,
     aiProvider, setAiProvider, aiApiKey, setAiApiKey, aiModelName, setAiModelName, aiBaseUrl, setAiBaseUrl,
   } = useApp();
+
+  const [txCounts, setTxCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch(`${API_URL}/categories/transaction-counts`)
+      .then(r => r.json())
+      .then(data => setTxCounts(data))
+      .catch(() => {});
+  }, []);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCatParentId, setNewCatParentId] = useState('');
@@ -251,7 +260,8 @@ export default function SettingsPage() {
                     <thead>
                       <tr>
                         <th>Category Hierarchy</th>
-                        <th style={{ width: '35%', textAlign: 'center' }}>Actions</th>
+                        <th style={{ width: '10%', textAlign: 'center' }}>Transaksi</th>
+                        <th style={{ width: '25%', textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -260,7 +270,7 @@ export default function SettingsPage() {
                           {/* Parent row edit or view */}
                           {editingCategoryId === group.parent.id ? (
                             <tr>
-                              <td colSpan={2}>
+                              <td colSpan={3}>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0', flexWrap: 'wrap' }}>
                                   <input
                                     type="text"
@@ -320,6 +330,15 @@ export default function SettingsPage() {
                                 </div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
+                                {txCounts[group.parent.name] > 0 ? (
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                    {txCounts[group.parent.name]}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
                                 <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
                                   onClick={() => { setEditingCategoryId(group.parent.id); setEditingCategoryName(group.parent.name); setEditingCategoryType(group.parent.type || 'expense'); setEditingCategoryParentId(group.parent.parent_id || ''); setEditingCategoryImportance(group.parent.importance || ''); setEditingCategoryUrgency(group.parent.urgency || ''); }}
                                   title="Rename / Change Category Type">✏️
@@ -336,7 +355,7 @@ export default function SettingsPage() {
                             <React.Fragment key={sub.id}>
                               {editingCategoryId === sub.id ? (
                                 <tr>
-                                  <td colSpan={2}>
+                                  <td colSpan={3}>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0 0.25rem 2rem', flexWrap: 'wrap' }}>
                                       <input type="text" className="form-control" value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} style={{ flex: 2, margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }} required />
                                       <select className="form-control" value={editingCategoryType} onChange={(e) => setEditingCategoryType(e.target.value as any)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}>
@@ -373,7 +392,7 @@ export default function SettingsPage() {
                                       <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
                                         {(sub.type || 'expense').toUpperCase()}
                                       </span>
-                                      <select value={sub.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, e.target.value || null, sub.urgency || null)}
+                                          <select value={sub.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, e.target.value || null, sub.urgency || null)}
                                         style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: sub.importance === 'penting' ? 'rgba(99,102,241,0.15)' : sub.importance === 'tidak_penting' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
                                         <option value="">— Kepentingan —</option>
                                         <option value="penting">⭐ Penting</option>
@@ -386,6 +405,15 @@ export default function SettingsPage() {
                                         <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
                                       </select>
                                     </div>
+                                  </td>
+                                  <td style={{ textAlign: 'center' }}>
+                                    {txCounts[sub.name] > 0 ? (
+                                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                        {txCounts[sub.name]}
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
+                                    )}
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
                                     <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}

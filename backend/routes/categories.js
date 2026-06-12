@@ -4,6 +4,20 @@ const { generateUUID } = require('../utils/id');
 
 const router = express.Router();
 
+// Get transaction count per category name
+router.get('/api/categories/transaction-counts', async (req, res) => {
+  try {
+    const rows = await query.all(
+      `SELECT category AS name, COUNT(*) AS count FROM transactions WHERE category IS NOT NULL AND category != '' GROUP BY category`
+    );
+    const counts = {};
+    rows.forEach(r => { counts[r.name] = r.count; });
+    res.json(counts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all custom categories
 router.get('/api/categories', async (req, res) => {
   try {
