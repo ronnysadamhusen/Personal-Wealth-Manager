@@ -388,28 +388,29 @@ export default function SettingsPage() {
                                 </div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                {txCounts[group.parent.name] > 0 ? (
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                {(txCounts[group.parent.name] ?? 0) > 0 ? (
+                                  <button type="button" onClick={() => setViewTxCategory(group.parent.name)}
+                                    style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: 'var(--color-primary)', borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                                    title="Lihat daftar transaksi">
                                     {txCounts[group.parent.name]}
-                                  </span>
+                                  </button>
                                 ) : (
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
                                 )}
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                {(txCounts[group.parent.name] ?? 0) > 0 && (
-                                  <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-text-muted)', background: 'transparent', marginRight: '0.25rem' }}
-                                    onClick={() => setViewTxCategory(group.parent.name)}
-                                    title="Lihat daftar transaksi">📋
+                                <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                                  <button type="button" className="btn"
+                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-primary)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px' }}
+                                    onClick={() => { setEditingCategoryId(group.parent.id); setEditingCategoryName(group.parent.name); setEditingCategoryType(group.parent.type || 'expense'); setEditingCategoryParentId(group.parent.parent_id || ''); setEditingCategoryImportance(group.parent.importance || ''); setEditingCategoryUrgency(group.parent.urgency || ''); }}
+                                    title="Edit kategori">✏️ Edit
                                   </button>
-                                )}
-                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.25rem' }}
-                                  onClick={() => { setEditingCategoryId(group.parent.id); setEditingCategoryName(group.parent.name); setEditingCategoryType(group.parent.type || 'expense'); setEditingCategoryParentId(group.parent.parent_id || ''); setEditingCategoryImportance(group.parent.importance || ''); setEditingCategoryUrgency(group.parent.urgency || ''); }}
-                                  title="Rename / Change Category Type">✏️
-                                </button>
-                                <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }} onClick={() => handleDeleteCategory(group.parent.id)}>
-                                  <Icons.Delete />
-                                </button>
+                                  <button type="button" className="btn"
+                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px' }}
+                                    onClick={() => handleDeleteCategory(group.parent.id)}
+                                    title="Hapus kategori">🗑️
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           )}
@@ -465,28 +466,29 @@ export default function SettingsPage() {
                                     </div>
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
-                                    {txCounts[sub.name] > 0 ? (
-                                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                    {(txCounts[sub.name] ?? 0) > 0 ? (
+                                      <button type="button" onClick={() => setViewTxCategory(sub.name)}
+                                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: 'var(--color-primary)', borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                                        title="Lihat daftar transaksi">
                                         {txCounts[sub.name]}
-                                      </span>
+                                      </button>
                                     ) : (
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
                                     )}
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
-                                    {(txCounts[sub.name] ?? 0) > 0 && (
-                                      <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-text-muted)', background: 'transparent', marginRight: '0.25rem' }}
-                                        onClick={() => setViewTxCategory(sub.name)}
-                                        title="Lihat daftar transaksi">📋
+                                    <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                                      <button type="button" className="btn"
+                                        style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-primary)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px' }}
+                                        onClick={() => { setEditingCategoryId(sub.id); setEditingCategoryName(sub.name); setEditingCategoryType(sub.type || 'expense'); setEditingCategoryParentId(sub.parent_id || ''); setEditingCategoryImportance(sub.importance || ''); setEditingCategoryUrgency(sub.urgency || ''); }}
+                                        title="Edit subkategori">✏️ Edit
                                       </button>
-                                    )}
-                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.25rem' }}
-                                      onClick={() => { setEditingCategoryId(sub.id); setEditingCategoryName(sub.name); setEditingCategoryType(sub.type || 'expense'); setEditingCategoryParentId(sub.parent_id || ''); setEditingCategoryImportance(sub.importance || ''); setEditingCategoryUrgency(sub.urgency || ''); }}
-                                      title="Rename / Change Subcategory Type">✏️
-                                    </button>
-                                    <button type="button" className="btn" style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }} onClick={() => handleDeleteCategory(sub.id)}>
-                                      <Icons.Delete />
-                                    </button>
+                                      <button type="button" className="btn"
+                                        style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-danger)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px' }}
+                                        onClick={() => handleDeleteCategory(sub.id)}
+                                        title="Hapus subkategori">🗑️
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               )}
