@@ -371,42 +371,6 @@ export default function TransactionsPage() {
 
             {transactionSubTab === 'ledger' && (<div>
 
-            {/* Type Slicer */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-              {([
-                { key: 'all',      label: 'Semua',    icon: '📋' },
-                { key: 'income',   label: 'Income',   icon: '📈' },
-                { key: 'expense',  label: 'Expense',  icon: '📉' },
-                { key: 'transfer', label: 'Transfer', icon: '🔁' },
-              ] as const).map(({ key, label, icon }) => {
-                const active = filterType === key;
-                const colors: Record<string, { bg: string; color: string; border: string }> = {
-                  all:      { bg: 'rgba(255,255,255,0.08)', color: 'var(--color-text)',    border: 'rgba(255,255,255,0.15)' },
-                  income:   { bg: 'rgba(16,185,129,0.15)',  color: '#6ee7b7',              border: 'rgba(16,185,129,0.35)'  },
-                  expense:  { bg: 'rgba(239,68,68,0.15)',   color: '#fca5a5',              border: 'rgba(239,68,68,0.35)'   },
-                  transfer: { bg: 'rgba(99,102,241,0.15)',  color: 'var(--color-primary)', border: 'rgba(99,102,241,0.35)'  },
-                };
-                const c = colors[key];
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setFilterType(key)}
-                    style={{
-                      padding: '0.4rem 1rem', borderRadius: '999px', cursor: 'pointer',
-                      fontSize: '0.85rem', fontWeight: 600,
-                      background: active ? c.bg : 'rgba(255,255,255,0.03)',
-                      color: active ? c.color : 'var(--color-text-muted)',
-                      border: `1px solid ${active ? c.border : 'rgba(255,255,255,0.08)'}`,
-                      transition: 'all 0.15s',
-                      display: 'flex', alignItems: 'center', gap: '0.35rem',
-                    }}
-                  >
-                    <span>{icon}</span> {label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Filter Panel */}
             <div className="glass-panel card-content" style={{ marginBottom: '2rem' }}>
               <h3 style={{ marginBottom: '1.25rem' }}>Search & Filters</h3>
@@ -443,6 +407,21 @@ export default function TransactionsPage() {
                         ))}
                       </React.Fragment>
                     ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Tipe</label>
+                  <select
+                    className="form-control"
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value as any)}
+                    style={{ margin: 0 }}
+                  >
+                    <option value="all">Semua Tipe</option>
+                    <option value="income">📈 Income</option>
+                    <option value="expense">📉 Expense</option>
+                    <option value="transfer">🔁 Transfer</option>
                   </select>
                 </div>
 
