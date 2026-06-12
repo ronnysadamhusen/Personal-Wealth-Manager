@@ -26,7 +26,11 @@ router.get('/api/transactions', async (req, res) => {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `
-      SELECT t.*, a.name as account_name, a.type as account_type
+      SELECT t.*, a.name as account_name, a.type as account_type,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM transfers
+          WHERE source_transaction_id = t.id OR destination_transaction_id = t.id
+        ) THEN 1 ELSE 0 END as is_transfer
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       ${where}

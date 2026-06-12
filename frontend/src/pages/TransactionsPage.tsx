@@ -668,9 +668,15 @@ export default function TransactionsPage() {
                                   INSTALLMENT
                                 </span>
                               )}
-                              {tx.category === 'Transfers & Salary' && tx.description.toLowerCase().includes('transfer') && (
-                                <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', fontSize: '0.6rem', padding: '0.05rem 0.3rem' }}>
-                                  TRANSFER
+                              {tx.is_transfer === 1 && (
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+                                  background: 'rgba(16,185,129,0.1)', color: '#6ee7b7',
+                                  border: '1px solid rgba(16,185,129,0.25)', borderRadius: '4px',
+                                  fontSize: '0.6rem', fontWeight: 700, padding: '0.05rem 0.35rem',
+                                  letterSpacing: '0.02em',
+                                }}>
+                                  🔁 TRANSFER
                                 </span>
                               )}
                               {transferSuspectIds.has(tx.id) && (
