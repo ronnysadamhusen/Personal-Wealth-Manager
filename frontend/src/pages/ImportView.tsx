@@ -84,7 +84,7 @@ export default function ImportView() {
     triggerDuplicateCheck();
   }, [importTargetAccId, parsedData?.transactions?.length, lastCheckedAccId, lastCheckedTxCount]);
 
-  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null) => {
+  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null) => {
     if (index >= files.length) {
       setLoading(false);
       setPdfPassword('');
@@ -95,7 +95,8 @@ export default function ImportView() {
         transactionCount: accumulatedTx.length,
         transactions: accumulatedTx,
         detectedInstallments: accumulatedInstallments,
-        creditLimit: maxCreditLimit
+        creditLimit: maxCreditLimit,
+        currentBill: latestCurrentBill
       });
       return;
     }
@@ -163,8 +164,10 @@ export default function ImportView() {
       const nextCreditLimit = result.creditLimit && (!maxCreditLimit || result.creditLimit > maxCreditLimit)
         ? result.creditLimit
         : maxCreditLimit;
+      // Use latest currentBill (most recent statement wins)
+      const nextCurrentBill = result.currentBill != null ? result.currentBill : latestCurrentBill;
 
-      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit);
+      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Error parsing statement');
@@ -245,6 +248,7 @@ export default function ImportView() {
           file_name: fileNames,
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
+          current_bill: parsedData.currentBill ?? null,
           billing_cycle_date: parsedData.billingCycleDate,
           due_date: parsedData.dueDate
         })

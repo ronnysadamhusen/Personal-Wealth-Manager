@@ -169,6 +169,7 @@ db.serialize(() => {
     )
   `);
   db.run("ALTER TABLE transfers ADD COLUMN balancer_transaction_id TEXT", () => {});
+  db.run("ALTER TABLE accounts ADD COLUMN current_bill REAL DEFAULT NULL", () => {});
 
   // AI Configuration Setup
   db.run(`

@@ -210,6 +210,8 @@ const Parsers = {
     // "SISA KREDIT LIMIT" is the last header, so the first number after it is KREDIT LIMIT GABUNGAN.
     const limitMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)/i);
     const creditLimit = limitMatch ? parseFloat(limitMatch[1].replace(/\./g, '')) : null;
+    const billMatch = text.match(/TAGIHAN BARU\s*:\s*RP\s*([\d.,]+)/i);
+    const currentBill = billMatch ? parseAmount(billMatch[1]) : null;
 
     // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
     // Lookahead stops the description before the next transaction, section header, or end of string.
@@ -272,7 +274,7 @@ const Parsers = {
       }
     }
 
-    return { transactions, dueDate, billingCycleDate, creditLimit, detectedInstallments };
+    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -618,6 +620,7 @@ async function parseStatement(pdfBuffer, password = '') {
   let parsedTransactions = [];
   let detectedInstallments = [];
   let creditLimit = null;
+  let currentBill = null;
   let billingCycleDate = null;
   let dueDate = null;
   let bankName = 'Unknown';
@@ -640,6 +643,7 @@ async function parseStatement(pdfBuffer, password = '') {
     dueDate = bcaResult.dueDate;
     billingCycleDate = bcaResult.billingCycleDate;
     creditLimit = bcaResult.creditLimit;
+    currentBill = bcaResult.currentBill;
     detectedInstallments = bcaResult.detectedInstallments || [];
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
@@ -682,6 +686,7 @@ async function parseStatement(pdfBuffer, password = '') {
     transactions: validTransactions,
     detectedInstallments,
     creditLimit,
+    currentBill,
     billingCycleDate,
     dueDate
   };
