@@ -132,24 +132,20 @@ export default function TransactionsPage() {
   const [txDesc, setTxDesc] = useState('');
   const [txAmount, setTxAmount] = useState('');
   const [txCategory, setTxCategory] = useState(CATEGORIES[0]);
-  const [txType, setTxType] = useState<'income' | 'expense'>('expense');
+  const [txType, setTxType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [txNote, setTxNote] = useState('');
   const [txLocationMerchant, setTxLocationMerchant] = useState('');
   const [txProductService, setTxProductService] = useState('');
+  const [txDestAccId, setTxDestAccId] = useState('');
 
   // Filter categories dynamically based on transaction type (income / expense)
   const filteredCategoriesForTx = useMemo(() => {
+    if (txType === 'transfer') return [];
     const result: typeof groupedCategories = [];
     groupedCategories.forEach(group => {
       const parentMatch = group.parent.type === 'both' || group.parent.type === txType;
       const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === txType);
-      
-      if (parentMatch || matchedSubs.length > 0) {
-        result.push({
-          parent: group.parent,
-          subs: matchedSubs
-        });
-      }
+      if (parentMatch || matchedSubs.length > 0) result.push({ parent: group.parent, subs: matchedSubs });
     });
     return result;
   }, [groupedCategories, txType]);
@@ -201,34 +197,53 @@ export default function TransactionsPage() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!txAccId || !txDesc || !txAmount) return;
+    if (txType === 'transfer' && !txDestAccId) return;
 
     try {
-      const value = parseFloat(txAmount);
-      const amountValue = txType === 'income' ? value : -value;
+      let res: Response;
 
-      const res = await fetch(`${API_URL}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          account_id: txAccId,
-          date: txDate,
-          booking_date: txBookingDate || txDate,
-          description: txDesc,
-          amount: amountValue,
-          category: txCategory,
-          note: txNote || null,
-          location_merchant: txLocationMerchant || null,
-          product_service: txProductService || null
-        })
-      });
+      if (txType === 'transfer') {
+        res = await fetch(`${API_URL}/transfers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_account_id: txAccId,
+            destination_account_id: txDestAccId,
+            amount: parseFloat(txAmount),
+            date: txDate,
+            description: txDesc || undefined,
+          }),
+        });
+      } else {
+        const value = parseFloat(txAmount);
+        const amountValue = txType === 'income' ? value : -value;
+        res = await fetch(`${API_URL}/transactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            account_id: txAccId,
+            date: txDate,
+            booking_date: txBookingDate || txDate,
+            description: txDesc,
+            amount: amountValue,
+            category: txCategory,
+            note: txNote || null,
+            location_merchant: txLocationMerchant || null,
+            product_service: txProductService || null,
+          }),
+        });
+      }
+
       if (res.ok) {
         setTxDesc('');
         setTxAmount('');
         setTxNote('');
         setTxLocationMerchant('');
         setTxProductService('');
+        setTxDestAccId('');
         setIsAddTxModalOpen(false);
         fetchData();
+        fetchTransferSuspects();
       }
     } catch (err) {
       console.error(err);
@@ -360,6 +375,7 @@ export default function TransactionsPage() {
                     setTxDesc('');
                     setTxAmount('');
                     setTxNote('');
+                    setTxDestAccId('');
                     setIsAddTxModalOpen(true);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -786,106 +802,135 @@ export default function TransactionsPage() {
 
               <form onSubmit={handleAddTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
-                <div className="form-group">
-                  <label>Account / Credit Card</label>
-                  <select 
-                    className="form-control"
-                    value={txAccId}
-                    onChange={(e) => setTxAccId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Choose Account --</option>
-                    {accounts.map(a => (
-                      <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'Credit Card'})</option>
-                    ))}
-                  </select>
+                {/* Account — relabel when transfer */}
+                <div className={txType === 'transfer' ? 'grid-cols-2' : 'form-group'}
+                  style={txType === 'transfer' ? { gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' } : {}}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>{txType === 'transfer' ? 'Akun Sumber' : 'Account / Credit Card'}</label>
+                    <select
+                      className="form-control"
+                      value={txAccId}
+                      onChange={(e) => setTxAccId(e.target.value)}
+                      required
+                      style={{ margin: 0 }}
+                    >
+                      <option value="">-- Pilih Akun --</option>
+                      {accounts.map(a => (
+                        <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'CC'})</option>
+                      ))}
+                    </select>
+                  </div>
+                  {txType === 'transfer' && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>Akun Tujuan</label>
+                      <select
+                        className="form-control"
+                        value={txDestAccId}
+                        onChange={(e) => setTxDestAccId(e.target.value)}
+                        required
+                        style={{ margin: 0 }}
+                      >
+                        <option value="">-- Pilih Akun Tujuan --</option>
+                        {accounts.filter(a => a.id !== txAccId).map(a => (
+                          <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'CC'})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
                   <div className="form-group">
                     <label>Transaction Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
-                      value={txDate} 
-                      onChange={(e) => {
-                        setTxDate(e.target.value);
-                        setTxBookingDate(e.target.value);
-                      }}
-                      required 
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={txDate}
+                      onChange={(e) => { setTxDate(e.target.value); setTxBookingDate(e.target.value); }}
+                      required
                     />
                   </div>
                   <div className="form-group">
                     <label>Booking Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
-                      value={txBookingDate} 
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={txBookingDate}
                       onChange={(e) => setTxBookingDate(e.target.value)}
-                      required 
+                      required
                     />
                   </div>
                 </div>
 
-                <div className="grid-cols-2" style={{ gridTemplateColumns: '0.8fr 1.2fr', margin: 0, gap: '1rem' }}>
-                  <div className="form-group">
+                {/* Type + Category — category hidden when transfer */}
+                <div className={txType !== 'transfer' ? 'grid-cols-2' : 'form-group'}
+                  style={txType !== 'transfer' ? { gridTemplateColumns: '0.8fr 1.2fr', margin: 0, gap: '1rem' } : {}}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label>Type</label>
-                    <select 
-                      className="form-control" 
-                      value={txType} 
+                    <select
+                      className="form-control"
+                      value={txType}
                       onChange={(e) => setTxType(e.target.value as any)}
+                      style={{ margin: 0 }}
                     >
                       <option value="expense">Expense (-)</option>
                       <option value="income">Income (+)</option>
+                      <option value="transfer">🔁 Transfer</option>
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label>Category</label>
-                    <select 
-                      className="form-control" 
-                      value={txCategory} 
-                      onChange={(e) => setTxCategory(e.target.value)}
-                    >
-                      {filteredCategoriesForTx.map(group => (
-                        <optgroup key={group.parent.id} label={group.parent.name}>
-                          <option value={group.parent.name}>{group.parent.name}</option>
-                          {group.subs.map(sub => (
-                            <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
+                  {txType !== 'transfer' && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label>Category</label>
+                      <select
+                        className="form-control"
+                        value={txCategory}
+                        onChange={(e) => setTxCategory(e.target.value)}
+                        style={{ margin: 0 }}
+                      >
+                        {filteredCategoriesForTx.map(group => (
+                          <optgroup key={group.parent.id} label={group.parent.name}>
+                            <option value={group.parent.name}>{group.parent.name}</option>
+                            {group.subs.map(sub => (
+                              <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
-                  <div className="form-group">
-                    <label>Location/Merchant</label>
-                    <AutocompleteInput 
-                      className="form-control" 
-                      placeholder="e.g. Starbucks" 
-                      value={txLocationMerchant}
-                      onChangeValue={setTxLocationMerchant}
-                      suggestions={locationSuggestions}
-                    />
+                {/* Location & Product — hidden when transfer */}
+                {txType !== 'transfer' && (
+                  <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Location/Merchant</label>
+                      <AutocompleteInput
+                        className="form-control"
+                        placeholder="e.g. Starbucks"
+                        value={txLocationMerchant}
+                        onChangeValue={setTxLocationMerchant}
+                        suggestions={locationSuggestions}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Product/Service</label>
+                      <AutocompleteInput
+                        className="form-control"
+                        placeholder="e.g. Coffee"
+                        value={txProductService}
+                        onChangeValue={setTxProductService}
+                        suggestions={productSuggestions}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Product/Service</label>
-                    <AutocompleteInput 
-                      className="form-control" 
-                      placeholder="e.g. Coffee" 
-                      value={txProductService}
-                      onChangeValue={setTxProductService}
-                      suggestions={productSuggestions}
-                    />
-                  </div>
-                </div>
+                )}
 
                 <div className="form-group">
                   <label>Description</label>
-                  <AutocompleteInput 
-                    className="form-control" 
-                    placeholder="e.g. Starbucks coffee" 
+                  <AutocompleteInput
+                    className="form-control"
+                    placeholder={txType === 'transfer' ? 'e.g. Transfer BCA ke Mandiri' : 'e.g. Starbucks coffee'}
                     value={txDesc}
                     onChangeValue={setTxDesc}
                     suggestions={descSuggestions}
@@ -896,43 +941,45 @@ export default function TransactionsPage() {
                 <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
                   <div className="form-group">
                     <label>Amount (IDR)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       step="any"
-                      className="form-control" 
-                      placeholder="e.g. 50000" 
-                      value={txAmount} 
-                      onChange={(e) => setTxAmount(e.target.value)} 
-                      required 
+                      className="form-control"
+                      placeholder="e.g. 50000"
+                      value={txAmount}
+                      onChange={(e) => setTxAmount(e.target.value)}
+                      required
                     />
                   </div>
-                  <div className="form-group">
-                    <label>Note (Optional)</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. Treat for friend" 
-                      value={txNote} 
-                      onChange={(e) => setTxNote(e.target.value)} 
-                    />
-                  </div>
+                  {txType !== 'transfer' && (
+                    <div className="form-group">
+                      <label>Note (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. Treat for friend"
+                        value={txNote}
+                        onChange={(e) => setTxNote(e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={() => setIsAddTxModalOpen(false)}
                     style={{ margin: 0 }}
                   >
                     Batal
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary"
                     style={{ margin: 0 }}
                   >
-                    Simpan Transaksi
+                    {txType === 'transfer' ? '🔁 Simpan Transfer' : 'Simpan Transaksi'}
                   </button>
                 </div>
               </form>
