@@ -189,6 +189,7 @@ const Parsers = {
   },
 
   // 2. BCA Credit Card Statement
+  // Supports both old format (DD MMM DD MMM) and new "REKENING KARTU KREDIT" multi-card format (DD-MMM DD-MMM)
   bcaCreditCard(text) {
     const transactions = [];
     const year = extractYear(text);
@@ -198,38 +199,65 @@ const Parsers = {
       'NOV': '11', 'DES': '12', 'DEC': '12'
     };
 
+    // Extract metadata from header
+    const dueDateMatch = text.match(/TANGGAL JATUH TEMPO\s*[:\-]\s*(\d{1,2})/i);
+    const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
+    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})/i);
+    const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
+
     const lines = text.split('\n');
-    // Pattern: DD MMM DD MMM DESCRIPTION AMOUNT CR/-
-    // E.g., "12 JUN 13 JUN STARBUCKS COFFEE 125.000"
-    // E.g., "15 JUN 16 JUN PEMBAYARAN KARTU KREDIT 1.500.000- CR" or "1.500.000 CR"
-    const regex = /(\d{2})\s+([A-Z]{3})\s+(\d{2})\s+([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR|-)?$/i;
+
+    // Noise rows to skip: balance lines, subtotals, interest headers, card number rows, page markers
+    const skipPatterns = [
+      /^SALDO SEBELUMNYA/i,
+      /^SUBTOTAL/i,
+      /^%\s*SUKU BUNGA/i,
+      /^TAGIHAN\s+LAIN/i,
+      /^GRAND\s+TOTAL/i,
+      /^HALAMAN\s+\d+/i,
+      /^\d{4}-\d{2}XX-XXXX-\d{4}/i,  // masked card number row
+    ];
+
+    // Pattern: DD[-]MMM DD[-]MMM DESCRIPTION AMOUNT [CR|-]
+    // Handles both "12 JUN 13 JUN ..." (old) and "26-FEB 28-FEB ..." (new multi-card format)
+    const regex = /(\d{2})[-\s]([A-Z]{3})\s+(\d{2})[-\s]([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR|-)?$/i;
 
     for (const line of lines) {
       const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (skipPatterns.some(p => p.test(trimmed))) continue;
+
       const match = trimmed.match(regex);
-      if (match) {
-        const [_, dayStr, monthName, postDay, postMonthName, descRaw, amountStr, crMarker] = match;
-        const monthNum = months[monthName.toUpperCase()] || '01';
-        const formattedDate = `${year}-${monthNum}-${dayStr.padStart(2, '0')}`;
-        
-        const amountValue = parseAmount(amountStr);
-        // Credit card charges are expenses (negative amount in our standard schema).
-        // Credit card payments/refunds (CR or trailing minus) are income/reductions (positive amount).
-        const isCredit = crMarker && (crMarker.toUpperCase() === 'CR' || crMarker === '-');
-        const finalAmount = isCredit ? amountValue : -amountValue;
-        
-        const cleanDesc = cleanDescription(descRaw);
-        
-        transactions.push({
-          date: formattedDate,
-          description: cleanDesc,
-          amount: finalAmount,
-          category: autoCategorize(cleanDesc)
-        });
-      }
+      if (!match) continue;
+
+      const [_, dayStr, monthName, postDay, postMonthName, descRaw, amountStr, crMarker] = match;
+      const monthNum = months[monthName.toUpperCase()] || '01';
+      const formattedDate = `${year}-${monthNum}-${dayStr.padStart(2, '0')}`;
+
+      const amountValue = parseAmount(amountStr);
+      // CC charges = expense (negative). Payments/refunds marked CR or trailing "-" = positive.
+      const isCredit = crMarker && (crMarker.toUpperCase() === 'CR' || crMarker === '-');
+      const finalAmount = isCredit ? amountValue : -amountValue;
+
+      const cleanDesc = cleanDescription(descRaw);
+
+      // Detect BCA installment format: "CICILAN BCA KE 03 DARI 06, ACE HARDWARE"
+      const installmentMatch = cleanDesc.match(/CICILAN\s+\S+\s+KE\s+0*(\d+)\s+DARI\s+0*(\d+)[,\s]+(.+)/i);
+      const isInstallment = installmentMatch && parseInt(installmentMatch[1]) === 1;
+
+      transactions.push({
+        date: formattedDate,
+        description: cleanDesc,
+        amount: finalAmount,
+        category: autoCategorize(cleanDesc),
+        ...(isInstallment && {
+          is_installment: 1,
+          installment_months: parseInt(installmentMatch[2]),
+        }),
+      });
     }
-    
-    return transactions;
+
+    return { transactions, dueDate, billingCycleDate };
   },
 
   // 3. Mandiri Bank Statement
@@ -584,10 +612,18 @@ async function parseStatement(pdfBuffer, password = '') {
     bankName = 'BCA';
     statementType = 'Bank Account';
     parsedTransactions = Parsers.bcaBank(text);
-  } else if (textUpper.includes('KARTU KREDIT BCA') || textUpper.includes('CREDIT CARD BCA') || (textUpper.includes('BCA') && textUpper.includes('TAGIHAN') && textUpper.includes('PEMBAYARAN MINIMUM'))) {
+  } else if (
+    textUpper.includes('KARTU KREDIT BCA') ||
+    textUpper.includes('CREDIT CARD BCA') ||
+    textUpper.includes('REKENING KARTU KREDIT') ||
+    (textUpper.includes('BCA') && textUpper.includes('TAGIHAN') && textUpper.includes('PEMBAYARAN MINIMUM'))
+  ) {
     bankName = 'BCA';
     statementType = 'Credit Card';
-    parsedTransactions = Parsers.bcaCreditCard(text);
+    const bcaResult = Parsers.bcaCreditCard(text);
+    parsedTransactions = bcaResult.transactions;
+    dueDate = bcaResult.dueDate;
+    billingCycleDate = bcaResult.billingCycleDate;
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
     statementType = 'Bank Account';
