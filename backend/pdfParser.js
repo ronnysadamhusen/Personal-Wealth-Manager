@@ -206,6 +206,10 @@ const Parsers = {
     const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
     const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})/i);
     const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
+    // PDF layout: all column headers first, then all values.
+    // "SISA KREDIT LIMIT" is the last header, so the first number after it is KREDIT LIMIT GABUNGAN.
+    const limitMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)/i);
+    const creditLimit = limitMatch ? parseFloat(limitMatch[1].replace(/\./g, '')) : null;
 
     // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
     // Lookahead stops the description before the next transaction, section header, or end of string.
@@ -241,7 +245,7 @@ const Parsers = {
       });
     }
 
-    return { transactions, dueDate, billingCycleDate };
+    return { transactions, dueDate, billingCycleDate, creditLimit };
   },
 
   // 3. Mandiri Bank Statement
@@ -608,6 +612,7 @@ async function parseStatement(pdfBuffer, password = '') {
     parsedTransactions = bcaResult.transactions;
     dueDate = bcaResult.dueDate;
     billingCycleDate = bcaResult.billingCycleDate;
+    creditLimit = bcaResult.creditLimit;
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
     statementType = 'Bank Account';
