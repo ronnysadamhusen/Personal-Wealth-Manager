@@ -325,8 +325,10 @@ export default function SettingsPage() {
                     <thead>
                       <tr>
                         <th>Category Hierarchy</th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>Transaksi</th>
-                        <th style={{ width: '25%', textAlign: 'center' }}>Actions</th>
+                        <th style={{ width: '12%', textAlign: 'center' }}>Kepentingan</th>
+                        <th style={{ width: '12%', textAlign: 'center' }}>Urgensi</th>
+                        <th style={{ width: '9%', textAlign: 'center' }}>Transaksi</th>
+                        <th style={{ width: '18%', textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -335,7 +337,7 @@ export default function SettingsPage() {
                           {/* Parent row edit or view */}
                           {editingCategoryId === group.parent.id ? (
                             <tr>
-                              <td colSpan={3}>
+                              <td colSpan={5}>
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0', flexWrap: 'wrap' }}>
                                   <input
                                     type="text"
@@ -374,19 +376,15 @@ export default function SettingsPage() {
                           ) : (
                             <tr>
                               <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <span>📁 {group.parent.name}</span>
-                                    <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: group.parent.type === 'income' ? 'rgba(16,185,129,0.1)' : group.parent.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                                      {(group.parent.type || 'expense').toUpperCase()}
-                                    </span>
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '0.3rem' }}>
-                                    <ImportancePill cat={group.parent} />
-                                    <UrgencyPill cat={group.parent} />
-                                  </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <span>📁 {group.parent.name}</span>
+                                  <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: group.parent.type === 'income' ? 'rgba(16,185,129,0.1)' : group.parent.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                    {(group.parent.type || 'expense').toUpperCase()}
+                                  </span>
                                 </div>
                               </td>
+                              <td style={{ textAlign: 'center' }}><ImportancePill cat={group.parent} /></td>
+                              <td style={{ textAlign: 'center' }}><UrgencyPill cat={group.parent} /></td>
                               <td style={{ textAlign: 'center' }}>
                                 {(txCounts[group.parent.name] ?? 0) > 0 ? (
                                   <button type="button" onClick={() => setViewTxCategory(group.parent.name)}
@@ -420,7 +418,7 @@ export default function SettingsPage() {
                             <React.Fragment key={sub.id}>
                               {editingCategoryId === sub.id ? (
                                 <tr>
-                                  <td colSpan={3}>
+                                  <td colSpan={5}>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0 0.25rem 2rem', flexWrap: 'wrap' }}>
                                       <input type="text" className="form-control" value={editingCategoryName} onChange={(e) => setEditingCategoryName(e.target.value)} style={{ flex: 2, margin: 0, padding: '0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '150px' }} required />
                                       <select className="form-control" value={editingCategoryType} onChange={(e) => setEditingCategoryType(e.target.value as any)} style={{ flex: 1, margin: 0, padding: '0.3rem 1.5rem 0.3rem 0.6rem', fontSize: '0.85rem', minWidth: '100px' }}>
@@ -452,19 +450,15 @@ export default function SettingsPage() {
                               ) : (
                                 <tr>
                                   <td style={{ paddingLeft: '2rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                        <span>↳ {sub.name}</span>
-                                        <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                                          {(sub.type || 'expense').toUpperCase()}
-                                        </span>
-                                      </div>
-                                      <div style={{ display: 'flex', gap: '0.3rem' }}>
-                                        <ImportancePill cat={sub} />
-                                        <UrgencyPill cat={sub} />
-                                      </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                      <span>↳ {sub.name}</span>
+                                      <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                        {(sub.type || 'expense').toUpperCase()}
+                                      </span>
                                     </div>
                                   </td>
+                                  <td style={{ textAlign: 'center' }}><ImportancePill cat={sub} /></td>
+                                  <td style={{ textAlign: 'center' }}><UrgencyPill cat={sub} /></td>
                                   <td style={{ textAlign: 'center' }}>
                                     {(txCounts[sub.name] ?? 0) > 0 ? (
                                       <button type="button" onClick={() => setViewTxCategory(sub.name)}
