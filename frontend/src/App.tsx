@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import Icons from './components/Icons';
 import { AppProvider, useApp } from './context/AppContext';
+import ChangelogModal from './components/ChangelogModal';
+import { APP_VERSION } from './changelog';
 import DashboardPage from './pages/DashboardPage';
 import AccountsPage from './pages/AccountsPage';
 import TransactionsPage from './pages/TransactionsPage';
@@ -23,6 +26,7 @@ const NAV_ITEMS = [
 ] as const;
 
 function AppShell() {
+  const [showChangelog, setShowChangelog] = useState(false);
   const {
     activeTab, navigateTo,
     switchTxSubTab,
@@ -33,12 +37,32 @@ function AppShell() {
 
   return (
     <div className="app-container">
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+
       {/* Header Bar */}
       <header>
         <div className="header-content">
           <div className="brand">
             <span className="brand-icon">💰</span>
             <span className="brand-text">Personal Wealth Manager</span>
+            <button
+              onClick={() => setShowChangelog(true)}
+              title="Lihat changelog"
+              style={{
+                background: 'transparent', border: 'none', padding: 0,
+                cursor: 'pointer', lineHeight: 1,
+              }}
+            >
+              <span style={{
+                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em',
+                padding: '0.15rem 0.5rem', borderRadius: '999px',
+                background: 'rgba(255,255,255,0.06)', color: 'var(--color-text-muted)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                transition: 'all 0.15s',
+              }}>
+                v{APP_VERSION}
+              </span>
+            </button>
             {import.meta.env.VITE_APP_MODE === 'dev' && (
               <span style={{
                 fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
