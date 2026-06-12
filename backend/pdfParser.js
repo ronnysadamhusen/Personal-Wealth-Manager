@@ -207,9 +207,11 @@ const Parsers = {
     const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})/i);
     const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
     // PDF layout: all column headers first, then all values.
-    // "SISA KREDIT LIMIT" is the last header, so the first number after it is KREDIT LIMIT GABUNGAN.
-    const limitMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)/i);
-    const creditLimit = limitMatch ? parseFloat(limitMatch[1].replace(/\./g, '')) : null;
+    // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
+    // then 4 more values, then SISA TAGIHAN CICILAN.
+    const creditTableMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)(?:\s+[\d.,]+){4}\s+([\d.]+)/i);
+    const creditLimit = creditTableMatch ? parseFloat(creditTableMatch[1].replace(/\./g, '')) : null;
+    const installmentCommitment = creditTableMatch ? parseFloat(creditTableMatch[2].replace(/\./g, '')) : null;
     // Primary: "TAGIHAN BARU   :   RP 3.092.670" (labeled format)
     // Fallback: table format where all headers precede all values — after "TAGIHAN BARU"
     //   (no colon) the first number is the TAGIHAN SEBELUMNYA value, used as initial billing.
@@ -278,7 +280,7 @@ const Parsers = {
       }
     }
 
-    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, detectedInstallments };
+    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, installmentCommitment, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -625,6 +627,7 @@ async function parseStatement(pdfBuffer, password = '') {
   let detectedInstallments = [];
   let creditLimit = null;
   let currentBill = null;
+  let installmentCommitment = null;
   let billingCycleDate = null;
   let dueDate = null;
   let bankName = 'Unknown';
@@ -648,6 +651,7 @@ async function parseStatement(pdfBuffer, password = '') {
     billingCycleDate = bcaResult.billingCycleDate;
     creditLimit = bcaResult.creditLimit;
     currentBill = bcaResult.currentBill;
+    installmentCommitment = bcaResult.installmentCommitment;
     detectedInstallments = bcaResult.detectedInstallments || [];
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
@@ -691,6 +695,7 @@ async function parseStatement(pdfBuffer, password = '') {
     detectedInstallments,
     creditLimit,
     currentBill,
+    installmentCommitment,
     billingCycleDate,
     dueDate
   };

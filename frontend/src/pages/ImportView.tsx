@@ -84,7 +84,7 @@ export default function ImportView() {
     triggerDuplicateCheck();
   }, [importTargetAccId, parsedData?.transactions?.length, lastCheckedAccId, lastCheckedTxCount]);
 
-  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null) => {
+  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null) => {
     if (index >= files.length) {
       setLoading(false);
       setPdfPassword('');
@@ -96,7 +96,8 @@ export default function ImportView() {
         transactions: accumulatedTx,
         detectedInstallments: accumulatedInstallments,
         creditLimit: maxCreditLimit,
-        currentBill: latestCurrentBill
+        currentBill: latestCurrentBill,
+        installmentCommitment: latestInstallmentCommitment
       });
       return;
     }
@@ -164,10 +165,11 @@ export default function ImportView() {
       const nextCreditLimit = result.creditLimit && (!maxCreditLimit || result.creditLimit > maxCreditLimit)
         ? result.creditLimit
         : maxCreditLimit;
-      // Use latest currentBill (most recent statement wins)
+      // Use latest currentBill and installmentCommitment (most recent statement wins)
       const nextCurrentBill = result.currentBill != null ? result.currentBill : latestCurrentBill;
+      const nextInstallmentCommitment = result.installmentCommitment != null ? result.installmentCommitment : latestInstallmentCommitment;
 
-      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill);
+      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Error parsing statement');
@@ -249,6 +251,7 @@ export default function ImportView() {
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
           current_bill: parsedData.currentBill ?? null,
+          installment_commitment: parsedData.installmentCommitment ?? null,
           billing_cycle_date: parsedData.billingCycleDate,
           due_date: parsedData.dueDate
         })
