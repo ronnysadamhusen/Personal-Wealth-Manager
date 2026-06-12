@@ -62,57 +62,55 @@ export default function SettingsPage() {
     }
   };
 
-  const cycleImportance = (cat: any) => {
-    const next = cat.importance === null || cat.importance === '' ? 'penting'
-      : cat.importance === 'penting' ? 'tidak_penting'
-      : null;
-    handleQuickUpdateCategoryMatrix(cat, next, cat.urgency || null);
-  };
-
-  const cycleUrgency = (cat: any) => {
-    const next = cat.urgency === null || cat.urgency === '' ? 'mendesak'
-      : cat.urgency === 'mendesak' ? 'tidak_mendesak'
-      : null;
-    handleQuickUpdateCategoryMatrix(cat, cat.importance || null, next);
-  };
-
   const ImportancePill = ({ cat }: { cat: any }) => {
-    const v = cat.importance;
-    const styles: React.CSSProperties = {
-      display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-      fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px',
-      cursor: 'pointer', userSelect: 'none', transition: 'opacity 0.15s',
-      border: '1px solid',
-      ...(v === 'penting'
-        ? { background: 'rgba(99,102,241,0.15)', borderColor: 'rgba(99,102,241,0.4)', color: '#a5b4fc' }
-        : v === 'tidak_penting'
-        ? { background: 'rgba(107,114,128,0.1)', borderColor: 'rgba(107,114,128,0.3)', color: 'var(--color-text-muted)' }
-        : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' })
+    const v = cat.importance || '';
+    const colorMap: Record<string, React.CSSProperties> = {
+      penting:       { background: 'rgba(99,102,241,0.15)', borderColor: 'rgba(99,102,241,0.4)',  color: '#a5b4fc' },
+      tidak_penting: { background: 'rgba(107,114,128,0.1)', borderColor: 'rgba(107,114,128,0.3)', color: 'var(--color-text-muted)' },
+      '':            { background: 'transparent',           borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)' },
     };
     return (
-      <span style={styles} onClick={() => cycleImportance(cat)} title="Klik untuk ubah kepentingan">
-        {v === 'penting' ? '⭐ Penting' : v === 'tidak_penting' ? '◌ Tdk Penting' : '· Kepentingan'}
-      </span>
+      <select
+        value={v}
+        onChange={(e) => handleQuickUpdateCategoryMatrix(cat, e.target.value || null, cat.urgency || null)}
+        style={{
+          fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '999px',
+          border: '1px solid', cursor: 'pointer', outline: 'none',
+          appearance: 'none', WebkitAppearance: 'none',
+          textAlign: 'center', minWidth: '110px',
+          ...colorMap[v] ?? colorMap[''],
+        }}
+      >
+        <option value="">— Kepentingan —</option>
+        <option value="penting">⭐ Penting</option>
+        <option value="tidak_penting">◌ Tidak Penting</option>
+      </select>
     );
   };
 
   const UrgencyPill = ({ cat }: { cat: any }) => {
-    const v = cat.urgency;
-    const styles: React.CSSProperties = {
-      display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-      fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px',
-      cursor: 'pointer', userSelect: 'none', transition: 'opacity 0.15s',
-      border: '1px solid',
-      ...(v === 'mendesak'
-        ? { background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: '#fca5a5' }
-        : v === 'tidak_mendesak'
-        ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: '#6ee7b7' }
-        : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' })
+    const v = cat.urgency || '';
+    const colorMap: Record<string, React.CSSProperties> = {
+      mendesak:       { background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)',  color: '#fca5a5' },
+      tidak_mendesak: { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)',  color: '#6ee7b7' },
+      '':             { background: 'transparent',          borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.35)' },
     };
     return (
-      <span style={styles} onClick={() => cycleUrgency(cat)} title="Klik untuk ubah urgensi">
-        {v === 'mendesak' ? '🔴 Mendesak' : v === 'tidak_mendesak' ? '🟢 Tdk Mendesak' : '· Urgensi'}
-      </span>
+      <select
+        value={v}
+        onChange={(e) => handleQuickUpdateCategoryMatrix(cat, cat.importance || null, e.target.value || null)}
+        style={{
+          fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '999px',
+          border: '1px solid', cursor: 'pointer', outline: 'none',
+          appearance: 'none', WebkitAppearance: 'none',
+          textAlign: 'center', minWidth: '115px',
+          ...colorMap[v] ?? colorMap[''],
+        }}
+      >
+        <option value="">— Urgensi —</option>
+        <option value="mendesak">🔴 Mendesak</option>
+        <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
+      </select>
     );
   };
 
