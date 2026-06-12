@@ -325,8 +325,8 @@ export default function SettingsPage() {
                     <thead>
                       <tr>
                         <th>Category Hierarchy</th>
-                        <th style={{ width: '12%', textAlign: 'center' }}>Kepentingan</th>
-                        <th style={{ width: '12%', textAlign: 'center' }}>Urgensi</th>
+                        <th style={{ width: '15%', textAlign: 'center' }}>Kepentingan</th>
+                        <th style={{ width: '15%', textAlign: 'center' }}>Urgensi</th>
                         <th style={{ width: '9%', textAlign: 'center' }}>Transaksi</th>
                         <th style={{ width: '18%', textAlign: 'center' }}>Actions</th>
                       </tr>
@@ -383,8 +383,8 @@ export default function SettingsPage() {
                                   </span>
                                 </div>
                               </td>
-                              <td style={{ textAlign: 'center' }}><ImportancePill cat={group.parent} /></td>
-                              <td style={{ textAlign: 'center' }}><UrgencyPill cat={group.parent} /></td>
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><ImportancePill cat={group.parent} /></td>
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><UrgencyPill cat={group.parent} /></td>
                               <td style={{ textAlign: 'center' }}>
                                 {(txCounts[group.parent.name] ?? 0) > 0 ? (
                                   <button type="button" onClick={() => setViewTxCategory(group.parent.name)}
