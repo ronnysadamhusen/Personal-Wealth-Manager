@@ -58,6 +58,60 @@ export default function SettingsPage() {
     }
   };
 
+  const cycleImportance = (cat: any) => {
+    const next = cat.importance === null || cat.importance === '' ? 'penting'
+      : cat.importance === 'penting' ? 'tidak_penting'
+      : null;
+    handleQuickUpdateCategoryMatrix(cat, next, cat.urgency || null);
+  };
+
+  const cycleUrgency = (cat: any) => {
+    const next = cat.urgency === null || cat.urgency === '' ? 'mendesak'
+      : cat.urgency === 'mendesak' ? 'tidak_mendesak'
+      : null;
+    handleQuickUpdateCategoryMatrix(cat, cat.importance || null, next);
+  };
+
+  const ImportancePill = ({ cat }: { cat: any }) => {
+    const v = cat.importance;
+    const styles: React.CSSProperties = {
+      display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+      fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px',
+      cursor: 'pointer', userSelect: 'none', transition: 'opacity 0.15s',
+      border: '1px solid',
+      ...(v === 'penting'
+        ? { background: 'rgba(99,102,241,0.15)', borderColor: 'rgba(99,102,241,0.4)', color: '#a5b4fc' }
+        : v === 'tidak_penting'
+        ? { background: 'rgba(107,114,128,0.1)', borderColor: 'rgba(107,114,128,0.3)', color: 'var(--color-text-muted)' }
+        : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' })
+    };
+    return (
+      <span style={styles} onClick={() => cycleImportance(cat)} title="Klik untuk ubah kepentingan">
+        {v === 'penting' ? '⭐ Penting' : v === 'tidak_penting' ? '◌ Tdk Penting' : '· Kepentingan'}
+      </span>
+    );
+  };
+
+  const UrgencyPill = ({ cat }: { cat: any }) => {
+    const v = cat.urgency;
+    const styles: React.CSSProperties = {
+      display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+      fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '999px',
+      cursor: 'pointer', userSelect: 'none', transition: 'opacity 0.15s',
+      border: '1px solid',
+      ...(v === 'mendesak'
+        ? { background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: '#fca5a5' }
+        : v === 'tidak_mendesak'
+        ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: '#6ee7b7' }
+        : { background: 'transparent', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.3)' })
+    };
+    return (
+      <span style={styles} onClick={() => cycleUrgency(cat)} title="Klik untuk ubah urgensi">
+        {v === 'mendesak' ? '🔴 Mendesak' : v === 'tidak_mendesak' ? '🟢 Tdk Mendesak' : '· Urgensi'}
+      </span>
+    );
+  };
+
   const handleQuickUpdateCategoryMatrix = async (cat: any, importance: string | null, urgency: string | null) => {
     try {
       await fetch(`${API_URL}/categories/${cat.id}`, {
@@ -309,24 +363,17 @@ export default function SettingsPage() {
                           ) : (
                             <tr>
                               <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                  <span>📁 {group.parent.name}</span>
-                                  <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: group.parent.type === 'income' ? 'rgba(16,185,129,0.1)' : group.parent.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                                    {(group.parent.type || 'expense').toUpperCase()}
-                                  </span>
-                                  {/* Inline importance/urgency selectors */}
-                                  <select value={group.parent.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(group.parent, e.target.value || null, group.parent.urgency || null)}
-                                    style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: group.parent.importance === 'penting' ? 'rgba(99,102,241,0.15)' : group.parent.importance === 'tidak_penting' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
-                                    <option value="">— Kepentingan —</option>
-                                    <option value="penting">⭐ Penting</option>
-                                    <option value="tidak_penting">◌ Tidak Penting</option>
-                                  </select>
-                                  <select value={group.parent.urgency || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(group.parent, group.parent.importance || null, e.target.value || null)}
-                                    style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: group.parent.urgency === 'mendesak' ? 'rgba(239,68,68,0.15)' : group.parent.urgency === 'tidak_mendesak' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
-                                    <option value="">— Urgensi —</option>
-                                    <option value="mendesak">🔴 Mendesak</option>
-                                    <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
-                                  </select>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <span>📁 {group.parent.name}</span>
+                                    <span className="badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', background: group.parent.type === 'income' ? 'rgba(16,185,129,0.1)' : group.parent.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: group.parent.type === 'income' ? 'var(--color-success)' : group.parent.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                      {(group.parent.type || 'expense').toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                    <ImportancePill cat={group.parent} />
+                                    <UrgencyPill cat={group.parent} />
+                                  </div>
                                 </div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
@@ -387,23 +434,17 @@ export default function SettingsPage() {
                               ) : (
                                 <tr>
                                   <td style={{ paddingLeft: '2rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                      <span>↳ {sub.name}</span>
-                                      <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                                        {(sub.type || 'expense').toUpperCase()}
-                                      </span>
-                                          <select value={sub.importance || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, e.target.value || null, sub.urgency || null)}
-                                        style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: sub.importance === 'penting' ? 'rgba(99,102,241,0.15)' : sub.importance === 'tidak_penting' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
-                                        <option value="">— Kepentingan —</option>
-                                        <option value="penting">⭐ Penting</option>
-                                        <option value="tidak_penting">◌ Tidak Penting</option>
-                                      </select>
-                                      <select value={sub.urgency || ''} onChange={(e) => handleQuickUpdateCategoryMatrix(sub, sub.importance || null, e.target.value || null)}
-                                        style={{ fontSize: '0.68rem', padding: '0.1rem 0.3rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', background: sub.urgency === 'mendesak' ? 'rgba(239,68,68,0.15)' : sub.urgency === 'tidak_mendesak' ? 'rgba(107,114,128,0.15)' : 'rgba(255,255,255,0.05)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none' }}>
-                                        <option value="">— Urgensi —</option>
-                                        <option value="mendesak">🔴 Mendesak</option>
-                                        <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
-                                      </select>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span>↳ {sub.name}</span>
+                                        <span className="badge" style={{ fontSize: '0.6rem', padding: '0.05rem 0.25rem', background: sub.type === 'income' ? 'rgba(16,185,129,0.1)' : sub.type === 'both' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)', color: sub.type === 'income' ? 'var(--color-success)' : sub.type === 'both' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                                          {(sub.type || 'expense').toUpperCase()}
+                                        </span>
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                        <ImportancePill cat={sub} />
+                                        <UrgencyPill cat={sub} />
+                                      </div>
                                     </div>
                                   </td>
                                   <td style={{ textAlign: 'center' }}>
