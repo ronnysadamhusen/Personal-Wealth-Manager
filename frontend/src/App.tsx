@@ -39,6 +39,15 @@ function AppShell() {
           <div className="brand">
             <span className="brand-icon">💰</span>
             <span className="brand-text">Personal Wealth Manager</span>
+            {import.meta.env.VITE_APP_MODE === 'dev' && (
+              <span style={{
+                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
+                padding: '0.15rem 0.5rem', borderRadius: '999px',
+                background: 'rgba(245,158,11,0.15)', color: '#fbbf24',
+                border: '1px solid rgba(245,158,11,0.35)',
+                textTransform: 'uppercase',
+              }}>DEV</span>
+            )}
           </div>
 
           {/* Mobile-only privacy toggle */}

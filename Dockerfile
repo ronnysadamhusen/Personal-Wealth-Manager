@@ -10,6 +10,8 @@ RUN npm install
 
 # Copy all frontend source files and compile
 COPY frontend/ ./
+ARG VITE_APP_MODE=production
+ENV VITE_APP_MODE=$VITE_APP_MODE
 RUN npm run build
 
 # ===================================================================

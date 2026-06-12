@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VITE_APP_MODE=dev
     image: personal-wealth-manager:dev
     container_name: personal-wealth-manager-dev
     restart: unless-stopped
