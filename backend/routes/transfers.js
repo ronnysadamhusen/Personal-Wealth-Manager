@@ -86,26 +86,59 @@ router.post('/api/transfers', async (req, res) => {
 
 // Link existing transactions as a transfer (convert suspected transfer tx)
 router.post('/api/transfers/link', async (req, res) => {
-  const { tx_id, counterpart_id, description } = req.body;
+  const { tx_id, counterpart_id, counterpart_account_id, counterpart_date, description } = req.body;
   if (!tx_id) return res.status(400).json({ error: 'tx_id is required' });
 
   try {
     const mainTx = await query.get(
-      'SELECT t.*, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
+      'SELECT t.*, a.name as account_name, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
       [tx_id]
     );
     if (!mainTx) return res.status(404).json({ error: 'Transaction not found' });
 
     let counterpartTx = null;
+    let balancerTxId = null;
+
     if (counterpart_id) {
       counterpartTx = await query.get(
         'SELECT t.*, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
         [counterpart_id]
       );
       if (!counterpartTx) return res.status(404).json({ error: 'Counterpart transaction not found' });
+    } else if (counterpart_account_id) {
+      // No existing counterpart — auto-create outflow + balancer income in the specified account
+      const cDate = counterpart_date || mainTx.date;
+      const cAmount = mainTx.amount >= 0 ? -Math.abs(mainTx.amount) : Math.abs(mainTx.amount);
+      const cDesc = mainTx.amount >= 0
+        ? `Transfer to ${mainTx.account_name}`
+        : `Transfer from ${mainTx.account_name}`;
+
+      const newTxId = generateUUID();
+      balancerTxId = generateUUID();
+
+      await query.exec('BEGIN TRANSACTION');
+
+      await query.run(
+        'INSERT INTO transactions (id, account_id, date, booking_date, description, amount, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [newTxId, counterpart_account_id, cDate, cDate, cDesc, cAmount, 'Transfers & Salary']
+      );
+
+      // Balancer income: neutralises the balance impact so the debit account net = 0
+      const balancerDesc = `Balance Adjustment (${cDesc})`;
+      await query.run(
+        'INSERT INTO transactions (id, account_id, date, booking_date, description, amount, category) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [balancerTxId, counterpart_account_id, cDate, cDate, balancerDesc, Math.abs(mainTx.amount), 'Transfers & Salary']
+      );
+
+      await query.exec('COMMIT');
+
+      counterpartTx = await query.get(
+        'SELECT t.*, a.type as account_type FROM transactions t JOIN accounts a ON t.account_id = a.id WHERE t.id = ?',
+        [newTxId]
+      );
     }
 
-    // Determine source (debit) and destination (credit)
+    // Determine source (outflow, negative) and destination (inflow, positive)
     const srcTx  = mainTx.amount < 0 ? mainTx        : counterpartTx;
     const destTx = mainTx.amount < 0 ? counterpartTx : mainTx;
 
@@ -130,9 +163,9 @@ router.post('/api/transfers/link', async (req, res) => {
     }
 
     await query.run(
-      `INSERT INTO transfers (id, source_account_id, destination_account_id, amount, fee, date, description, source_transaction_id, destination_transaction_id, fee_transaction_id)
-       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NULL)`,
-      [transferId, srcAccountId, destAccountId, amount, date, desc, srcTx?.id || null, destTx?.id || null]
+      `INSERT INTO transfers (id, source_account_id, destination_account_id, amount, fee, date, description, source_transaction_id, destination_transaction_id, fee_transaction_id, balancer_transaction_id)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, NULL, ?)`,
+      [transferId, srcAccountId, destAccountId, amount, date, desc, srcTx?.id || null, destTx?.id || null, balancerTxId]
     );
 
     await query.exec('COMMIT');
@@ -162,6 +195,9 @@ router.delete('/api/transfers/:id', async (req, res) => {
     }
     if (transfer.fee_transaction_id) {
       await query.run('DELETE FROM transactions WHERE id = ?', [transfer.fee_transaction_id]);
+    }
+    if (transfer.balancer_transaction_id) {
+      await query.run('DELETE FROM transactions WHERE id = ?', [transfer.balancer_transaction_id]);
     }
 
     await query.run('DELETE FROM transfers WHERE id = ?', [id]);

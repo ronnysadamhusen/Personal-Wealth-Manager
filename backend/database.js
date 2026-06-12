@@ -168,6 +168,7 @@ db.serialize(() => {
       FOREIGN KEY(destination_account_id) REFERENCES accounts(id) ON DELETE CASCADE
     )
   `);
+  db.run("ALTER TABLE transfers ADD COLUMN balancer_transaction_id TEXT", () => {});
 
   // AI Configuration Setup
   db.run(`

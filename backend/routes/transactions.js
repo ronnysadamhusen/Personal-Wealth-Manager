@@ -27,7 +27,7 @@ router.get('/api/transactions', async (req, res) => {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const sql = `
       SELECT t.*, a.name as account_name, a.type as account_type,
-        CASE WHEN tr_src.id IS NOT NULL OR tr_dst.id IS NOT NULL THEN 1 ELSE 0 END as is_transfer,
+        CASE WHEN tr_src.id IS NOT NULL OR tr_dst.id IS NOT NULL OR tr_bal.id IS NOT NULL THEN 1 ELSE 0 END as is_transfer,
         CASE WHEN tr_src.id IS NOT NULL THEN 'out'
              WHEN tr_dst.id IS NOT NULL THEN 'in'
              ELSE NULL END as transfer_direction,
@@ -38,6 +38,7 @@ router.get('/api/transactions', async (req, res) => {
       JOIN accounts a ON t.account_id = a.id
       LEFT JOIN transfers tr_src ON tr_src.source_transaction_id = t.id
       LEFT JOIN transfers tr_dst ON tr_dst.destination_transaction_id = t.id
+      LEFT JOIN transfers tr_bal ON tr_bal.balancer_transaction_id = t.id
       LEFT JOIN accounts a_dst ON a_dst.id = tr_src.destination_account_id
       LEFT JOIN accounts a_src ON a_src.id = tr_dst.source_account_id
       ${where}
@@ -53,35 +54,48 @@ router.get('/api/transactions', async (req, res) => {
 // Detect transactions that look like unlinked transfers
 router.get('/api/transactions/transfer-suspects', async (req, res) => {
   try {
+    const linkedIds = `
+      SELECT source_transaction_id FROM transfers WHERE source_transaction_id IS NOT NULL
+      UNION
+      SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
+      UNION
+      SELECT balancer_transaction_id FROM transfers WHERE balancer_transaction_id IS NOT NULL
+    `;
     const sql = `
-      SELECT t.*, a.name as account_name, a.type as account_type
+      SELECT t.*, a.name as account_name, a.type as account_type,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM transactions t2
+          WHERE t2.account_id != t.account_id
+            AND ABS(t2.amount) = ABS(t.amount)
+            AND t2.date BETWEEN date(t.date, '-2 days') AND date(t.date, '+2 days')
+            AND t2.id NOT IN (${linkedIds})
+        ) THEN 1 ELSE 0 END as has_counterpart
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
-      WHERE t.id NOT IN (
-        SELECT source_transaction_id      FROM transfers WHERE source_transaction_id IS NOT NULL
-        UNION
-        SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
-      )
+      WHERE t.id NOT IN (${linkedIds})
       AND (
+        -- Strong-signal categories: show even without a counterpart
         t.category IN ('Transfers & Salary', 'Credit Card Payment')
-        OR LOWER(t.description) LIKE '%transfer%'
-        OR LOWER(t.description) LIKE '% trf %'
-        OR LOWER(t.description) LIKE 'trf %'
-        OR LOWER(t.description) LIKE '%trsf%'
-        OR LOWER(t.description) LIKE '%top up%'
-        OR LOWER(t.description) LIKE '%topup%'
-        OR LOWER(t.description) LIKE '%top-up%'
-      )
-      AND EXISTS (
-        SELECT 1 FROM transactions t2
-        WHERE t2.account_id != t.account_id
-          AND ABS(t2.amount) = ABS(t.amount)
-          AND t2.date BETWEEN date(t.date, '-2 days') AND date(t.date, '+2 days')
-          AND t2.id NOT IN (
-            SELECT source_transaction_id      FROM transfers WHERE source_transaction_id IS NOT NULL
-            UNION
-            SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
+        OR
+        -- Weak-signal keywords: only show when a counterpart exists
+        (
+          (
+            LOWER(t.description) LIKE '%transfer%'
+            OR LOWER(t.description) LIKE '% trf %'
+            OR LOWER(t.description) LIKE 'trf %'
+            OR LOWER(t.description) LIKE '%trsf%'
+            OR LOWER(t.description) LIKE '%top up%'
+            OR LOWER(t.description) LIKE '%topup%'
+            OR LOWER(t.description) LIKE '%top-up%'
           )
+          AND EXISTS (
+            SELECT 1 FROM transactions t2
+            WHERE t2.account_id != t.account_id
+              AND ABS(t2.amount) = ABS(t.amount)
+              AND t2.date BETWEEN date(t.date, '-2 days') AND date(t.date, '+2 days')
+              AND t2.id NOT IN (${linkedIds})
+          )
+        )
       )
       ORDER BY t.date DESC, t.created_at DESC
     `;

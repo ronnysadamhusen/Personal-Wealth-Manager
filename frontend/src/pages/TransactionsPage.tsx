@@ -151,13 +151,16 @@ export default function TransactionsPage() {
   }, [groupedCategories, txType]);
 
   // Transfer detection
-  const [transferSuspectIds, setTransferSuspectIds] = useState<Set<string>>(new Set());
+  const [transferSuspects, setTransferSuspects] = useState<Map<string, boolean>>(new Map());
   const [convertingTx, setConvertingTx] = useState<any | null>(null);
 
   const fetchTransferSuspects = () => {
     fetch(`${API_URL}/transactions/transfer-suspects`)
       .then(r => r.json())
-      .then(data => setTransferSuspectIds(new Set(Array.isArray(data) ? data.map((t: any) => t.id) : [])))
+      .then(data => {
+        const map = new Map(Array.isArray(data) ? data.map((t: any) => [t.id, t.has_counterpart === 1]) : []);
+        setTransferSuspects(map);
+      })
       .catch(() => {});
   };
 
@@ -719,7 +722,7 @@ export default function TransactionsPage() {
                                     : `Transfer from ${tx.transfer_counterpart_account || '—'}`}
                                 </span>
                               )}
-                              {transferSuspectIds.has(tx.id) && (
+                              {transferSuspects.has(tx.id) && (
                                 <button
                                   onClick={() => setConvertingTx(tx)}
                                   style={{

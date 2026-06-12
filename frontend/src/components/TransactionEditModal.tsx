@@ -33,6 +33,8 @@ export default function TransactionEditModal({ tx, onClose, onSaved }: Transacti
   const [transferMatches, setTransferMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState('');
+  const [autoCreateAccId, setAutoCreateAccId] = useState('');
+  const [autoCreateDate, setAutoCreateDate] = useState(tx.date);
 
   useEffect(() => {
     if (editTxType !== 'transfer' || tx.is_transfer === 1) return;
@@ -58,7 +60,12 @@ export default function TransactionEditModal({ tx, onClose, onSaved }: Transacti
         const res = await fetch(`${API_URL}/transfers/link`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tx_id: tx.id, counterpart_id: selectedMatchId || undefined }),
+          body: JSON.stringify({
+            tx_id: tx.id,
+            counterpart_id: selectedMatchId || undefined,
+            counterpart_account_id: !selectedMatchId && autoCreateAccId ? autoCreateAccId : undefined,
+            counterpart_date: autoCreateDate !== tx.date ? autoCreateDate : undefined,
+          }),
         });
         if (res.ok) {
           onSaved();
@@ -285,8 +292,34 @@ export default function TransactionEditModal({ tx, onClose, onSaved }: Transacti
                         </label>
                       </>
                     ) : (
-                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                        Tidak ditemukan transaksi counterpart (jumlah sama, ±2 hari, akun berbeda). Transaksi akan ditandai sebagai transfer tanpa counterpart.
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                          Tidak ditemukan transaksi counterpart (jumlah sama, ±2 hari, akun berbeda). Pilih akun untuk membuat counterpart otomatis, atau biarkan kosong untuk tandai tanpa counterpart.
+                        </div>
+                        <select
+                          className="form-control"
+                          value={autoCreateAccId}
+                          onChange={e => setAutoCreateAccId(e.target.value)}
+                          style={{ margin: 0, fontSize: '0.85rem' }}
+                        >
+                          <option value="">-- Biarkan kosong (tandai tanpa counterpart) --</option>
+                          {accounts
+                            .filter(a => a.id !== tx.account_id)
+                            .map(a => (
+                              <option key={a.id} value={a.id}>
+                                {a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'Credit Card'})
+                              </option>
+                            ))}
+                        </select>
+                        {autoCreateAccId && (
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={autoCreateDate}
+                            onChange={e => setAutoCreateDate(e.target.value)}
+                            style={{ margin: 0, fontSize: '0.85rem' }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>

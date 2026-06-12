@@ -8,9 +8,20 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.3.0',
+    date: '2026-06-12',
+    highlights: 'Transfer historis tanpa counterpart kini bisa ditandai otomatis — sistem buat transaksi counterpart dan balancer agar saldo tidak berubah.',
+    changes: [
+      { type: 'feat', description: 'Pembayaran kartu kredit (kategori Credit Card Payment & Transfers & Salary) otomatis muncul sebagai suspect transfer ⚡ meski belum ada data mutasi rekening lawan' },
+      { type: 'feat', description: 'Auto-create counterpart: saat konversi ke transfer tanpa counterpart yang ada, pilih akun asal dan sistem buat 2 transaksi (outflow + balancer income) agar saldo akun tidak berubah' },
+      { type: 'feat', description: 'Tipe Transfer di modal Add & Edit Transaction: bisa buat transfer baru atau konversi transaksi bestisting langsung dari edit modal' },
+      { type: 'improvement', description: 'Balancer income otomatis dikecualikan dari agregasi income/expense (is_transfer=1) via JOIN ke kolom balancer_transaction_id di tabel transfers' },
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-06-12',

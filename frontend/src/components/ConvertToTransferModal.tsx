@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '../constants';
 import { formatIDR } from '../utils/format';
+import { useApp } from '../context/AppContext';
 
 interface Props {
   tx: any;
@@ -9,11 +10,14 @@ interface Props {
 }
 
 export default function ConvertToTransferModal({ tx, onClose, onConverted }: Props) {
+  const { accounts } = useApp();
   const [matches, setMatches] = useState<any[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [selectedMatchId, setSelectedMatchId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState('');
+  const [autoCreateAccId, setAutoCreateAccId] = useState('');
+  const [autoCreateDate, setAutoCreateDate] = useState(tx.date);
 
   useEffect(() => {
     setLoadingMatches(true);
@@ -37,6 +41,8 @@ export default function ConvertToTransferModal({ tx, onClose, onConverted }: Pro
         body: JSON.stringify({
           tx_id: tx.id,
           counterpart_id: selectedMatchId || undefined,
+          counterpart_account_id: !selectedMatchId && autoCreateAccId ? autoCreateAccId : undefined,
+          counterpart_date: autoCreateDate !== tx.date ? autoCreateDate : undefined,
           description: description || undefined,
         }),
       });
@@ -158,12 +164,48 @@ export default function ConvertToTransferModal({ tx, onClose, onConverted }: Pro
                 </label>
               </div>
             ) : (
-              <div style={{
-                padding: '0.75rem 1rem', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                fontSize: '0.82rem', color: 'var(--color-text-muted)',
-              }}>
-                Tidak ditemukan transaksi dengan jumlah sama di akun lain (±2 hari). Transaksi akan ditandai sebagai transfer tanpa counterpart.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{
+                  padding: '0.65rem 0.85rem', borderRadius: '8px',
+                  background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)',
+                  fontSize: '0.82rem', color: 'var(--color-text-muted)',
+                }}>
+                  Tidak ditemukan transaksi dengan jumlah sama di akun lain (±2 hari). Pilih akun asal untuk membuat transaksi counterpart secara otomatis — atau biarkan kosong untuk tandai tanpa counterpart.
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                    {isDebit ? 'Akun tujuan (buat counterpart otomatis):' : 'Akun sumber (buat counterpart otomatis):'}
+                  </label>
+                  <select
+                    className="form-control"
+                    value={autoCreateAccId}
+                    onChange={e => setAutoCreateAccId(e.target.value)}
+                    style={{ margin: 0, fontSize: '0.85rem' }}
+                  >
+                    <option value="">-- Biarkan kosong (tandai tanpa counterpart) --</option>
+                    {accounts
+                      .filter(a => a.id !== tx.account_id)
+                      .map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'Credit Card'})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                {autoCreateAccId && (
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.35rem' }}>
+                      Tanggal transaksi counterpart:
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={autoCreateDate}
+                      onChange={e => setAutoCreateDate(e.target.value)}
+                      style={{ margin: 0, fontSize: '0.85rem' }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
