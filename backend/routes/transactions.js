@@ -61,6 +61,17 @@ router.get('/api/transactions/transfer-suspects', async (req, res) => {
         OR LOWER(t.description) LIKE '%topup%'
         OR LOWER(t.description) LIKE '%top-up%'
       )
+      AND EXISTS (
+        SELECT 1 FROM transactions t2
+        WHERE t2.account_id != t.account_id
+          AND ABS(t2.amount) = ABS(t.amount)
+          AND t2.date BETWEEN date(t.date, '-2 days') AND date(t.date, '+2 days')
+          AND t2.id NOT IN (
+            SELECT source_transaction_id      FROM transfers WHERE source_transaction_id IS NOT NULL
+            UNION
+            SELECT destination_transaction_id FROM transfers WHERE destination_transaction_id IS NOT NULL
+          )
+      )
       ORDER BY t.date DESC, t.created_at DESC
     `;
     const suspects = await query.all(sql);
