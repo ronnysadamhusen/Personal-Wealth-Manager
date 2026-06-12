@@ -71,10 +71,10 @@ export default function CategoryTransactionsModal({ categoryName, onClose, onCat
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: 'var(--color-surface)', border: '1px solid var(--border-color)',
+        background: '#1e1f2e', border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: '12px', width: '100%', maxWidth: '820px',
         maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.8)',
       }}>
         {/* Header */}
         <div style={{
