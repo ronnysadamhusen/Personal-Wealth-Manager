@@ -7,7 +7,7 @@ services:
     container_name: personal-wealth-manager-dev
     restart: unless-stopped
     ports:
-      - "3002:3000"
+      - "3001:3000"
     volumes:
       - ./data-dev:/app/data
     environment:
