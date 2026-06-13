@@ -493,6 +493,77 @@ db.serialize(() => {
         db.run("INSERT INTO import_logs SELECT * FROM import_logs_old WHERE account_id IN (SELECT id FROM accounts)");
         db.run("DROP TABLE import_logs_old");
 
+        // 5. Rebuild investments
+        db.run("DROP TABLE IF EXISTS investments_old");
+        db.run("ALTER TABLE investments RENAME TO investments_old");
+        db.run(`
+          CREATE TABLE investments (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT CHECK(type IN ('gold', 'stock', 'mutual_fund', 'crypto', 'property', 'deposit', 'bond', 'other')) NOT NULL,
+            platform TEXT,
+            currency TEXT DEFAULT 'IDR',
+            unit TEXT,
+            current_units REAL DEFAULT 0,
+            current_price_per_unit REAL DEFAULT 0,
+            current_value REAL DEFAULT 0,
+            total_invested REAL DEFAULT 0,
+            account_id TEXT,
+            notes TEXT,
+            status TEXT CHECK(status IN ('active', 'sold', 'closed')) DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE SET NULL
+          )
+        `);
+        db.run("INSERT INTO investments SELECT * FROM investments_old");
+        db.run("DROP TABLE investments_old");
+
+        // 6. Rebuild investment_transactions
+        db.run("DROP TABLE IF EXISTS investment_transactions_old");
+        db.run("ALTER TABLE investment_transactions RENAME TO investment_transactions_old");
+        db.run(`
+          CREATE TABLE investment_transactions (
+            id TEXT PRIMARY KEY,
+            investment_id TEXT NOT NULL,
+            type TEXT CHECK(type IN ('buy', 'sell', 'dividend', 'price_update')) NOT NULL,
+            date TEXT NOT NULL,
+            units REAL,
+            price_per_unit REAL,
+            total_amount REAL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(investment_id) REFERENCES investments(id) ON DELETE CASCADE
+          )
+        `);
+        db.run("INSERT INTO investment_transactions SELECT * FROM investment_transactions_old");
+        db.run("DROP TABLE investment_transactions_old");
+
+        // 7. Fix payroll_slips if it also references accounts_old
+        db.run("DROP TABLE IF EXISTS payroll_slips_old");
+        db.get("SELECT sql FROM sqlite_master WHERE name='payroll_slips'", (psErr, psRow) => {
+          if (psRow && psRow.sql && psRow.sql.includes('accounts_old')) {
+            db.serialize(() => {
+              db.run("ALTER TABLE payroll_slips RENAME TO payroll_slips_old");
+              db.run(`
+                CREATE TABLE payroll_slips (
+                  id TEXT PRIMARY KEY,
+                  account_id TEXT NOT NULL,
+                  period TEXT NOT NULL,
+                  date TEXT NOT NULL,
+                  gross_income REAL NOT NULL,
+                  total_deductions REAL NOT NULL,
+                  net_income REAL NOT NULL,
+                  destination_account_id TEXT,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+              `);
+              db.run("INSERT INTO payroll_slips SELECT * FROM payroll_slips_old WHERE account_id IN (SELECT id FROM accounts)");
+              db.run("DROP TABLE payroll_slips_old");
+            });
+          }
+        });
+
         db.run("PRAGMA foreign_keys = ON;", (pragmaErr) => {
           if (!pragmaErr) {
             console.log("Database foreign keys pointing to accounts_old repaired successfully.");
