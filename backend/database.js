@@ -389,6 +389,12 @@ db.serialize(() => {
       db.serialize(() => {
         db.run("PRAGMA foreign_keys = OFF;");
 
+        // Drop any leftover _old tables from a previous failed migration
+        db.run("DROP TABLE IF EXISTS installments_old");
+        db.run("DROP TABLE IF EXISTS transactions_old");
+        db.run("DROP TABLE IF EXISTS transfers_old");
+        db.run("DROP TABLE IF EXISTS import_logs_old");
+
         // 1. Rebuild installments
         db.run("ALTER TABLE installments RENAME TO installments_old");
         db.run(`
