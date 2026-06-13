@@ -178,7 +178,7 @@ export default function AccountsPage() {
                           <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
                             {renderAmount(
                             a.current_bill != null
-                              ? (a.credit_limit || 0) - a.current_bill - (a.current_installment_debt ?? a.installment_debt ?? 0)
+                              ? Math.max(0, (a.credit_limit || 0) - a.current_bill - (a.current_installment_debt ?? a.installment_debt ?? 0))
                               : Math.floor(((a.credit_limit || 0) + a.current_balance - (a.installment_debt || 0)) / 100) * 100
                           )}
                           </div>
