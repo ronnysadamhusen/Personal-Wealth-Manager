@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 export default function ImportView() {
   const {
     accounts, savedPasswords, importLogs, groupedCategories,
-    renderAmount, loading, setLoading, setErrorMsg, fetchData, switchTxSubTab,
+    renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo, switchTxSubTab,
   } = useApp();
 
   // PDF IMPORT STATES
