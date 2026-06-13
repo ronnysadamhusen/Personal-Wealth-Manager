@@ -161,7 +161,7 @@ export default function AccountsPage() {
                       <div className="widget-item">
                         <div className="card-desc">Current Balance</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash') ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                          {renderAmount(a.current_balance)}
+                          {renderAmount(a.type === 'credit_card' && a.current_bill != null ? -a.current_bill : a.current_balance)}
                         </div>
                       </div>
 
