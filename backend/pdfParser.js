@@ -219,6 +219,7 @@ const Parsers = {
     const statementDate = billingMatch
       ? `${billingMatch[3]}-${stmtMonths[billingMatch[2].toUpperCase()] || '01'}-${billingMatch[1].padStart(2,'0')}`
       : null;
+    console.log('[BCA CC] billingMatch raw:', billingMatch ? billingMatch[0] : 'NULL', '| statementDate:', statementDate);
     // PDF layout: all column headers first, then all values.
     // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
     // then 4 more values, then SISA TAGIHAN CICILAN.
