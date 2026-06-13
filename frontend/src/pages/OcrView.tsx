@@ -115,7 +115,7 @@ export default function OcrView() {
         setOcrParseMethod('');
         setOcrDetectedBank('');
         setOcrReferenceNumber('');
-        navigateTo('dashboard');
+        navigateTo('transactions');
         fetchData();
       } else {
         const errJson = await res.json();
