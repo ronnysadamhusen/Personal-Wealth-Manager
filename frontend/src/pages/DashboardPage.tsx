@@ -18,7 +18,9 @@ export default function DashboardPage() {
       if (a.type === 'bank' || a.type === 'cash') {
         totalCash += a.current_balance;
       } else if (a.type === 'credit_card') {
-        totalCcDebt += a.current_balance; // spent amounts are negative in database
+        // Use current_bill (from PDF statement) when available; otherwise fall back to transaction sum
+        const ccDebt = a.current_bill != null ? -a.current_bill : a.current_balance;
+        totalCcDebt += ccDebt;
         totalInstallmentDebt += a.installment_debt;
       }
     });
@@ -441,12 +443,13 @@ export default function DashboardPage() {
                       ) : (
                         <>
                           {ccAccounts.map((a: any) => {
-                            const usedPct = a.credit_limit > 0 ? Math.min(100, (Math.abs(a.current_balance) / a.credit_limit) * 100) : 0;
+                            const displayDebt = a.current_bill != null ? a.current_bill : Math.abs(a.current_balance);
+                            const usedPct = a.credit_limit > 0 ? Math.min(100, (displayDebt / a.credit_limit) * 100) : 0;
                             return (
                               <div key={a.id} style={{ marginBottom: '0.6rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.2rem' }}>
                                   <span style={{ fontWeight: 500 }}>💳 {a.name}</span>
-                                  <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{renderAmount(Math.abs(a.current_balance))}</span>
+                                  <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{renderAmount(displayDebt)}</span>
                                 </div>
                                 {a.credit_limit > 0 && (
                                   <>

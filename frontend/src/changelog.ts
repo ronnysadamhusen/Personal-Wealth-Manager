@@ -8,9 +8,17 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.5.1';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.1',
+    date: '2026-06-13',
+    highlights: 'Dashboard CC Debt kini konsisten dengan halaman Accounts — pakai tagihan PDF bukan akumulasi transaksi.',
+    changes: [
+      { type: 'fix', description: 'Dashboard: nilai hutang kartu kredit per-kartu dan Total CC Debt kini pakai current_bill dari PDF statement jika tersedia, bukan current_balance akumulasi transaksi' },
+    ],
+  },
   {
     version: '1.5.0',
     date: '2026-06-13',
