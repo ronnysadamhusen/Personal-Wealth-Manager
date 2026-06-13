@@ -8,9 +8,21 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.5.1';
+export const APP_VERSION = '1.6.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.0',
+    date: '2026-06-14',
+    highlights: 'Fitur baru: Akun Payroll untuk mencatat komponen slip gaji dari perusahaan — upload PDF dan AI akan mengekstrak pendapatan, tunjangan, dan potongan secara otomatis.',
+    changes: [
+      { type: 'feat', description: 'Tipe akun baru "Payroll" — virtual account untuk mencatat gaji kotor, tunjangan, bonus, dan potongan per komponen dari slip gaji perusahaan' },
+      { type: 'feat', description: 'Modal Input Slip Gaji: upload PDF terenkripsi → AI extraction komponen pendapatan & potongan → review/edit → simpan & auto-transfer gaji bersih ke rekening bank' },
+      { type: 'feat', description: 'Backend route /api/payroll/parse: ekstraksi teks PDF via pdfjs + AI provider yang dikonfigurasi user (Gemini/OpenAI/Ollama/dll)' },
+      { type: 'feat', description: 'Backend route /api/payroll/slips: CRUD slip gaji dengan otomatis membuat transaksi per komponen dan transfer gaji bersih ke rekening tujuan' },
+      { type: 'feat', description: 'Akun payroll muncul di Dashboard Kas & Tabungan dengan balance bersih (biasanya 0 setelah transfer gaji)' },
+    ],
+  },
   {
     version: '1.5.1',
     date: '2026-06-13',

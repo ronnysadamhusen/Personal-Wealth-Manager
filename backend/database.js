@@ -173,6 +173,56 @@ db.serialize(() => {
   db.run("ALTER TABLE accounts ADD COLUMN current_installment_debt REAL DEFAULT NULL", () => {});
   db.run("ALTER TABLE accounts ADD COLUMN available_credit REAL DEFAULT NULL", () => {});
 
+  // Migration: add 'payroll' to accounts type CHECK constraint
+  db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts'", (errSql, row) => {
+    if (row && row.sql && !row.sql.includes("'payroll'")) {
+      console.log("Migrating accounts table to support payroll type...");
+      db.serialize(() => {
+        db.run("PRAGMA foreign_keys = OFF;");
+        db.run("ALTER TABLE accounts RENAME TO accounts_old");
+        db.run(`
+          CREATE TABLE accounts (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('bank', 'credit_card', 'cash', 'payroll')),
+            balance REAL DEFAULT 0,
+            credit_limit REAL,
+            billing_cycle_date INTEGER,
+            due_date INTEGER,
+            current_bill REAL DEFAULT NULL,
+            current_installment_debt REAL DEFAULT NULL,
+            available_credit REAL DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        db.run(`INSERT INTO accounts SELECT id, name, type, balance, credit_limit, billing_cycle_date, due_date, current_bill, current_installment_debt, available_credit, created_at FROM accounts_old`);
+        db.run("DROP TABLE accounts_old");
+        db.run("PRAGMA foreign_keys = ON;", () => {
+          console.log("Accounts table migrated to support payroll type.");
+        });
+      });
+    }
+  });
+
+  // Payroll slips table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payroll_slips (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      period TEXT NOT NULL,
+      date TEXT NOT NULL,
+      gross_income REAL NOT NULL,
+      total_deductions REAL NOT NULL,
+      net_income REAL NOT NULL,
+      destination_account_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Migration: add payroll_slip_id to transactions
+  db.run("ALTER TABLE transactions ADD COLUMN payroll_slip_id TEXT DEFAULT NULL", () => {});
+
   // AI Configuration Setup
   db.run(`
     CREATE TABLE IF NOT EXISTS ai_config (

@@ -28,7 +28,7 @@ router.get('/api/accounts', async (req, res) => {
       const txTotal = txMap[account.id] || 0;
       // Bank/cash: initial balance + transactions.
       // Credit card: balance is just the sum of charges (negative) and payments (positive).
-      const currentBalance = (account.type === 'bank' || account.type === 'cash')
+      const currentBalance = (account.type === 'bank' || account.type === 'cash' || account.type === 'payroll')
         ? account.balance + txTotal
         : txTotal;
 

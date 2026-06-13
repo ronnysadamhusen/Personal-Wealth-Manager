@@ -15,7 +15,7 @@ export default function DashboardPage() {
     let totalInstallmentDebt = 0;
 
     accounts.forEach(a => {
-      if (a.type === 'bank' || a.type === 'cash') {
+      if (a.type === 'bank' || a.type === 'cash' || a.type === 'payroll') {
         totalCash += a.current_balance;
       } else if (a.type === 'credit_card') {
         // Use current_bill (from PDF statement) when available; otherwise fall back to transaction sum

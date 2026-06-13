@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../constants';
 import Icons from '../components/Icons';
 import { useApp } from '../context/AppContext';
+import PayrollSlipModal from '../components/PayrollSlipModal';
 
 export default function AccountsPage() {
   const { accounts, renderAmount, fetchData, setLoading } = useApp();
@@ -12,9 +13,22 @@ export default function AccountsPage() {
   const [reconcileDate, setReconcileDate] = useState(new Date().toISOString().split('T')[0]);
   const [reconcileNote, setReconcileNote] = useState('Penyesuaian Saldo (Reconciliation)');
 
+  // Payroll slip modal
+  const [payrollModalAcc, setPayrollModalAcc] = useState<any | null>(null);
+  const [payrollSlips, setPayrollSlips] = useState<any[]>([]);
+
+  const fetchPayrollSlips = async () => {
+    try {
+      const res = await fetch(`${API_URL}/payroll/slips`);
+      if (res.ok) setPayrollSlips(await res.json());
+    } catch (_) {}
+  };
+
+  useEffect(() => { fetchPayrollSlips(); }, []);
+
   // Account creation form
   const [newAccName, setNewAccName] = useState('');
-  const [newAccType, setNewAccType] = useState<'bank' | 'credit_card' | 'cash'>('bank');
+  const [newAccType, setNewAccType] = useState<'bank' | 'credit_card' | 'cash' | 'payroll'>('bank');
   const [newAccBalance, setNewAccBalance] = useState('');
   const [newAccCcLimit, setNewAccCcLimit] = useState('');
   const [newAccCycleDate, setNewAccCycleDate] = useState('');
@@ -33,6 +47,7 @@ export default function AccountsPage() {
         billing_cycle_date: newAccType === 'credit_card' ? parseInt(newAccCycleDate) || null : null,
         due_date: newAccType === 'credit_card' ? parseInt(newAccDueDate) || null : null
       };
+      // payroll type: balance always 0, no credit limit
 
       const res = await fetch(`${API_URL}/accounts`, {
         method: 'POST',
@@ -130,12 +145,23 @@ export default function AccountsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                       <div>
                         <h4 style={{ fontSize: '1.1rem', fontWeight: '700' }}>{a.name}</h4>
-                        <span className="badge" style={{ background: a.type === 'bank' ? 'rgba(16, 185, 129, 0.1)' : a.type === 'cash' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: a.type === 'bank' ? 'var(--color-success)' : a.type === 'cash' ? 'var(--color-warning)' : 'var(--color-primary)', marginTop: '0.4rem' }}>
-                          {a.type === 'bank' ? 'BANK ACCOUNT' : a.type === 'cash' ? 'CASH / WALLET' : 'CREDIT CARD'}
+                        <span className="badge" style={{ background: a.type === 'bank' ? 'rgba(16, 185, 129, 0.1)' : a.type === 'cash' ? 'rgba(245, 158, 11, 0.1)' : a.type === 'payroll' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: a.type === 'bank' ? 'var(--color-success)' : a.type === 'cash' ? 'var(--color-warning)' : a.type === 'payroll' ? '#a78bfa' : 'var(--color-primary)', marginTop: '0.4rem' }}>
+                          {a.type === 'bank' ? 'BANK ACCOUNT' : a.type === 'cash' ? 'CASH / WALLET' : a.type === 'payroll' ? 'PAYROLL' : 'CREDIT CARD'}
                         </span>
                       </div>
 
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {a.type === 'payroll' && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem' }}
+                            onClick={() => setPayrollModalAcc(a)}
+                          >
+                            📋 Input Slip Gaji
+                          </button>
+                        )}
+                        {a.type !== 'payroll' && (
                         <button
                           type="button"
                           className="btn btn-primary"
@@ -145,6 +171,7 @@ export default function AccountsPage() {
                         >
                           ⚖️ Reconcile
                         </button>
+                        )}
                         <button 
                           type="button"
                           className="btn btn-secondary" 
@@ -160,7 +187,7 @@ export default function AccountsPage() {
                     <div className="summary-widget">
                       <div className="widget-item">
                         <div className="card-desc">Current Balance</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash') ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash' || a.type === 'payroll') ? 'var(--color-success)' : 'var(--color-danger)' }}>
                           {renderAmount(a.type === 'credit_card' && a.current_bill != null ? -a.current_bill : a.current_balance)}
                         </div>
                       </div>
@@ -170,6 +197,16 @@ export default function AccountsPage() {
                           <div className="card-desc">Initial Balance</div>
                           <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
                             {renderAmount(a.balance)}
+                          </div>
+                        </div>
+                      ) : a.type === 'payroll' ? (
+                        <div className="widget-item">
+                          <div className="card-desc">Slip Terakhir</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+                            {(() => {
+                              const lastSlip = payrollSlips.filter(s => s.account_id === a.id).sort((x, y) => y.period.localeCompare(x.period))[0];
+                              return lastSlip ? <span style={{ color: 'var(--color-text-muted)' }}>{lastSlip.period} · {renderAmount(lastSlip.net_income)}</span> : <span style={{ color: 'var(--color-text-muted)' }}>Belum ada slip</span>;
+                            })()}
                           </div>
                         </div>
                       ) : (
@@ -232,8 +269,15 @@ export default function AccountsPage() {
                     <option value="bank">🏦 Bank Account / Savings</option>
                     <option value="cash">💵 Cash / Dompet</option>
                     <option value="credit_card">💳 Credit Card</option>
+                    <option value="payroll">📋 Payroll / Slip Gaji</option>
                   </select>
                 </div>
+
+                {newAccType === 'payroll' && (
+                  <div style={{ padding: '0.75rem 1rem', background: 'rgba(139,92,246,0.08)', borderRadius: '8px', border: '1px solid rgba(139,92,246,0.2)', fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                    Akun payroll adalah virtual account untuk mencatat penerimaan gaji. Saldo awal selalu 0. Gaji bersih akan otomatis di-transfer ke rekening bank pilihanmu saat input slip gaji.
+                  </div>
+                )}
 
                 {(newAccType === 'bank' || newAccType === 'cash') ? (
                   <div className="form-group">
@@ -295,6 +339,15 @@ export default function AccountsPage() {
               </form>
             </div>
           </div>
+
+        {/* Payroll Slip Modal */}
+        {payrollModalAcc && (
+          <PayrollSlipModal
+            account={payrollModalAcc}
+            onClose={() => setPayrollModalAcc(null)}
+            onSaved={() => { fetchData(); fetchPayrollSlips(); }}
+          />
+        )}
 
         {/* Reconcile Account Modal Overlay */}
         {reconcilingAcc && (
