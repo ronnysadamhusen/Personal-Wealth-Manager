@@ -195,7 +195,7 @@ export default function AccountsPage() {
                           <span style={{ color: 'var(--color-text-muted)' }}>Payment Due:</span> <strong>Day {a.due_date}</strong>
                         </div>
                         <div>
-                          <span style={{ color: 'var(--color-text-muted)' }}>Installment Debt:</span> <strong className="text-warning">{renderAmount(a.installment_debt)}</strong>
+                          <span style={{ color: 'var(--color-text-muted)' }}>Installment Debt:</span> <strong className="text-warning">{renderAmount(a.current_installment_debt ?? a.installment_debt)}</strong>
                         </div>
                       </div>
                     )}
