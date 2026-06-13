@@ -6,6 +6,72 @@ const { extractTextFromPDF } = require('../pdfParser');
 
 const router = express.Router();
 
+const INDONESIAN_MONTHS = { january:'01', februari:'01', february:'01', maret:'03', march:'03', april:'04', mei:'05', may:'05', juni:'06', june:'06', juli:'07', july:'07', agustus:'08', august:'08', september:'09', oktober:'10', october:'10', november:'11', desember:'12', december:'12' };
+
+// Rule-based fallback parser for Indonesian payroll slips (handles two-column layouts)
+function parsePayrollFallback(text) {
+  // Period
+  let period = '';
+  const periodMatch = text.match(/Periode Penggajian[.\s]+(\w+)\s+(\d{4})/i);
+  if (periodMatch) {
+    const mn = INDONESIAN_MONTHS[periodMatch[1].toLowerCase()];
+    if (mn) period = `${periodMatch[2]}-${mn}`;
+  }
+
+  const parseAmt = s => parseInt(s.replace(/,/g, '').replace(/\./g, ''), 10) || 0;
+
+  // Extract key totals for verification
+  const totalPendapatanMatch = text.match(/Total Pendapatan\s+([\d,.]+)/);
+  const totalPotonganMatch   = text.match(/Total Potongan\s+([\d,.]+)/);
+  const pendapatanBersihMatch = text.match(/Pendapatan Bersih\s+([\d,.]+)/);
+
+  const gross_income     = totalPendapatanMatch  ? parseAmt(totalPendapatanMatch[1])  : 0;
+  const total_deductions = totalPotonganMatch    ? parseAmt(totalPotonganMatch[1])    : 0;
+  const net_income       = pendapatanBersihMatch ? parseAmt(pendapatanBersihMatch[1]) : gross_income - total_deductions;
+
+  // Extract the two-column items section between "Pendapatan   Potongan" and "Total Potongan"
+  const secStart = text.search(/Pendapatan\s{2,}Potongan/i);
+  const secEnd   = text.search(/Total Potongan/i);
+  const section  = secStart >= 0 && secEnd > secStart ? text.slice(secStart, secEnd) : text;
+
+  // Find all label+amount pairs: label followed by 2+ spaces then an IDR amount (digits & commas, no decimal)
+  // IDR amount pattern: digits optionally separated by commas (e.g. 6,500,000 or 134,750)
+  const pairRe = /([A-Za-z][A-Za-z0-9\s\/\(\)%,.:&-]{1,50}?)\s{2,}(\d{1,3}(?:,\d{3})*|\d+)(?!\s*%)/g;
+
+  const deductionKw = ['total tax', 'pph', 'angs.', 'angs ', 'jht', 'iuran bpjs', 'bpjs kesehatan', 'bpjs pensiun', 'iuran pensiun'];
+  const skipKw      = ['total pendapatan', 'total potongan', 'pendapatan bersih', 'bank transfer', 'insentif produksi :'];
+
+  const seenLabels = new Map(); // track duplicates for income/deduction disambiguation
+  const items = [];
+  let m;
+  while ((m = pairRe.exec(section)) !== null) {
+    const label  = m[1].trim();
+    const amount = parseAmt(m[2]);
+    const labelL = label.toLowerCase();
+
+    if (amount === 0) continue;
+    if (skipKw.some(k => labelL.includes(k))) continue;
+    if (label.length < 2) continue;
+    if (/^-+$/.test(label)) continue;
+
+    const isDeductionKw = deductionKw.some(k => labelL.includes(k));
+    let type;
+    if (isDeductionKw) {
+      type = 'deduction';
+    } else {
+      // If we've seen this exact label before, classify the second occurrence as deduction
+      const seen = seenLabels.get(labelL) || 0;
+      type = seen > 0 ? 'deduction' : 'income';
+    }
+    seenLabels.set(labelL, (seenLabels.get(labelL) || 0) + 1);
+    items.push({ label, amount, type });
+  }
+
+  if (items.length === 0 && gross_income === 0) return null;
+
+  return { period, date: period ? `${period}-01` : '', items, gross_income, total_deductions, net_income };
+}
+
 // Call AI provider to extract payroll components from raw text
 async function extractWithAI(rawText) {
   const config = await query.get("SELECT * FROM ai_config WHERE id = 'default'");
@@ -110,7 +176,7 @@ router.post('/api/payroll/parse', upload.single('file'), async (req, res) => {
     return res.status(400).json({ error: 'PASSWORD_REQUIRED_OR_INCORRECT', raw_text: '' });
   }
 
-  // Try AI extraction
+  // Try AI extraction first, fall back to rule-based parser
   let extracted = null;
   let method = 'manual';
   try {
@@ -118,6 +184,11 @@ router.post('/api/payroll/parse', upload.single('file'), async (req, res) => {
     if (extracted) method = 'ai';
   } catch (err) {
     console.error('AI payroll extraction failed:', err.message);
+  }
+
+  if (!extracted) {
+    extracted = parsePayrollFallback(rawText);
+    if (extracted) method = 'rule-based';
   }
 
   res.json({ raw_text: rawText, extracted, method });
