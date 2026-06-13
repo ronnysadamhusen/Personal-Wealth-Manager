@@ -84,7 +84,7 @@ export default function ImportView() {
     triggerDuplicateCheck();
   }, [importTargetAccId, parsedData?.transactions?.length, lastCheckedAccId, lastCheckedTxCount]);
 
-  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null) => {
+  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null, latestStatementDate: string | null = null) => {
     if (index >= files.length) {
       setLoading(false);
       setPdfPassword('');
@@ -165,11 +165,14 @@ export default function ImportView() {
       const nextCreditLimit = result.creditLimit && (!maxCreditLimit || result.creditLimit > maxCreditLimit)
         ? result.creditLimit
         : maxCreditLimit;
-      // Use latest currentBill and installmentCommitment (most recent statement wins)
-      const nextCurrentBill = result.currentBill != null ? result.currentBill : latestCurrentBill;
-      const nextInstallmentCommitment = result.installmentCommitment != null ? result.installmentCommitment : latestInstallmentCommitment;
+      // Only update currentBill/installmentCommitment if this statement is newer (compare ISO date strings)
+      const isNewer = result.statementDate != null &&
+        (latestStatementDate == null || result.statementDate > latestStatementDate);
+      const nextStatementDate = isNewer ? result.statementDate : latestStatementDate;
+      const nextCurrentBill = isNewer ? result.currentBill : latestCurrentBill;
+      const nextInstallmentCommitment = isNewer ? result.installmentCommitment : latestInstallmentCommitment;
 
-      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment);
+      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment, nextStatementDate);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Error parsing statement');

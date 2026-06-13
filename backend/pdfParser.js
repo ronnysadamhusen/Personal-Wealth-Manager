@@ -213,8 +213,12 @@ const Parsers = {
     // Extract metadata from header
     const dueDateMatch = text.match(/TANGGAL JATUH TEMPO\s*[:\-]\s*(\d{1,2})/i);
     const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
-    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})/i);
+    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})\s+([A-Z]+)\s+(\d{4})/i);
     const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
+    const stmtMonths = { JANUARI:'01',FEBRUARI:'02',MARET:'03',APRIL:'04',MEI:'05',JUNI:'06',JULI:'07',AGUSTUS:'08',SEPTEMBER:'09',OKTOBER:'10',NOVEMBER:'11',DESEMBER:'12' };
+    const statementDate = billingMatch
+      ? `${billingMatch[3]}-${stmtMonths[billingMatch[2].toUpperCase()] || '01'}-${billingMatch[1].padStart(2,'0')}`
+      : null;
     // PDF layout: all column headers first, then all values.
     // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
     // then 4 more values, then SISA TAGIHAN CICILAN.
@@ -292,7 +296,7 @@ const Parsers = {
       }
     }
 
-    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, installmentCommitment, detectedInstallments };
+    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, installmentCommitment, statementDate, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -640,6 +644,7 @@ async function parseStatement(pdfBuffer, password = '') {
   let creditLimit = null;
   let currentBill = null;
   let installmentCommitment = null;
+  let statementDate = null;
   let billingCycleDate = null;
   let dueDate = null;
   let bankName = 'Unknown';
@@ -664,6 +669,7 @@ async function parseStatement(pdfBuffer, password = '') {
     creditLimit = bcaResult.creditLimit;
     currentBill = bcaResult.currentBill;
     installmentCommitment = bcaResult.installmentCommitment;
+    statementDate = bcaResult.statementDate;
     detectedInstallments = bcaResult.detectedInstallments || [];
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
@@ -708,6 +714,7 @@ async function parseStatement(pdfBuffer, password = '') {
     creditLimit,
     currentBill,
     installmentCommitment,
+    statementDate,
     billingCycleDate,
     dueDate
   };
