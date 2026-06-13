@@ -35,8 +35,9 @@ function parsePayrollFallback(text) {
   const section  = secStart >= 0 && secEnd > secStart ? text.slice(secStart, secEnd) : text;
 
   // Find all label+amount pairs: label followed by 2+ spaces then an IDR amount (digits & commas, no decimal)
+  // Label must NOT contain 2+ consecutive spaces (those are the column delimiter), so we use [ ](?![ ]) for spaces.
   // IDR amount pattern: digits optionally separated by commas (e.g. 6,500,000 or 134,750)
-  const pairRe = /([A-Za-z][A-Za-z0-9\s\/\(\)%,.:&-]{1,50}?)\s{2,}(\d{1,3}(?:,\d{3})*|\d+)(?!\s*%)/g;
+  const pairRe = /([A-Za-z](?:[A-Za-z0-9\/\(\)%.:&,-]|[ ](?![ ]))*?)\s{2,}(\d{1,3}(?:,\d{3})*|\d+)(?!\s*%)/g;
 
   const deductionKw = ['total tax', 'pph', 'angs.', 'angs ', 'jht', 'iuran bpjs', 'bpjs kesehatan', 'bpjs pensiun', 'iuran pensiun'];
   const skipKw      = ['total pendapatan', 'total potongan', 'pendapatan bersih', 'bank transfer', 'insentif produksi :'];

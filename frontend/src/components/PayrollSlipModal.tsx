@@ -40,8 +40,9 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
 
   const incomeItems = items.filter(i => i.type === 'income');
   const deductionItems = items.filter(i => i.type === 'deduction');
-  const grossIncome = incomeItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-  const totalDeductions = deductionItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const parseAmt = (s: string) => parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  const grossIncome = incomeItems.reduce((s, i) => s + parseAmt(i.amount), 0);
+  const totalDeductions = deductionItems.reduce((s, i) => s + parseAmt(i.amount), 0);
   const netIncome = grossIncome - totalDeductions;
 
   const handleFileSelect = (f: File) => {
@@ -81,7 +82,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
         if (ext.items && Array.isArray(ext.items)) {
           setItems(ext.items.map((i: any) => ({
             label: i.label,
-            amount: String(i.amount),
+            amount: Number(i.amount).toLocaleString('id-ID'),
             type: i.type
           })));
         }
@@ -117,7 +118,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
         account_id: account.id,
         period,
         date,
-        items: items.map(i => ({ label: i.label, amount: parseFloat(i.amount) || 0, type: i.type })),
+        items: items.map(i => ({ label: i.label, amount: parseAmt(i.amount), type: i.type })),
         destination_account_id: destAccountId || null
       };
       const res = await fetch(`${API_URL}/payroll/slips`, {
@@ -255,10 +256,12 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       style={{ flex: 2 }}
                     />
                     <input
-                      type="number"
+                      type="text"
                       className="form-control"
                       placeholder="Nominal"
                       value={item.amount}
+                      onFocus={(e) => { const raw = String(parseAmt(e.target.value) || ''); updateItem(globalIdx, 'amount', raw); }}
+                      onBlur={(e) => { const n = parseAmt(e.target.value); if (n) updateItem(globalIdx, 'amount', n.toLocaleString('id-ID')); }}
                       onChange={(e) => updateItem(globalIdx, 'amount', e.target.value)}
                       style={{ flex: 1.5, color: 'var(--color-success)' }}
                     />
@@ -287,10 +290,12 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       style={{ flex: 2 }}
                     />
                     <input
-                      type="number"
+                      type="text"
                       className="form-control"
                       placeholder="Nominal"
                       value={item.amount}
+                      onFocus={(e) => { const raw = String(parseAmt(e.target.value) || ''); updateItem(globalIdx, 'amount', raw); }}
+                      onBlur={(e) => { const n = parseAmt(e.target.value); if (n) updateItem(globalIdx, 'amount', n.toLocaleString('id-ID')); }}
                       onChange={(e) => updateItem(globalIdx, 'amount', e.target.value)}
                       style={{ flex: 1.5, color: 'var(--color-danger)' }}
                     />
