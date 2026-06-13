@@ -332,7 +332,7 @@ export default function ImportView() {
                         >
                           <option value="">-- Choose Account --</option>
                           {accounts.map(a => (
-                            <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : 'Credit Card'})</option>
+                            <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : a.type === 'payroll' ? 'Payroll' : 'Credit Card'})</option>
                           ))}
                         </select>
                         {!importTargetAccId && (
