@@ -89,11 +89,16 @@ export default function ImportView() {
       setLoading(false);
       setPdfPassword('');
       setPasswordRequired(false);
+      const sortedTx = [...accumulatedTx].sort((a, b) => {
+        const da = a.date || '';
+        const db = b.date || '';
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
       setParsedData({
         bankName: files.length > 0 ? 'Multiple' : 'Unknown',
         statementType: 'Statement Batch',
-        transactionCount: accumulatedTx.length,
-        transactions: accumulatedTx,
+        transactionCount: sortedTx.length,
+        transactions: sortedTx,
         detectedInstallments: accumulatedInstallments,
         creditLimit: maxCreditLimit,
         currentBill: latestCurrentBill,
