@@ -196,6 +196,11 @@ const Parsers = {
     const transactions = [];
     const year = extractYear(text);
 
+    // Extract metadata from original text BEFORE preprocessing to avoid regex corruption
+    const dueDateMatch = text.match(/TANGGAL JATUH TEMPO\s*[:\-]\s*(\d{1,2})/i);
+    const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
+    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]?\s*(\d{1,2})\s+([A-Z]+)\s+(\d{4})/i);
+
     // Strip page number markers (e.g. "1/3", "2/3") and repeated page headers
     // that appear at page boundaries and break the transaction regex lookahead.
     text = text
@@ -209,11 +214,6 @@ const Parsers = {
       'JUN': '06', 'JUL': '07', 'AGS': '08', 'AUG': '08', 'SEP': '09', 'OKT': '10', 'OCT': '10',
       'NOV': '11', 'DES': '12', 'DEC': '12'
     };
-
-    // Extract metadata from header
-    const dueDateMatch = text.match(/TANGGAL JATUH TEMPO\s*[:\-]\s*(\d{1,2})/i);
-    const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
-    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]\s*(\d{1,2})\s+([A-Z]+)\s+(\d{4})/i);
     const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
     const stmtMonths = { JANUARI:'01',FEBRUARI:'02',MARET:'03',APRIL:'04',MEI:'05',JUNI:'06',JULI:'07',AGUSTUS:'08',SEPTEMBER:'09',OKTOBER:'10',NOVEMBER:'11',DESEMBER:'12' };
     const statementDate = billingMatch
