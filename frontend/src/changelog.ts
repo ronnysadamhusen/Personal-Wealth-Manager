@@ -8,9 +8,19 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.5.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.5.0',
+    date: '2026-06-13',
+    highlights: 'Setelah import PDF tetap di halaman Transactions, dan Sisa Kredit Limit BCA kini diambil langsung dari PDF — tidak ada lagi selisih akibat TUNGGAKAN atau komponen tersembunyi.',
+    changes: [
+      { type: 'fix', description: 'Setelah import PDF berhasil, aplikasi tidak lagi berpindah ke Dashboard — tetap di halaman Transactions (tab Ledger)' },
+      { type: 'fix', description: 'Available Credit Limit BCA CC kini diambil langsung dari nilai SISA KREDIT LIMIT di PDF, menghindari selisih akibat TUNGGAKAN dan komponen lain yang BCA hitung sendiri' },
+      { type: 'feat', description: 'Parser BCA CC menangkap field SISA KREDIT LIMIT (V7) dari tabel kredit PDF dan menyimpannya sebagai available_credit di database' },
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-06-13',
