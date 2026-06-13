@@ -282,15 +282,15 @@ export default function AccountsPage() {
                 {(newAccType === 'bank' || newAccType === 'cash') ? (
                   <div className="form-group">
                     <label>Initial Balance (IDR)</label>
-                    <input 
-                      type="number" 
-                      className="form-control" 
-                      placeholder="e.g. 5000000" 
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 5000000"
                       value={newAccBalance}
                       onChange={(e) => setNewAccBalance(e.target.value)}
                     />
                   </div>
-                ) : (
+                ) : newAccType === 'credit_card' ? (
                   <div>
                     <div className="form-group">
                       <label>Credit Limit (IDR)</label>
@@ -331,7 +331,7 @@ export default function AccountsPage() {
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
                   <Icons.Plus /> Register Account
