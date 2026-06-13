@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { API_URL } from '../constants';
 import { useApp } from '../context/AppContext';
 
@@ -242,7 +242,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                 <h4 style={{ margin: 0, color: 'var(--color-success)' }}>Pendapatan</h4>
                 <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.25rem 0.7rem' }} onClick={() => addItem('income')}>+ Tambah</button>
               </div>
-              {incomeItems.map((item, idx) => {
+              {incomeItems.map((item) => {
                 const globalIdx = items.indexOf(item);
                 return (
                   <div key={globalIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem', alignItems: 'center' }}>
