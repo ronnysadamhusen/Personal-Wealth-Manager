@@ -8,9 +8,23 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.4.0',
+    date: '2026-06-13',
+    highlights: 'Parser BCA CC diperbaiki menyeluruh — Current Balance, Available Credit Limit, dan Installment Debt kini sinkron persis dengan nilai di PDF e-statement.',
+    changes: [
+      { type: 'fix', description: 'Current Balance kartu kredit menampilkan TAGIHAN BARU langsung dari PDF, bukan kalkulasi rolling transaksi' },
+      { type: 'fix', description: 'Available Credit Limit dihitung dari KREDIT LIMIT − TAGIHAN BARU − SISA TAGIHAN CICILAN, floor ke 0 (sesuai perilaku BCA)' },
+      { type: 'fix', description: 'Installment Debt menampilkan SISA TAGIHAN CICILAN langsung dari PDF (current_installment_debt), bukan kalkulasi rolling' },
+      { type: 'fix', description: 'billingMatch dijalankan pada teks asli sebelum preprocessing agar statementDate tidak gagal diekstrak' },
+      { type: 'fix', description: 'Transaksi di batas halaman PDF tidak lagi terlewat — page marker stripped sebelum regex berjalan' },
+      { type: 'feat', description: 'Batch import multi-PDF: current_bill selalu diambil dari statement terbaru berdasarkan statementDate, bukan urutan filename' },
+      { type: 'feat', description: 'Transaksi hasil batch import diurutkan berdasarkan tanggal, bukan urutan file dipilih' },
+    ],
+  },
   {
     version: '1.3.0',
     date: '2026-06-12',

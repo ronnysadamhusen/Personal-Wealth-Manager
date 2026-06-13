@@ -84,18 +84,25 @@ export default function ImportView() {
     triggerDuplicateCheck();
   }, [importTargetAccId, parsedData?.transactions?.length, lastCheckedAccId, lastCheckedTxCount]);
 
-  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null) => {
+  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null, latestStatementDate: string | null = null) => {
     if (index >= files.length) {
       setLoading(false);
       setPdfPassword('');
       setPasswordRequired(false);
+      const sortedTx = [...accumulatedTx].sort((a, b) => {
+        const da = a.date || '';
+        const db = b.date || '';
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
       setParsedData({
         bankName: files.length > 0 ? 'Multiple' : 'Unknown',
         statementType: 'Statement Batch',
-        transactionCount: accumulatedTx.length,
-        transactions: accumulatedTx,
+        transactionCount: sortedTx.length,
+        transactions: sortedTx,
         detectedInstallments: accumulatedInstallments,
-        creditLimit: maxCreditLimit
+        creditLimit: maxCreditLimit,
+        currentBill: latestCurrentBill,
+        installmentCommitment: latestInstallmentCommitment
       });
       return;
     }
@@ -163,8 +170,14 @@ export default function ImportView() {
       const nextCreditLimit = result.creditLimit && (!maxCreditLimit || result.creditLimit > maxCreditLimit)
         ? result.creditLimit
         : maxCreditLimit;
+      // Only update currentBill/installmentCommitment if this statement is newer (compare ISO date strings)
+      const isNewer = result.statementDate != null &&
+        (latestStatementDate == null || result.statementDate > latestStatementDate);
+      const nextStatementDate = isNewer ? result.statementDate : latestStatementDate;
+      const nextCurrentBill = isNewer ? result.currentBill : latestCurrentBill;
+      const nextInstallmentCommitment = isNewer ? result.installmentCommitment : latestInstallmentCommitment;
 
-      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit);
+      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment, nextStatementDate);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Error parsing statement');
@@ -245,6 +258,8 @@ export default function ImportView() {
           file_name: fileNames,
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
+          current_bill: parsedData.currentBill ?? null,
+          installment_commitment: parsedData.installmentCommitment ?? null,
           billing_cycle_date: parsedData.billingCycleDate,
           due_date: parsedData.dueDate
         })

@@ -189,47 +189,111 @@ const Parsers = {
   },
 
   // 2. BCA Credit Card Statement
+  // Supports both old format (DD MMM DD MMM) and new "REKENING KARTU KREDIT" multi-card format (DD-MMM DD-MMM)
+  // NOTE: pdfjs-dist extracts all text items joined by spaces into one long string per page,
+  // so we use a global regex with lookahead instead of line-by-line matching.
   bcaCreditCard(text) {
     const transactions = [];
     const year = extractYear(text);
+
+    // Extract metadata from original text BEFORE preprocessing to avoid regex corruption
+    const dueDateMatch = text.match(/TANGGAL JATUH TEMPO\s*[:\-]\s*(\d{1,2})/i);
+    const dueDate = dueDateMatch ? parseInt(dueDateMatch[1]) : null;
+    const billingMatch = text.match(/TANGGAL REKENING\s*[:\-]?\s*(\d{1,2})\s+([A-Z]+)\s+(\d{4})/i);
+
+    // Strip page number markers (e.g. "1/3", "2/3") and repeated page headers
+    // that appear at page boundaries and break the transaction regex lookahead.
+    text = text
+      .replace(/\b\d+\/\d+\b/g, ' ')
+      .replace(/REKENING\s+KARTU\s+KREDIT\s+\d+/gi, ' ')
+      .replace(/TANGGAL\s+KETERANGAN\s+JUMLAH\s*\(RP\)\s+TRANSAKSI\s+PEMBUKUAN/gi, ' ')
+      .replace(/\s{2,}/g, ' ');
+
     const months = {
       'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MEI': '05', 'MAY': '05',
       'JUN': '06', 'JUL': '07', 'AGS': '08', 'AUG': '08', 'SEP': '09', 'OKT': '10', 'OCT': '10',
       'NOV': '11', 'DES': '12', 'DEC': '12'
     };
+    const billingCycleDate = billingMatch ? parseInt(billingMatch[1]) : null;
+    const stmtMonths = { JANUARI:'01',FEBRUARI:'02',MARET:'03',APRIL:'04',MEI:'05',JUNI:'06',JULI:'07',AGUSTUS:'08',SEPTEMBER:'09',OKTOBER:'10',NOVEMBER:'11',DESEMBER:'12' };
+    const statementDate = billingMatch
+      ? `${billingMatch[3]}-${stmtMonths[billingMatch[2].toUpperCase()] || '01'}-${billingMatch[1].padStart(2,'0')}`
+      : null;
+    // PDF layout: all column headers first, then all values.
+    // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
+    // then 4 more values, then SISA TAGIHAN CICILAN.
+    const creditTableMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)(?:\s+[\d.,]+){4}\s+([\d.]+)/i);
+    const creditLimit = creditTableMatch ? parseFloat(creditTableMatch[1].replace(/\./g, '')) : null;
+    const installmentCommitment = creditTableMatch ? parseFloat(creditTableMatch[2].replace(/\./g, '')) : null;
+    // Primary: "TAGIHAN BARU   :   RP 3.092.670" (labeled format)
+    // Fallback: table format where all headers precede all values — after "TAGIHAN BARU"
+    //   (no colon) the first number is the TAGIHAN SEBELUMNYA value, used as initial billing.
+    const billMatch = text.match(/TAGIHAN BARU\s*:\s*RP\s*([\d.,]+)/i)
+                   || text.match(/TAGIHAN BARU\s+([\d.,]+)/i);
+    const currentBill = billMatch ? parseAmount(billMatch[1]) : null;
 
-    const lines = text.split('\n');
-    // Pattern: DD MMM DD MMM DESCRIPTION AMOUNT CR/-
-    // E.g., "12 JUN 13 JUN STARBUCKS COFFEE 125.000"
-    // E.g., "15 JUN 16 JUN PEMBAYARAN KARTU KREDIT 1.500.000- CR" or "1.500.000 CR"
-    const regex = /(\d{2})\s+([A-Z]{3})\s+(\d{2})\s+([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR|-)?$/i;
+    // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
+    // Lookahead stops the description before the next transaction, section header, or end of string.
+    // This handles the case where all transactions on a page are concatenated into one long string.
+    const regex = /(\d{2})[-\s]([A-Z]{3})\s+(\d{2})[-\s]([A-Z]{3})\s+(.+?)\s+([\d.,]+)\s*(CR)?\s*(?=\d{2}[-\s][A-Z]{3}|\bSUBTOTAL\b|\bTOTAL\b|\bSALDO\b|\bINFORMASI\b|$)/gi;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const match = trimmed.match(regex);
-      if (match) {
-        const [_, dayStr, monthName, postDay, postMonthName, descRaw, amountStr, crMarker] = match;
-        const monthNum = months[monthName.toUpperCase()] || '01';
-        const formattedDate = `${year}-${monthNum}-${dayStr.padStart(2, '0')}`;
-        
-        const amountValue = parseAmount(amountStr);
-        // Credit card charges are expenses (negative amount in our standard schema).
-        // Credit card payments/refunds (CR or trailing minus) are income/reductions (positive amount).
-        const isCredit = crMarker && (crMarker.toUpperCase() === 'CR' || crMarker === '-');
-        const finalAmount = isCredit ? amountValue : -amountValue;
-        
-        const cleanDesc = cleanDescription(descRaw);
-        
-        transactions.push({
-          date: formattedDate,
-          description: cleanDesc,
-          amount: finalAmount,
-          category: autoCategorize(cleanDesc)
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const [_, dayStr, monthName, postDay, postMonthName, descRaw, amountStr, crMarker] = match;
+      const monthNum = months[monthName.toUpperCase()] || '01';
+      const formattedDate = `${year}-${monthNum}-${dayStr.padStart(2, '0')}`;
+
+      const amountValue = parseAmount(amountStr);
+      // CC charges = expense (negative). Payments/refunds marked CR = positive.
+      const isCredit = crMarker && crMarker.toUpperCase() === 'CR';
+      const finalAmount = isCredit ? amountValue : -amountValue;
+
+      const cleanDesc = cleanDescription(descRaw);
+
+      // Detect BCA installment format: "CICILAN BCA KE 03 DARI 06, ACE HARDWARE"
+      const installmentMatch = cleanDesc.match(/CICILAN\s+\S+\s+KE\s+0*(\d+)\s+DARI\s+0*(\d+)[,\s]+(.+)/i);
+      const isInstallment = installmentMatch && parseInt(installmentMatch[1]) === 1;
+
+      transactions.push({
+        date: formattedDate,
+        description: cleanDesc,
+        amount: finalAmount,
+        category: autoCategorize(cleanDesc),
+        ...(isInstallment && {
+          is_installment: 1,
+          installment_months: parseInt(installmentMatch[2]),
+        }),
+      });
+    }
+
+    // Build detectedInstallments from active CICILAN transactions (same as BNI CC logic).
+    // Each CICILAN row tells us current month/total, so we infer start date and remaining months.
+    const detectedInstallments = [];
+    for (const tx of transactions) {
+      const m = tx.description.match(/CICILAN\s+\S+\s+KE\s+0*(\d+)\s+DARI\s+0*(\d+)[,\s]+(.+)/i);
+      if (!m) continue;
+      const currentMonth = parseInt(m[1]);
+      const totalMonths  = parseInt(m[2]);
+      const merchantName = m[3].trim();
+      const monthlyAmount = Math.abs(tx.amount);
+      const alreadyTracked = detectedInstallments.some(inst =>
+        inst.description.toLowerCase().substring(0, 10) === merchantName.toLowerCase().substring(0, 10) &&
+        Math.abs(inst.monthly_amount - monthlyAmount) < 10
+      );
+      if (!alreadyTracked) {
+        const txDate = new Date(tx.date);
+        txDate.setMonth(txDate.getMonth() - (currentMonth - 1));
+        detectedInstallments.push({
+          description: merchantName,
+          total_amount: monthlyAmount * totalMonths,
+          monthly_amount: monthlyAmount,
+          total_months: totalMonths,
+          start_date: txDate.toISOString().split('T')[0]
         });
       }
     }
-    
-    return transactions;
+
+    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, installmentCommitment, statementDate, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -575,6 +639,9 @@ async function parseStatement(pdfBuffer, password = '') {
   let parsedTransactions = [];
   let detectedInstallments = [];
   let creditLimit = null;
+  let currentBill = null;
+  let installmentCommitment = null;
+  let statementDate = null;
   let billingCycleDate = null;
   let dueDate = null;
   let bankName = 'Unknown';
@@ -584,10 +651,23 @@ async function parseStatement(pdfBuffer, password = '') {
     bankName = 'BCA';
     statementType = 'Bank Account';
     parsedTransactions = Parsers.bcaBank(text);
-  } else if (textUpper.includes('KARTU KREDIT BCA') || textUpper.includes('CREDIT CARD BCA') || (textUpper.includes('BCA') && textUpper.includes('TAGIHAN') && textUpper.includes('PEMBAYARAN MINIMUM'))) {
+  } else if (
+    textUpper.includes('KARTU KREDIT BCA') ||
+    textUpper.includes('CREDIT CARD BCA') ||
+    textUpper.includes('REKENING KARTU KREDIT') ||
+    (textUpper.includes('BCA') && textUpper.includes('TAGIHAN') && textUpper.includes('PEMBAYARAN MINIMUM'))
+  ) {
     bankName = 'BCA';
     statementType = 'Credit Card';
-    parsedTransactions = Parsers.bcaCreditCard(text);
+    const bcaResult = Parsers.bcaCreditCard(text);
+    parsedTransactions = bcaResult.transactions;
+    dueDate = bcaResult.dueDate;
+    billingCycleDate = bcaResult.billingCycleDate;
+    creditLimit = bcaResult.creditLimit;
+    currentBill = bcaResult.currentBill;
+    installmentCommitment = bcaResult.installmentCommitment;
+    statementDate = bcaResult.statementDate;
+    detectedInstallments = bcaResult.detectedInstallments || [];
   } else if (textUpper.includes('BNI') && (textUpper.includes('MUTASI REKENING') || textUpper.includes('LAPORAN MUTASI'))) {
     bankName = 'BNI';
     statementType = 'Bank Account';
@@ -629,6 +709,9 @@ async function parseStatement(pdfBuffer, password = '') {
     transactions: validTransactions,
     detectedInstallments,
     creditLimit,
+    currentBill,
+    installmentCommitment,
+    statementDate,
     billingCycleDate,
     dueDate
   };
