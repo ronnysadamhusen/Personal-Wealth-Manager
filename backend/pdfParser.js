@@ -219,22 +219,18 @@ const Parsers = {
     const statementDate = billingMatch
       ? `${billingMatch[3]}-${stmtMonths[billingMatch[2].toUpperCase()] || '01'}-${billingMatch[1].padStart(2,'0')}`
       : null;
-    console.log('[BCA CC] billingMatch raw:', billingMatch ? billingMatch[0] : 'NULL', '| statementDate:', statementDate);
     // PDF layout: all column headers first, then all values.
     // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
     // then 4 more values, then SISA TAGIHAN CICILAN.
     const creditTableMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)(?:\s+[\d.,]+){4}\s+([\d.]+)/i);
     const creditLimit = creditTableMatch ? parseFloat(creditTableMatch[1].replace(/\./g, '')) : null;
     const installmentCommitment = creditTableMatch ? parseFloat(creditTableMatch[2].replace(/\./g, '')) : null;
-    console.log('[BCA CC] creditTableMatch:', creditTableMatch ? creditTableMatch[0].substring(0, 80) : 'NULL');
-    console.log('[BCA CC] creditLimit:', creditLimit, '| installmentCommitment:', installmentCommitment);
     // Primary: "TAGIHAN BARU   :   RP 3.092.670" (labeled format)
     // Fallback: table format where all headers precede all values — after "TAGIHAN BARU"
     //   (no colon) the first number is the TAGIHAN SEBELUMNYA value, used as initial billing.
     const billMatch = text.match(/TAGIHAN BARU\s*:\s*RP\s*([\d.,]+)/i)
                    || text.match(/TAGIHAN BARU\s+([\d.,]+)/i);
     const currentBill = billMatch ? parseAmount(billMatch[1]) : null;
-    console.log('[BCA CC] currentBill:', currentBill);
 
     // Global regex: matches DD-MMM DD-MMM DESCRIPTION AMOUNT [CR]
     // Lookahead stops the description before the next transaction, section header, or end of string.
