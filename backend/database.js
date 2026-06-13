@@ -432,21 +432,22 @@ db.serialize(() => {
             product_service TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             debt_receivable_id TEXT,
+            payroll_slip_id TEXT DEFAULT NULL,
             FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
             FOREIGN KEY(installment_id) REFERENCES installments(id) ON DELETE SET NULL
           )
         `);
         db.run(`
           INSERT INTO transactions (
-            id, account_id, date, booking_date, description, amount, category, 
-            is_installment, installment_id, note, location_merchant, product_service, 
+            id, account_id, date, booking_date, description, amount, category,
+            is_installment, installment_id, note, location_merchant, product_service,
             created_at, debt_receivable_id
-          ) 
-          SELECT 
-            id, account_id, date, booking_date, description, amount, category, 
-            is_installment, installment_id, note, location_merchant, product_service, 
-            created_at, debt_receivable_id 
-          FROM transactions_old 
+          )
+          SELECT
+            id, account_id, date, booking_date, description, amount, category,
+            is_installment, installment_id, note, location_merchant, product_service,
+            created_at, debt_receivable_id
+          FROM transactions_old
           WHERE account_id IN (SELECT id FROM accounts)
         `);
         db.run("DROP TABLE transactions_old");
@@ -466,11 +467,14 @@ db.serialize(() => {
             destination_transaction_id TEXT,
             fee_transaction_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            balancer_transaction_id TEXT,
             FOREIGN KEY(source_account_id) REFERENCES accounts(id) ON DELETE CASCADE,
             FOREIGN KEY(destination_account_id) REFERENCES accounts(id) ON DELETE CASCADE
           )
         `);
-        db.run("INSERT INTO transfers SELECT * FROM transfers_old WHERE source_account_id IN (SELECT id FROM accounts) AND destination_account_id IN (SELECT id FROM accounts)");
+        db.run(`INSERT INTO transfers (id, source_account_id, destination_account_id, amount, fee, date, description, source_transaction_id, destination_transaction_id, fee_transaction_id, created_at, balancer_transaction_id)
+          SELECT id, source_account_id, destination_account_id, amount, fee, date, description, source_transaction_id, destination_transaction_id, fee_transaction_id, created_at, balancer_transaction_id
+          FROM transfers_old WHERE source_account_id IN (SELECT id FROM accounts) AND destination_account_id IN (SELECT id FROM accounts)`);
         db.run("DROP TABLE transfers_old");
 
         // 4. Rebuild import_logs
