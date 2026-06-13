@@ -156,7 +156,7 @@ router.post('/api/transactions', async (req, res) => {
 
 // Bulk add transactions (from verification grid)
 router.post('/api/transactions/bulk', async (req, res) => {
-  const { account_id, transactions, file_name, detected_installments = [], credit_limit, current_bill, installment_commitment, billing_cycle_date, due_date } = req.body;
+  const { account_id, transactions, file_name, detected_installments = [], credit_limit, available_credit, current_bill, installment_commitment, billing_cycle_date, due_date } = req.body;
   if (!account_id || !transactions || !Array.isArray(transactions)) {
     return res.status(400).json({ error: 'Account ID and transactions array are required' });
   }
@@ -178,6 +178,10 @@ router.post('/api/transactions/bulk', async (req, res) => {
     if (installment_commitment != null) {
       await query.run('UPDATE accounts SET current_installment_debt = ? WHERE id = ?', [installment_commitment, account_id]);
       console.log(`[bulk] Automatically updated current_installment_debt to ${installment_commitment} for account ID ${account_id}`);
+    }
+    if (available_credit != null) {
+      await query.run('UPDATE accounts SET available_credit = ? WHERE id = ?', [available_credit, account_id]);
+      console.log(`[bulk] Automatically updated available_credit to ${available_credit} for account ID ${account_id}`);
     }
 
     if (billing_cycle_date || due_date) {

@@ -7,7 +7,7 @@ import { useApp } from '../context/AppContext';
 export default function ImportView() {
   const {
     accounts, savedPasswords, importLogs, groupedCategories,
-    renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo,
+    renderAmount, loading, setLoading, setErrorMsg, fetchData, switchTxSubTab,
   } = useApp();
 
   // PDF IMPORT STATES
@@ -84,7 +84,7 @@ export default function ImportView() {
     triggerDuplicateCheck();
   }, [importTargetAccId, parsedData?.transactions?.length, lastCheckedAccId, lastCheckedTxCount]);
 
-  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null, latestStatementDate: string | null = null) => {
+  const processBatch = async (files: File[], index: number, accumulatedTx: any[], passwordVal = '', accumulatedInstallments: any[] = [], maxCreditLimit: number | null = null, latestCurrentBill: number | null = null, latestInstallmentCommitment: number | null = null, latestStatementDate: string | null = null, latestAvailableCreditLimit: number | null = null) => {
     if (index >= files.length) {
       setLoading(false);
       setPdfPassword('');
@@ -101,6 +101,7 @@ export default function ImportView() {
         transactions: sortedTx,
         detectedInstallments: accumulatedInstallments,
         creditLimit: maxCreditLimit,
+        availableCreditLimit: latestAvailableCreditLimit,
         currentBill: latestCurrentBill,
         installmentCommitment: latestInstallmentCommitment
       });
@@ -176,8 +177,9 @@ export default function ImportView() {
       const nextStatementDate = isNewer ? result.statementDate : latestStatementDate;
       const nextCurrentBill = isNewer ? result.currentBill : latestCurrentBill;
       const nextInstallmentCommitment = isNewer ? result.installmentCommitment : latestInstallmentCommitment;
+      const nextAvailableCreditLimit = isNewer ? result.availableCreditLimit : latestAvailableCreditLimit;
 
-      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment, nextStatementDate);
+      processBatch(files, index + 1, nextAccumulated, '', nextInstallments, nextCreditLimit, nextCurrentBill, nextInstallmentCommitment, nextStatementDate, nextAvailableCreditLimit);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Error parsing statement');
@@ -258,6 +260,7 @@ export default function ImportView() {
           file_name: fileNames,
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
+          available_credit: parsedData.availableCreditLimit ?? null,
           current_bill: parsedData.currentBill ?? null,
           installment_commitment: parsedData.installmentCommitment ?? null,
           billing_cycle_date: parsedData.billingCycleDate,
@@ -270,7 +273,7 @@ export default function ImportView() {
         setPdfFile(null);
         setPdfFiles([]);
         setParsedTxList([]);
-        navigateTo('dashboard');
+        switchTxSubTab('ledger');
         fetchData();
       } else {
         const errJ = await res.json();

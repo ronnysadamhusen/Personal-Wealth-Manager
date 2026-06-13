@@ -220,11 +220,13 @@ const Parsers = {
       ? `${billingMatch[3]}-${stmtMonths[billingMatch[2].toUpperCase()] || '01'}-${billingMatch[1].padStart(2,'0')}`
       : null;
     // PDF layout: all column headers first, then all values.
-    // "SISA KREDIT LIMIT" is the last header; first value after it = KREDIT LIMIT GABUNGAN,
-    // then 4 more values, then SISA TAGIHAN CICILAN.
-    const creditTableMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)(?:\s+[\d.,]+){4}\s+([\d.]+)/i);
+    // "SISA KREDIT LIMIT" is the last header; values order: KREDIT LIMIT GABUNGAN, BATAS TARIK TUNAI,
+    // TARIK TUNAI, TUNGGAKAN, BEA METERAI LUNAS, SISA TAGIHAN CICILAN, SISA KREDIT LIMIT.
+    const creditTableMatch = text.match(/SISA\s+KREDIT\s+LIMIT\s+([\d.]+)(?:\s+[\d.,]+){4}\s+([\d.,]+)\s+([\d.,]+)/i);
     const creditLimit = creditTableMatch ? parseFloat(creditTableMatch[1].replace(/\./g, '')) : null;
-    const installmentCommitment = creditTableMatch ? parseFloat(creditTableMatch[2].replace(/\./g, '')) : null;
+    const installmentCommitment = creditTableMatch ? parseFloat(creditTableMatch[2].replace(/\./g, '').replace(/,/g, '')) : null;
+    // V7 = SISA KREDIT LIMIT value as stated in the PDF (used directly, avoids re-calculation drift)
+    const availableCreditLimit = creditTableMatch ? parseFloat(creditTableMatch[3].replace(/\./g, '').replace(/,/g, '')) : null;
     // Primary: "TAGIHAN BARU   :   RP 3.092.670" (labeled format)
     // Fallback: table format where all headers precede all values — after "TAGIHAN BARU"
     //   (no colon) the first number is the TAGIHAN SEBELUMNYA value, used as initial billing.
@@ -293,7 +295,7 @@ const Parsers = {
       }
     }
 
-    return { transactions, dueDate, billingCycleDate, creditLimit, currentBill, installmentCommitment, statementDate, detectedInstallments };
+    return { transactions, dueDate, billingCycleDate, creditLimit, availableCreditLimit, currentBill, installmentCommitment, statementDate, detectedInstallments };
   },
 
   // 3. Mandiri Bank Statement
@@ -639,6 +641,7 @@ async function parseStatement(pdfBuffer, password = '') {
   let parsedTransactions = [];
   let detectedInstallments = [];
   let creditLimit = null;
+  let availableCreditLimit = null;
   let currentBill = null;
   let installmentCommitment = null;
   let statementDate = null;
@@ -664,6 +667,7 @@ async function parseStatement(pdfBuffer, password = '') {
     dueDate = bcaResult.dueDate;
     billingCycleDate = bcaResult.billingCycleDate;
     creditLimit = bcaResult.creditLimit;
+    availableCreditLimit = bcaResult.availableCreditLimit;
     currentBill = bcaResult.currentBill;
     installmentCommitment = bcaResult.installmentCommitment;
     statementDate = bcaResult.statementDate;
@@ -709,6 +713,7 @@ async function parseStatement(pdfBuffer, password = '') {
     transactions: validTransactions,
     detectedInstallments,
     creditLimit,
+    availableCreditLimit,
     currentBill,
     installmentCommitment,
     statementDate,

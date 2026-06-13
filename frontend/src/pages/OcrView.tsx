@@ -3,7 +3,7 @@ import { API_URL } from '../constants';
 import { useApp } from '../context/AppContext';
 
 export default function OcrView() {
-  const { accounts, dbCategories, groupedCategories, loading, setErrorMsg, fetchData, navigateTo } = useApp();
+  const { accounts, dbCategories, groupedCategories, loading, setErrorMsg, fetchData, switchTxSubTab } = useApp();
 
   const expenseCategories = useMemo(() => {
     const result: { parent: any; subs: any[] }[] = [];
@@ -115,7 +115,7 @@ export default function OcrView() {
         setOcrParseMethod('');
         setOcrDetectedBank('');
         setOcrReferenceNumber('');
-        navigateTo('transactions');
+        switchTxSubTab('ledger');
         fetchData();
       } else {
         const errJson = await res.json();
