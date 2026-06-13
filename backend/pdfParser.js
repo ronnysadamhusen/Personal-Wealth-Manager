@@ -195,6 +195,15 @@ const Parsers = {
   bcaCreditCard(text) {
     const transactions = [];
     const year = extractYear(text);
+
+    // Strip page number markers (e.g. "1/3", "2/3") and repeated page headers
+    // that appear at page boundaries and break the transaction regex lookahead.
+    text = text
+      .replace(/\b\d+\/\d+\b/g, ' ')
+      .replace(/REKENING\s+KARTU\s+KREDIT\s+\d+/gi, ' ')
+      .replace(/TANGGAL\s+KETERANGAN\s+JUMLAH\s*\(RP\)\s+TRANSAKSI\s+PEMBUKUAN/gi, ' ')
+      .replace(/\s{2,}/g, ' ');
+
     const months = {
       'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MEI': '05', 'MAY': '05',
       'JUN': '06', 'JUL': '07', 'AGS': '08', 'AUG': '08', 'SEP': '09', 'OKT': '10', 'OCT': '10',
