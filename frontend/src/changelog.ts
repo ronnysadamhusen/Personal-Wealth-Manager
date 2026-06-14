@@ -8,9 +8,20 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.6.1';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.1',
+    date: '2026-06-14',
+    highlights: 'Perbaikan dan peningkatan fitur Payroll: parsing lebih akurat, number formatting, category per komponen, dan fix database migration.',
+    changes: [
+      { type: 'fix', description: 'Parser slip gaji: "Iuran BPJS Pensiun" tidak lagi terlewat — regex diperbaiki agar 2+ spasi selalu jadi delimiter kolom, bukan bagian label' },
+      { type: 'feat', description: 'Setiap komponen slip gaji (income & potongan) kini punya dropdown Category untuk pengelompokan analisa keuangan' },
+      { type: 'improvement', description: 'Angka nominal di modal review slip gaji diformat id-ID (65.000 bukan 65000) dan rata kanan untuk kemudahan membaca' },
+      { type: 'fix', description: 'Self-healing DB migration diperluas: investments, investment_transactions, dan payroll_slips kini ikut diperbaiki saat ada broken FK ke accounts_old' },
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-06-14',
