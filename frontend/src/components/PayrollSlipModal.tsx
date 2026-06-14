@@ -285,7 +285,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       onFocus={(e) => { const raw = String(parseAmt(e.target.value) || ''); updateItem(globalIdx, 'amount', raw); }}
                       onBlur={(e) => { const n = parseAmt(e.target.value); if (n) updateItem(globalIdx, 'amount', n.toLocaleString('id-ID')); }}
                       onChange={(e) => updateItem(globalIdx, 'amount', e.target.value)}
-                      style={{ flex: 1.5, color: 'var(--color-success)' }}
+                      style={{ flex: 1.5, color: 'var(--color-success)', textAlign: 'right' }}
                     />
                     <button type="button" onClick={() => removeItem(globalIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '1.1rem', padding: '0 0.3rem' }}>✕</button>
                   </div>
@@ -320,7 +320,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       onFocus={(e) => { const raw = String(parseAmt(e.target.value) || ''); updateItem(globalIdx, 'amount', raw); }}
                       onBlur={(e) => { const n = parseAmt(e.target.value); if (n) updateItem(globalIdx, 'amount', n.toLocaleString('id-ID')); }}
                       onChange={(e) => updateItem(globalIdx, 'amount', e.target.value)}
-                      style={{ flex: 1.5, color: 'var(--color-danger)' }}
+                      style={{ flex: 1.5, color: 'var(--color-danger)', textAlign: 'right' }}
                     />
                     <button type="button" onClick={() => removeItem(globalIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '1.1rem', padding: '0 0.3rem' }}>✕</button>
                   </div>
