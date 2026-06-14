@@ -227,7 +227,7 @@ router.post('/api/payroll/slips', async (req, res) => {
     for (const item of items) {
       const txId = generateUUID();
       const amount = item.type === 'income' ? Number(item.amount) : -Number(item.amount);
-      const category = item.type === 'income' ? 'Transfers & Salary' : 'Fees & Taxes';
+      const category = item.category || (item.type === 'income' ? 'Transfers & Salary' : 'Fees & Taxes');
       await query.run(
         `INSERT INTO transactions (id, account_id, date, booking_date, description, amount, category, payroll_slip_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

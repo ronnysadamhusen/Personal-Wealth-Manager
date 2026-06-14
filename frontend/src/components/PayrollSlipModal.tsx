@@ -6,6 +6,7 @@ interface PayrollItem {
   label: string;
   amount: string;
   type: 'income' | 'deduction';
+  category: string;
 }
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
 }
 
 export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
-  const { accounts, renderAmount, savedPasswords } = useApp();
+  const { accounts, renderAmount, savedPasswords, groupedCategories } = useApp();
 
   // Step 1: upload
   const [file, setFile] = useState<File | null>(null);
@@ -37,6 +38,25 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
   const step = items.length > 0 ? 2 : 1;
 
   const bankAccounts = accounts.filter(a => a.type === 'bank' || a.type === 'cash');
+
+  const CategorySelect = ({ value, onChange, accentColor }: { value: string; onChange: (v: string) => void; accentColor: string }) => (
+    <select
+      className="form-control"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ flex: 2, fontSize: '0.82rem', color: accentColor }}
+    >
+      {groupedCategories.map(({ parent, subs }) => (
+        subs.length > 0 ? (
+          <optgroup key={parent.id} label={parent.name}>
+            {subs.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
+          </optgroup>
+        ) : (
+          <option key={parent.id} value={parent.name}>{parent.name}</option>
+        )
+      ))}
+    </select>
+  );
 
   const incomeItems = items.filter(i => i.type === 'income');
   const deductionItems = items.filter(i => i.type === 'deduction');
@@ -83,12 +103,13 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
           setItems(ext.items.map((i: any) => ({
             label: i.label,
             amount: Number(i.amount).toLocaleString('id-ID'),
-            type: i.type
+            type: i.type,
+            category: i.type === 'income' ? 'Salary & Bonus' : 'Fees & Taxes'
           })));
         }
       } else {
         // AI not available — go to manual mode with empty table
-        setItems([{ label: 'Gaji Pokok', amount: '', type: 'income' }]);
+        setItems([{ label: 'Gaji Pokok', amount: '', type: 'income', category: 'Salary & Bonus' }]);
         setParseError('AI tidak tersedia. Silakan isi komponen gaji secara manual.');
       }
     } catch (err: any) {
@@ -107,7 +128,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
   };
 
   const addItem = (type: 'income' | 'deduction') => {
-    setItems(prev => [...prev, { label: '', amount: '', type }]);
+    setItems(prev => [...prev, { label: '', amount: '', type, category: type === 'income' ? 'Salary & Bonus' : 'Fees & Taxes' }]);
   };
 
   const handleSave = async () => {
@@ -118,7 +139,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
         account_id: account.id,
         period,
         date,
-        items: items.map(i => ({ label: i.label, amount: parseAmt(i.amount), type: i.type })),
+        items: items.map(i => ({ label: i.label, amount: parseAmt(i.amount), type: i.type, category: i.category })),
         destination_account_id: destAccountId || null
       };
       const res = await fetch(`${API_URL}/payroll/slips`, {
@@ -215,7 +236,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => { setItems([{ label: 'Gaji Pokok', amount: '', type: 'income' }]); setPeriod(new Date().toISOString().substring(0, 7)); }}
+                onClick={() => { setItems([{ label: 'Gaji Pokok', amount: '', type: 'income', category: 'Salary & Bonus' }]); setPeriod(new Date().toISOString().substring(0, 7)); }}
               >
                 Input Manual
               </button>
@@ -255,6 +276,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       onChange={(e) => updateItem(globalIdx, 'label', e.target.value)}
                       style={{ flex: 2 }}
                     />
+                    <CategorySelect value={item.category} onChange={(v) => updateItem(globalIdx, 'category', v)} accentColor="var(--color-success)" />
                     <input
                       type="text"
                       className="form-control"
@@ -289,6 +311,7 @@ export default function PayrollSlipModal({ account, onClose, onSaved }: Props) {
                       onChange={(e) => updateItem(globalIdx, 'label', e.target.value)}
                       style={{ flex: 2 }}
                     />
+                    <CategorySelect value={item.category} onChange={(v) => updateItem(globalIdx, 'category', v)} accentColor="var(--color-danger)" />
                     <input
                       type="text"
                       className="form-control"
