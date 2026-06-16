@@ -752,7 +752,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         <div key={i} style={{ flex: 1, padding: '0.6rem 0.75rem', textAlign: 'center', borderRight: i < items.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                           <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.2rem' }}>{item.label}</div>
                           <div style={{ fontSize: '0.88rem', fontWeight: 700, color: item.color ?? 'var(--color-text)' }}>{item.value}</div>
-                          {item.sub && <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>{item.sub}</div>}
                         </div>
                       ))}
                     </div>
@@ -821,58 +820,27 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               style={{ width: '96px' }}
                             />
                           </td>
-                          {/* Description + Category + Merchant + Product (merged) */}
+                          {/* Description + Category + Merchant + Product (merged, display only) */}
                           <td style={{ verticalAlign: 'top' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                                 {tx.is_duplicate && (
-                                  <span title="Potential Duplicate" style={{ color: 'var(--color-warning)', fontSize: '1rem', flexShrink: 0, lineHeight: 1 }}>⚠</span>
+                                  <span title="Potential Duplicate" style={{ color: 'var(--color-warning)', fontSize: '0.95rem', flexShrink: 0 }}>⚠</span>
                                 )}
-                                <input
-                                  type="text"
-                                  className="grid-input"
-                                  value={tx.description}
-                                  onChange={(e) => handleGridChange(index, 'description', e.target.value)}
-                                  style={{ fontWeight: 500, flex: 1 }}
-                                />
+                                <span style={{ fontWeight: 500, fontSize: '0.88rem' }}>{tx.description}</span>
                               </div>
-                              <div style={{ display: 'flex', gap: '0.35rem' }}>
-                                <input
-                                  type="text"
-                                  className="grid-input"
-                                  list={`cat-${index}`}
-                                  value={tx.category || ''}
-                                  onChange={(e) => handleGridChange(index, 'category', e.target.value)}
-                                  placeholder="Kategori..."
-                                  style={{ flex: '1 1 120px', fontSize: '0.78rem' }}
-                                />
-                                <datalist id={`cat-${index}`}>
-                                  {groupedCategories.flatMap(group => {
-                                    const rowType = tx.amount >= 0 ? 'income' : 'expense';
-                                    const parentMatch = group.parent.type === 'both' || group.parent.type === rowType;
-                                    const matchedSubs = group.subs.filter((sub: any) => sub.type === 'both' || sub.type === rowType);
-                                    const opts: React.ReactElement[] = [];
-                                    if (parentMatch) opts.push(<option key={group.parent.id} value={group.parent.name} />);
-                                    matchedSubs.forEach((sub: any) => opts.push(<option key={sub.id} value={sub.name} />));
-                                    return opts;
-                                  })}
-                                </datalist>
-                                <input
-                                  type="text"
-                                  className="grid-input"
-                                  placeholder="Merchant"
-                                  value={tx.location_merchant || ''}
-                                  onChange={(e) => handleGridChange(index, 'location_merchant', e.target.value)}
-                                  style={{ flex: '1 1 90px', fontSize: '0.78rem' }}
-                                />
-                                <input
-                                  type="text"
-                                  className="grid-input"
-                                  placeholder="Produk"
-                                  value={tx.product_service || ''}
-                                  onChange={(e) => handleGridChange(index, 'product_service', e.target.value)}
-                                  style={{ flex: '1 1 80px', fontSize: '0.78rem' }}
-                                />
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                {tx.category && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.45rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.07)' }}>
+                                    {tx.category}
+                                  </span>
+                                )}
+                                {tx.location_merchant && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>📍 {tx.location_merchant}</span>
+                                )}
+                                {tx.product_service && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>🏷 {tx.product_service}</span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -900,24 +868,26 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Actions (Split/Delete) */}
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            <button 
-                              type="button"
-                              className="btn" 
-                              style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}
-                              onClick={() => handleStartSplit(index)}
-                              title="Split Transaction Category/Amount"
-                            >
-                              ✂️
-                            </button>
-                            <button 
-                              className="btn" 
-                              style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
-                              onClick={() => handleGridDelete(index)}
-                              title="Delete Row"
-                            >
-                              <Icons.Delete />
-                            </button>
+                          <td style={{ verticalAlign: 'top', paddingTop: '0.35rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem' }}>
+                              <button
+                                type="button"
+                                className="btn"
+                                style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent' }}
+                                onClick={() => handleStartSplit(index)}
+                                title="Split Transaction"
+                              >
+                                ✂️
+                              </button>
+                              <button
+                                className="btn"
+                                style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
+                                onClick={() => handleGridDelete(index)}
+                                title="Hapus"
+                              >
+                                <Icons.Delete />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
