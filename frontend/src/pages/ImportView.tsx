@@ -675,6 +675,60 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
             ) : (
               /* Stage 2: Verification and Editing Grid */
               <div className="glass-panel card-content">
+                {(() => {
+                  const activeTxs = parsedData.transactions.filter((t: any) => !t.exclude);
+                  const previewIncome  = activeTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
+                  const previewExpense = activeTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
+                  const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
+                  const isCC = targetAcc?.type === 'credit_card';
+                  const saldoAwal = targetAcc ? (isCC ? (targetAcc.current_bill ?? 0) : (targetAcc.balance ?? 0)) : null;
+                  const sisaLimit = parsedData.availableCreditLimit ?? targetAcc?.available_credit ?? null;
+                  const tagihanBaru = parsedData.currentBill ?? null;
+                  const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pemasukan</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(previewIncome)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{activeTxs.filter((t: any) => t.amount > 0).length} tx</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pengeluaran</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(previewExpense)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{activeTxs.filter((t: any) => t.amount < 0).length} tx</div>
+                      </div>
+                      {saldoAwal != null && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini'}</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(saldoAwal)}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>sebelum import</div>
+                        </div>
+                      )}
+                      {isCC && tagihanBaru != null && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tagihan Baru</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(tagihanBaru)}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
+                        </div>
+                      )}
+                      {sisaLimit != null && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sisa Limit</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(sisaLimit)}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
+                        </div>
+                      )}
+                      {parsedData.creditLimit != null && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Limit</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(parsedData.creditLimit)}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <div>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -690,17 +744,17 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     )}
                     {(parsedData.billingCycleDate || parsedData.dueDate) && (
                       <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--color-success)' }}>
-                        ℹ Siklus tagihan/Jatuh tempo terdeteksi: 
+                        ℹ Siklus tagihan/Jatuh tempo terdeteksi:
                         {parsedData.billingCycleDate && ` Tanggal Cetak: Hari ${parsedData.billingCycleDate}`}
                         {parsedData.dueDate && ` | Jatuh Tempo: Hari ${parsedData.dueDate}`} (akan di-update otomatis)
                       </div>
                     )}
                   </div>
-                  
+
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label style={{ marginBottom: '0.25rem' }}>Save to Account</label>
-                      <select 
+                      <select
                         className="form-control"
                         value={importTargetAccId}
                         onChange={(e) => setImportTargetAccId(e.target.value)}
@@ -717,7 +771,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId}>
                       Save All to Database ({parsedData.transactions.length})
                     </button>
-                    
+
                     <button className="btn btn-secondary" onClick={() => setParsedData(null)}>
                       Cancel
                     </button>
