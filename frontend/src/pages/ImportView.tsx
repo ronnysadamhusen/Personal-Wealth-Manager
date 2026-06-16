@@ -479,94 +479,126 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     {/* Password Locker Card */}
                     <div className="glass-panel card-content">
                       <h3 style={{ marginBottom: '1rem' }}>PDF Password Setup</h3>
-                      <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                        Setup and save passwords for statements (e.g. BCA statements are usually encrypted with date of birth or tax numbers). Saved passwords will be used to decrypt statements automatically during future uploads.
-                      </p>
+                      {(() => {
+                        // In modal mode: derive bank name from account name
+                        const acc = onClose ? accounts.find(a => a.id === importTargetAccId) : null;
+                        const modalBankName = acc
+                          ? (INDONESIAN_BANKS.find(b => b !== 'Other / Custom' && acc.name.toUpperCase().includes(b.toUpperCase())) ?? acc.name.split(' ')[0])
+                          : null;
+                        const modalSavedPw = modalBankName
+                          ? savedPasswords.find((p: any) => p.bank_name.toUpperCase() === modalBankName.toUpperCase())
+                          : null;
 
-                      <div className="table-container" style={{ marginBottom: '1.5rem' }}>
-                        <table className="data-table">
-                          <thead>
-                            <tr>
-                              <th>Bank Name</th>
-                              <th>Password (Saved)</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {savedPasswords.length === 0 ? (
-                              <tr>
-                                <td colSpan={2} style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>No passwords saved yet.</td>
-                              </tr>
-                            ) : (
-                              savedPasswords.map(p => (
-                                <tr key={p.id}>
-                                  <td style={{ fontWeight: 600 }}>{p.bank_name}</td>
-                                  <td style={{ color: 'var(--color-text-muted)' }}>•••••••• (Stored)</td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        const passwordInput = (e.target as any).elements.pLockWord.value;
-                        const finalBank = lockerBank === 'Other / Custom' ? customLockerBank : lockerBank;
-                        if (!passwordInput || !finalBank) return;
-                        
-                        setLoading(true);
-                        try {
-                          await fetch(`${API_URL}/pdf/passwords`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ bank_name: finalBank, password: passwordInput })
-                          });
-                          (e.target as any).reset();
-                          setLockerBank('BCA');
-                          setCustomLockerBank('');
-                          fetchData();
-                        } catch (err) {
-                          console.error(err);
-                        } finally {
-                          setLoading(false);
+                        if (onClose && modalBankName) {
+                          // Simplified modal mode: show bank + password field only
+                          return (
+                            <>
+                              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                                Password PDF untuk <strong>{modalBankName}</strong> digunakan untuk membuka file statement yang terenkripsi.
+                              </p>
+                              {modalSavedPw && (
+                                <div style={{ padding: '0.6rem 0.85rem', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span>🔒</span> Password sudah tersimpan untuk <strong>{modalBankName}</strong>
+                                </div>
+                              )}
+                              <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                const passwordInput = (e.target as any).elements.pLockWord.value;
+                                if (!passwordInput) return;
+                                setLoading(true);
+                                try {
+                                  await fetch(`${API_URL}/pdf/passwords`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ bank_name: modalBankName, password: passwordInput })
+                                  });
+                                  (e.target as any).reset();
+                                  fetchData();
+                                } catch (err) { console.error(err); } finally { setLoading(false); }
+                              }}>
+                                <div className="form-group">
+                                  <label>{modalSavedPw ? 'Ganti Password' : 'Simpan Password'}</label>
+                                  <input name="pLockWord" type="password" className="form-control" placeholder="Masukkan password PDF" required />
+                                </div>
+                                <button type="submit" className="btn btn-secondary" style={{ width: '100%' }}>
+                                  🔒 {modalSavedPw ? 'Perbarui Password' : 'Simpan Password'}
+                                </button>
+                              </form>
+                            </>
+                          );
                         }
-                      }}>
-                        <div className="grid-cols-2" style={{ gridTemplateColumns: lockerBank === 'Other / Custom' ? '1fr 1fr 1.2fr' : '1fr 1.2fr', margin: 0, gap: '1rem' }}>
-                          <div className="form-group">
-                            <label>Bank Name</label>
-                            <select 
-                              className="form-control"
-                              value={lockerBank}
-                              onChange={(e) => setLockerBank(e.target.value)}
-                            >
-                              {INDONESIAN_BANKS.map(bank => (
-                                <option key={bank} value={bank}>{bank}</option>
-                              ))}
-                            </select>
-                          </div>
-                          {lockerBank === 'Other / Custom' && (
-                            <div className="form-group">
-                              <label>Custom Bank Name</label>
-                              <input 
-                                type="text" 
-                                className="form-control" 
-                                placeholder="Enter bank name" 
-                                value={customLockerBank}
-                                onChange={(e) => setCustomLockerBank(e.target.value)}
-                                required 
-                              />
-                            </div>
-                          )}
-                          <div className="form-group">
-                            <label>Document Password</label>
-                            <input name="pLockWord" type="password" className="form-control" placeholder="Enter password" required />
-                          </div>
-                        </div>
 
-                        <button type="submit" className="btn btn-secondary" style={{ width: '100%' }}>
-                          🔒 Save Password Key
-                        </button>
-                      </form>
+                        // Full mode (standalone ImportView tab)
+                        return (
+                          <>
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                              Setup and save passwords for statements (e.g. BCA statements are usually encrypted with date of birth or tax numbers). Saved passwords will be used to decrypt statements automatically during future uploads.
+                            </p>
+                            <div className="table-container" style={{ marginBottom: '1.5rem' }}>
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Bank Name</th>
+                                    <th>Password (Saved)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {savedPasswords.length === 0 ? (
+                                    <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>No passwords saved yet.</td></tr>
+                                  ) : (
+                                    savedPasswords.map((p: any) => (
+                                      <tr key={p.id}>
+                                        <td style={{ fontWeight: 600 }}>{p.bank_name}</td>
+                                        <td style={{ color: 'var(--color-text-muted)' }}>•••••••• (Stored)</td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            <form onSubmit={async (e) => {
+                              e.preventDefault();
+                              const passwordInput = (e.target as any).elements.pLockWord.value;
+                              const finalBank = lockerBank === 'Other / Custom' ? customLockerBank : lockerBank;
+                              if (!passwordInput || !finalBank) return;
+                              setLoading(true);
+                              try {
+                                await fetch(`${API_URL}/pdf/passwords`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ bank_name: finalBank, password: passwordInput })
+                                });
+                                (e.target as any).reset();
+                                setLockerBank('BCA');
+                                setCustomLockerBank('');
+                                fetchData();
+                              } catch (err) { console.error(err); } finally { setLoading(false); }
+                            }}>
+                              <div className="grid-cols-2" style={{ gridTemplateColumns: lockerBank === 'Other / Custom' ? '1fr 1fr 1.2fr' : '1fr 1.2fr', margin: 0, gap: '1rem' }}>
+                                <div className="form-group">
+                                  <label>Bank Name</label>
+                                  <select className="form-control" value={lockerBank} onChange={(e) => setLockerBank(e.target.value)}>
+                                    {INDONESIAN_BANKS.map(bank => <option key={bank} value={bank}>{bank}</option>)}
+                                  </select>
+                                </div>
+                                {lockerBank === 'Other / Custom' && (
+                                  <div className="form-group">
+                                    <label>Custom Bank Name</label>
+                                    <input type="text" className="form-control" placeholder="Enter bank name" value={customLockerBank} onChange={(e) => setCustomLockerBank(e.target.value)} required />
+                                  </div>
+                                )}
+                                <div className="form-group">
+                                  <label>Document Password</label>
+                                  <input name="pLockWord" type="password" className="form-control" placeholder="Enter password" required />
+                                </div>
+                              </div>
+                              <button type="submit" className="btn btn-secondary" style={{ width: '100%' }}>
+                                🔒 Save Password Key
+                              </button>
+                            </form>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
