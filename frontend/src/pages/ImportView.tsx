@@ -12,7 +12,7 @@ interface ImportViewProps {
 
 export default function ImportView({ initialAccountId, onClose }: ImportViewProps = {}) {
   const {
-    accounts, savedPasswords, importLogs,
+    accounts, savedPasswords, importLogs, groupedCategories,
     renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo, switchTxSubTab,
     pendingImportAccountId, setPendingImportAccountId,
   } = useApp();
@@ -795,52 +795,61 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
                             />
                           </td>
-                          {/* Transaction Date Input */}
-                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            <input
-                              type="text"
-                              className="grid-input"
-                              value={tx.date}
-                              onChange={(e) => {
-                                handleGridChange(index, 'date', e.target.value);
-                                if (!tx.booking_date || tx.booking_date === tx.date) {
-                                  handleGridChange(index, 'booking_date', e.target.value);
-                                }
-                              }}
-                              style={{ width: '96px' }}
-                            />
+                          {/* Transaction Date — plain text */}
+                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
+                            {tx.date}
                           </td>
-                          {/* Posting Date Input */}
-                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                            <input
-                              type="text"
-                              className="grid-input"
-                              value={tx.booking_date || tx.date}
-                              onChange={(e) => handleGridChange(index, 'booking_date', e.target.value)}
-                              style={{ width: '96px' }}
-                            />
+                          {/* Posting Date — plain text */}
+                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
+                            {tx.booking_date || tx.date}
                           </td>
-                          {/* Description + Category + Merchant + Product (merged, display only) */}
+                          {/* Description (plain text) + Category (searchable) + Merchant + Product */}
                           <td style={{ verticalAlign: 'top' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                                 {tx.is_duplicate && (
                                   <span title="Potential Duplicate" style={{ color: 'var(--color-warning)', fontSize: '0.95rem', flexShrink: 0 }}>⚠</span>
                                 )}
                                 <span style={{ fontWeight: 500, fontSize: '0.88rem' }}>{tx.description}</span>
                               </div>
-                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {tx.category && (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.45rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.07)' }}>
-                                    {tx.category}
-                                  </span>
-                                )}
-                                {tx.location_merchant && (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>📍 {tx.location_merchant}</span>
-                                )}
-                                {tx.product_service && (
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>🏷 {tx.product_service}</span>
-                                )}
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  list={`cat-${index}`}
+                                  value={tx.category || ''}
+                                  onChange={(e) => handleGridChange(index, 'category', e.target.value)}
+                                  placeholder="Kategori..."
+                                  style={{ flex: '1 1 130px', fontSize: '0.78rem' }}
+                                />
+                                <datalist id={`cat-${index}`}>
+                                  {groupedCategories.flatMap((group: any) => {
+                                    const rowType = tx.amount >= 0 ? 'income' : 'expense';
+                                    const opts: React.ReactElement[] = [];
+                                    if (group.parent.type === 'both' || group.parent.type === rowType)
+                                      opts.push(<option key={group.parent.id} value={group.parent.name} />);
+                                    group.subs
+                                      .filter((s: any) => s.type === 'both' || s.type === rowType)
+                                      .forEach((s: any) => opts.push(<option key={s.id} value={s.name} />));
+                                    return opts;
+                                  })}
+                                </datalist>
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  placeholder="Merchant"
+                                  value={tx.location_merchant || ''}
+                                  onChange={(e) => handleGridChange(index, 'location_merchant', e.target.value)}
+                                  style={{ flex: '1 1 100px', fontSize: '0.78rem' }}
+                                />
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  placeholder="Produk"
+                                  value={tx.product_service || ''}
+                                  onChange={(e) => handleGridChange(index, 'product_service', e.target.value)}
+                                  style={{ flex: '1 1 80px', fontSize: '0.78rem' }}
+                                />
                               </div>
                             </div>
                           </td>
