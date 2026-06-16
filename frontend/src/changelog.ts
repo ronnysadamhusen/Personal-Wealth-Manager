@@ -8,9 +8,24 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.6.2';
+export const APP_VERSION = '1.7.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.7.0',
+    date: '2026-06-16',
+    highlights: 'Import PDF per akun: tombol import pindah ke halaman Akun, muncul sebagai popup. Ringkasan tagihan & limit tampil langsung setelah import, beserta summary income/expense/saldo di tabel verifikasi.',
+    changes: [
+      { type: 'feat', description: 'Tombol Import PDF dipindah ke halaman Akun — satu tombol per akun (bank/CC), membuka popup modal tanpa pindah halaman' },
+      { type: 'feat', description: 'Akun sudah terpilih otomatis di popup import sesuai tombol yang diklik, tanpa perlu pilih dropdown' },
+      { type: 'feat', description: 'Summary bar di stage verifikasi: menampilkan total pemasukan, pengeluaran, tagihan saat ini, tagihan baru, sisa limit, dan total limit dari PDF secara real-time' },
+      { type: 'feat', description: 'Setiap log import menyimpan dan menampilkan total income, total expense, saldo awal, saldo akhir/tagihan, dan sisa limit kartu kredit' },
+      { type: 'improvement', description: 'Tabel verifikasi import: Transaction Date & Posting Date tampil sebagai teks, deskripsi + kategori (searchable) + merchant + produk digabung dalam satu kolom' },
+      { type: 'improvement', description: 'Kolom Amount rata kanan dengan format pemisah ribuan IDR; kolom Note dan CC Installment disembunyikan untuk tampilan lebih bersih' },
+      { type: 'improvement', description: 'Modal import melebar hingga 98vw; indikator duplikat berubah jadi simbol ⚠ inline di depan deskripsi' },
+      { type: 'fix', description: 'Password setup di modal import disederhanakan — hanya field password, bank auto-detect dari nama akun' },
+    ],
+  },
   {
     version: '1.6.2',
     date: '2026-06-16',
