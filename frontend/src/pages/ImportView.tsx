@@ -8,6 +8,7 @@ export default function ImportView() {
   const {
     accounts, savedPasswords, importLogs, groupedCategories,
     renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo, switchTxSubTab,
+    pendingImportAccountId, setPendingImportAccountId,
   } = useApp();
 
   // PDF IMPORT STATES
@@ -29,6 +30,17 @@ export default function ImportView() {
 
   // Split Transaction Modal States
   const [splittingTxIndex, setSplittingTxIndex] = useState<number | null>(null);
+
+  // Save result summary
+  const [saveResult, setSaveResult] = useState<{ currentBill: number | null; availableCredit: number | null; creditLimit: number | null; accountName: string } | null>(null);
+
+  // Pre-select account when coming from AccountsPage Import PDF button
+  useEffect(() => {
+    if (pendingImportAccountId) {
+      setImportTargetAccId(pendingImportAccountId);
+      setPendingImportAccountId('');
+    }
+  }, [pendingImportAccountId, setPendingImportAccountId]);
 
   // Duplicate Check State Guards
   const [lastCheckedAccId, setLastCheckedAccId] = useState('');
@@ -269,11 +281,19 @@ export default function ImportView() {
       });
 
       if (res.ok) {
+        const acc = accounts.find(a => a.id === importTargetAccId);
+        const creditLimit = parsedData.creditLimit ?? acc?.credit_limit ?? null;
+        const currentBill = parsedData.currentBill ?? null;
+        const availableCredit = parsedData.availableCreditLimit != null
+          ? parsedData.availableCreditLimit
+          : (currentBill != null && creditLimit != null ? Math.max(0, creditLimit - currentBill) : null);
+        if (acc?.type === 'credit_card' && (currentBill != null || availableCredit != null)) {
+          setSaveResult({ currentBill, availableCredit, creditLimit, accountName: acc.name });
+        }
         setParsedData(null);
         setPdfFile(null);
         setPdfFiles([]);
         setParsedTxList([]);
-        switchTxSubTab('ledger');
         fetchData();
       } else {
         const errJ = await res.json();
@@ -295,7 +315,49 @@ export default function ImportView() {
       )}
           <div>
 
-            {!parsedData ? (
+            {saveResult && (
+              <div className="glass-panel card-content" style={{ maxWidth: '520px', margin: '2rem auto', textAlign: 'center' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>✅</div>
+                <h3 style={{ marginBottom: '0.25rem' }}>Transaksi Berhasil Disimpan</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{saveResult.accountName}</p>
+                <div className="summary-widget" style={{ marginBottom: '1.5rem' }}>
+                  {saveResult.currentBill != null && (
+                    <div className="widget-item">
+                      <div className="card-desc">Tagihan Berjalan</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                        {renderAmount(saveResult.currentBill)}
+                      </div>
+                    </div>
+                  )}
+                  {saveResult.availableCredit != null && (
+                    <div className="widget-item">
+                      <div className="card-desc">Sisa Limit Kredit</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-success)' }}>
+                        {renderAmount(saveResult.availableCredit)}
+                      </div>
+                    </div>
+                  )}
+                  {saveResult.creditLimit != null && (
+                    <div className="widget-item">
+                      <div className="card-desc">Total Limit</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                        {renderAmount(saveResult.creditLimit)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                  <button className="btn btn-primary" onClick={() => { setSaveResult(null); switchTxSubTab('ledger'); }}>
+                    Lihat Transaksi
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => { setSaveResult(null); navigateTo('accounts'); }}>
+                    Kembali ke Akun
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!saveResult && (!parsedData ? (
               <>
                 {accounts.length === 0 ? (
                   <div className="glass-panel card-content" style={{ textAlign: 'center', padding: '3rem', maxWidth: '600px', margin: '2rem auto' }}>
@@ -804,9 +866,7 @@ export default function ImportView() {
                   </table>
                 </div>
               </div>
-            )}
-
-
+            ))}
 
             {/* Password Modal (Triggered when PDF throws encryption error) */}
             {passwordRequired && pdfFile && (

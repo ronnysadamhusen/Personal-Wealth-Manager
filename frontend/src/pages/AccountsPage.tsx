@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import PayrollSlipModal from '../components/PayrollSlipModal';
 
 export default function AccountsPage() {
-  const { accounts, renderAmount, fetchData, setLoading } = useApp();
+  const { accounts, renderAmount, fetchData, setLoading, navigateTo, switchTxSubTab, setPendingImportAccountId } = useApp();
 
   // Reconciliation States
   const [reconcilingAcc, setReconcilingAcc] = useState<any | null>(null);
@@ -150,7 +150,7 @@ export default function AccountsPage() {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         {a.type === 'payroll' && (
                           <button
                             type="button"
@@ -159,6 +159,20 @@ export default function AccountsPage() {
                             onClick={() => setPayrollModalAcc(a)}
                           >
                             📋 Input Slip Gaji
+                          </button>
+                        )}
+                        {(a.type === 'credit_card' || a.type === 'bank') && (
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            onClick={() => {
+                              setPendingImportAccountId(a.id);
+                              navigateTo('transactions');
+                              switchTxSubTab('import');
+                            }}
+                          >
+                            <Icons.Import /> Import PDF
                           </button>
                         )}
                         {a.type !== 'payroll' && (

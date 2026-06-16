@@ -45,6 +45,8 @@ export interface AppContextValue {
   switchTxSubTab: (sub: TransactionSubTab) => void;
   navOpen: boolean;
   setNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  pendingImportAccountId: string;
+  setPendingImportAccountId: React.Dispatch<React.SetStateAction<string>>;
 
   accounts: any[];
   transactions: any[];
@@ -120,6 +122,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => (localStorage.getItem('pfm_tx_sub_tab') as TransactionSubTab) || 'ledger'
   );
   const [navOpen, setNavOpen] = useState(false);
+  const [pendingImportAccountId, setPendingImportAccountId] = useState('');
 
   const navigateTo = (tab: TabId) => {
     setActiveTab(tab);
@@ -361,6 +364,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeTab, setActiveTab, navigateTo,
     transactionSubTab, setTransactionSubTab, switchTxSubTab,
     navOpen, setNavOpen,
+    pendingImportAccountId, setPendingImportAccountId,
     accounts, transactions, budgets, installments, projections, savedPasswords, dbCategories,
     debtsReceivables, loadingDR,
     goals, investments, loadingInvestments,

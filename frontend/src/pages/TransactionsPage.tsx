@@ -342,17 +342,6 @@ export default function TransactionsPage() {
                   <Icons.Ledger /> Ledger
                 </button>
                 <button
-                  onClick={() => setTransactionSubTab('import')}
-                  style={{
-                    padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
-                    background: transactionSubTab === 'import' ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    color: transactionSubTab === 'import' ? 'var(--color-text)' : 'var(--color-text-muted)',
-                    boxShadow: transactionSubTab === 'import' ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
-                  }}
-                >
-                  <Icons.Import /> Import PDF
-                </button>
-                <button
                   onClick={() => setTransactionSubTab('ocr')}
                   style={{
                     padding: '0.4rem 1rem', border: 'none', borderRadius: '7px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s',
