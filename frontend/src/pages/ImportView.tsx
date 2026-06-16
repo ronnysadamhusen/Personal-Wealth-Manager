@@ -778,11 +778,11 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             title="Toggle All"
                           />
                         </th>
-                        <th style={{ whiteSpace: 'nowrap' }}>Tx Date</th>
-                        <th style={{ whiteSpace: 'nowrap' }}>Booking Date</th>
-                        <th style={{ minWidth: '320px' }}>Description / Category / Location / Product</th>
-                        <th style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Amount (IDR)</th>
-                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Transaction Date</th>
+                        <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Posting Date</th>
+                        <th>Description / Category / Merchant / Produk</th>
+                        <th style={{ whiteSpace: 'nowrap', textAlign: 'right', width: '130px' }}>Amount (IDR)</th>
+                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap', width: '70px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -797,65 +797,66 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Transaction Date Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              value={tx.date} 
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={tx.date}
                               onChange={(e) => {
                                 handleGridChange(index, 'date', e.target.value);
                                 if (!tx.booking_date || tx.booking_date === tx.date) {
                                   handleGridChange(index, 'booking_date', e.target.value);
                                 }
                               }}
+                              style={{ width: '96px' }}
                             />
                           </td>
-                          {/* Booking Date Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              value={tx.booking_date || tx.date} 
+                          {/* Posting Date Input */}
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={tx.booking_date || tx.date}
                               onChange={(e) => handleGridChange(index, 'booking_date', e.target.value)}
+                              style={{ width: '96px' }}
                             />
                           </td>
-                          {/* Description + Category + Location + Product (merged) */}
+                          {/* Description + Category + Merchant + Product (merged) */}
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                              <input
-                                type="text"
-                                className="grid-input"
-                                value={tx.description}
-                                onChange={(e) => handleGridChange(index, 'description', e.target.value)}
-                                style={{ fontWeight: 500 }}
-                              />
-                              {tx.is_duplicate && (
-                                <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', fontSize: '0.7rem', padding: '0.1rem 0.4rem', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '4px' }}>
-                                  ⚠️ Potential Duplicate
-                                </span>
-                              )}
-                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                <select
-                                  className="form-control"
-                                  value={tx.category}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                {tx.is_duplicate && (
+                                  <span title="Potential Duplicate" style={{ color: 'var(--color-warning)', fontSize: '1rem', flexShrink: 0, lineHeight: 1 }}>⚠</span>
+                                )}
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  value={tx.description}
+                                  onChange={(e) => handleGridChange(index, 'description', e.target.value)}
+                                  style={{ fontWeight: 500, flex: 1 }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  list={`cat-${index}`}
+                                  value={tx.category || ''}
                                   onChange={(e) => handleGridChange(index, 'category', e.target.value)}
-                                  style={{ flex: '1 1 120px', padding: '0.2rem 0.4rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.78rem' }}
-                                >
-                                  {groupedCategories.map(group => {
+                                  placeholder="Kategori..."
+                                  style={{ flex: '1 1 120px', fontSize: '0.78rem' }}
+                                />
+                                <datalist id={`cat-${index}`}>
+                                  {groupedCategories.flatMap(group => {
                                     const rowType = tx.amount >= 0 ? 'income' : 'expense';
                                     const parentMatch = group.parent.type === 'both' || group.parent.type === rowType;
-                                    const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === rowType);
-                                    if (!parentMatch && matchedSubs.length === 0) return null;
-                                    return (
-                                      <optgroup key={group.parent.id} label={group.parent.name}>
-                                        {parentMatch && <option value={group.parent.name}>{group.parent.name}</option>}
-                                        {matchedSubs.map(sub => (
-                                          <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                                        ))}
-                                      </optgroup>
-                                    );
+                                    const matchedSubs = group.subs.filter((sub: any) => sub.type === 'both' || sub.type === rowType);
+                                    const opts: React.ReactElement[] = [];
+                                    if (parentMatch) opts.push(<option key={group.parent.id} value={group.parent.name} />);
+                                    matchedSubs.forEach((sub: any) => opts.push(<option key={sub.id} value={sub.name} />));
+                                    return opts;
                                   })}
-                                </select>
+                                </datalist>
                                 <input
                                   type="text"
                                   className="grid-input"
