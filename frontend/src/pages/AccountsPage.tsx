@@ -453,8 +453,8 @@ export default function AccountsPage() {
 
         {/* Import PDF Modal */}
         {importModalAccId && (
-          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '2rem 1rem' }}>
-            <div className="glass-panel" style={{ width: '100%', maxWidth: '1100px', padding: '1.5rem', position: 'relative' }}>
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '1rem' }}>
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '1500px', padding: '1.25rem', position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.75rem' }}>
                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Icons.Import /> Import PDF Statement

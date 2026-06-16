@@ -723,7 +723,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   const totalExpense = allTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
                   const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
                   const isCC = targetAcc?.type === 'credit_card';
-                  const saldoAwal = targetAcc ? (isCC ? (targetAcc.current_bill ?? 0) : (targetAcc.balance ?? 0)) : null;
+                  const saldoAwal = targetAcc ? (isCC ? targetAcc.current_bill : targetAcc.balance) : null;
                   const sisaLimit = parsedData.availableCreditLimit ?? (targetAcc as any)?.available_credit ?? null;
                   const tagihanBaru = parsedData.currentBill ?? null;
                   const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
@@ -748,11 +748,11 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   );
                 })()}
 
-                <div className="table-container">
-                  <table className="data-table">
+                <div className="table-container" style={{ overflowX: 'auto' }}>
+                  <table className="data-table" style={{ minWidth: '1200px', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '6%', textAlign: 'center' }}>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
                           <input 
                             type="checkbox" 
                             checked={parsedData.transactions.length > 0 && parsedData.transactions.every((t: any) => !t.exclude)} 
@@ -767,16 +767,16 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             title="Toggle All"
                           />
                         </th>
-                        <th style={{ width: '10%' }}>Tx Date</th>
-                        <th style={{ width: '10%' }}>Booking Date</th>
-                        <th>Description</th>
-                        <th style={{ width: '16%' }}>Category</th>
-                        <th style={{ width: '12%' }}>Location/Merchant</th>
-                        <th style={{ width: '12%' }}>Product/Service</th>
-                        <th style={{ width: '10%' }}>Amount (IDR)</th>
-                        <th style={{ width: '15%' }}>Note (Optional)</th>
-                        <th style={{ width: '12%' }}>CC Installment?</th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>Actions</th>
+                        <th style={{ whiteSpace: 'nowrap' }}>Tx Date</th>
+                        <th style={{ whiteSpace: 'nowrap' }}>Booking Date</th>
+                        <th style={{ minWidth: '180px' }}>Description</th>
+                        <th style={{ minWidth: '140px' }}>Category</th>
+                        <th style={{ minWidth: '130px', whiteSpace: 'nowrap' }}>Location/Merchant</th>
+                        <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Product/Service</th>
+                        <th style={{ whiteSpace: 'nowrap' }}>Amount (IDR)</th>
+                        <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Note (Optional)</th>
+                        <th style={{ whiteSpace: 'nowrap' }}>CC Installment?</th>
+                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
