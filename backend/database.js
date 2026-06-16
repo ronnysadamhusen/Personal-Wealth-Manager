@@ -306,6 +306,13 @@ db.serialize(() => {
     )
   `);
 
+  // Migration: add summary columns to import_logs
+  db.run("ALTER TABLE import_logs ADD COLUMN total_income REAL DEFAULT 0", () => {});
+  db.run("ALTER TABLE import_logs ADD COLUMN total_expense REAL DEFAULT 0", () => {});
+  db.run("ALTER TABLE import_logs ADD COLUMN opening_balance REAL", () => {});
+  db.run("ALTER TABLE import_logs ADD COLUMN closing_balance REAL", () => {});
+  db.run("ALTER TABLE import_logs ADD COLUMN available_credit REAL", () => {});
+
   // Debts and Receivables
   db.run(`
     CREATE TABLE IF NOT EXISTS debts_receivables (

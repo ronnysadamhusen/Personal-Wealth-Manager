@@ -615,10 +615,15 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Import Date & Time</th>
-                        <th>File Name</th>
-                        {!onClose && <th>Target Account</th>}
-                        <th style={{ textAlign: 'right' }}>Transactions Imported</th>
+                        <th>Tanggal Import</th>
+                        <th>File</th>
+                        {!onClose && <th>Akun</th>}
+                        <th style={{ textAlign: 'right' }}>Tx</th>
+                        <th style={{ textAlign: 'right' }}>Total Pemasukan</th>
+                        <th style={{ textAlign: 'right' }}>Total Pengeluaran</th>
+                        <th style={{ textAlign: 'right' }}>Saldo Awal</th>
+                        <th style={{ textAlign: 'right' }}>Saldo Akhir / Tagihan</th>
+                        <th style={{ textAlign: 'right' }}>Sisa Limit</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -626,44 +631,38 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         const visibleLogs = onClose
                           ? importLogs.filter((l: any) => l.account_id === importTargetAccId)
                           : importLogs;
+                        const colSpan = (onClose ? 8 : 9);
                         if (visibleLogs.length === 0) return (
                           <tr>
-                            <td colSpan={onClose ? 3 : 4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                            <td colSpan={colSpan} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
                               {onClose ? 'Belum ada statement yang diimport untuk akun ini.' : 'No statement files have been imported yet.'}
                             </td>
                           </tr>
                         );
+                        const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
                         return visibleLogs.map((log: any) => {
                           const fileNames = (log.file_name || '').split(',').map((f: string) => f.trim()).filter(Boolean);
                           return (
                             <tr key={log.id}>
-                              <td style={{ whiteSpace: 'nowrap' }}>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                               <td>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                   {fileNames.map((name: string, idx: number) => (
-                                    <span key={idx} style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.4rem',
-                                      fontWeight: 600,
-                                      fontSize: '0.85rem'
-                                    }}>
-                                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', minWidth: '1rem' }}>📄</span>
-                                      {name}
+                                    <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600, fontSize: '0.82rem' }}>
+                                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>📄</span>{name}
                                     </span>
                                   ))}
                                 </div>
                               </td>
                               {!onClose && (
-                                <td>
-                                  <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>
-                                    {log.account_name}
-                                  </span>
-                                </td>
+                                <td><span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>{log.account_name}</span></td>
                               )}
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>
-                                {log.transaction_count}
-                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{log.transaction_count}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontSize: '0.85rem' }}>{fmt(log.total_income)}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-danger)', fontSize: '0.85rem' }}>{fmt(log.total_expense)}</td>
+                              <td style={{ textAlign: 'right', fontSize: '0.85rem' }}>{fmt(log.opening_balance)}</td>
+                              <td style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(log.closing_balance)}</td>
+                              <td style={{ textAlign: 'right', fontSize: '0.85rem', color: log.available_credit != null ? 'var(--color-primary)' : undefined }}>{fmt(log.available_credit)}</td>
                             </tr>
                           );
                         });

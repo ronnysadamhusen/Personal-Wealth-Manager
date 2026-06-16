@@ -162,8 +162,13 @@ router.post('/api/transactions/bulk', async (req, res) => {
   }
 
   try {
-    const acc = await query.get('SELECT name FROM accounts WHERE id = ?', [account_id]);
+    const acc = await query.get('SELECT name, type, balance, current_bill, credit_limit, available_credit FROM accounts WHERE id = ?', [account_id]);
     const accountName = acc ? acc.name : 'Unknown Account';
+
+    // Capture opening balance before any changes
+    const openingBalance = acc
+      ? (acc.type === 'credit_card' ? (acc.current_bill ?? 0) : acc.balance)
+      : null;
 
     await query.exec('BEGIN TRANSACTION');
 
@@ -309,11 +314,26 @@ router.post('/api/transactions/bulk', async (req, res) => {
 
     // Save import log history if file name is provided
     if (file_name) {
+      const savedTxs = transactions.filter(tx => !tx.exclude);
+      const totalIncome  = savedTxs.reduce((s, tx) => tx.amount > 0 ? s + tx.amount : s, 0);
+      const totalExpense = savedTxs.reduce((s, tx) => tx.amount < 0 ? s + Math.abs(tx.amount) : s, 0);
+
+      // Closing balance: for CC use new current_bill; for bank use balance after transactions
+      let closingBalance = null;
+      if (acc?.type === 'credit_card') {
+        closingBalance = current_bill != null ? current_bill : null;
+      } else {
+        const updatedAcc = await query.get('SELECT balance FROM accounts WHERE id = ?', [account_id]);
+        closingBalance = updatedAcc ? updatedAcc.balance : null;
+      }
+
       const logId = generateUUID();
       await query.run(
-        `INSERT INTO import_logs (id, file_name, account_id, account_name, transaction_count)
-         VALUES (?, ?, ?, ?, ?)`,
-        [logId, file_name, account_id, accountName, transactions.length]
+        `INSERT INTO import_logs (id, file_name, account_id, account_name, transaction_count, total_income, total_expense, opening_balance, closing_balance, available_credit)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [logId, file_name, account_id, accountName, savedTxs.length,
+         totalIncome, totalExpense, openingBalance, closingBalance,
+         available_credit ?? null]
       );
     }
 
