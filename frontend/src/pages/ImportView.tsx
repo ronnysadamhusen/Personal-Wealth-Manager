@@ -789,15 +789,15 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                       {parsedData.transactions.map((tx: any, index: number) => (
                         <tr key={index} style={{ opacity: tx.exclude ? 0.5 : 1, transition: 'opacity 0.2s' }}>
                           {/* Import? Checkbox */}
-                          <td style={{ textAlign: 'center' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={!tx.exclude} 
+                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '0.6rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={!tx.exclude}
                               onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
                             />
                           </td>
                           {/* Transaction Date Input */}
-                          <td style={{ whiteSpace: 'nowrap' }}>
+                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                             <input
                               type="text"
                               className="grid-input"
@@ -812,7 +812,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Posting Date Input */}
-                          <td style={{ whiteSpace: 'nowrap' }}>
+                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                             <input
                               type="text"
                               className="grid-input"
@@ -822,7 +822,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Description + Category + Merchant + Product (merged) */}
-                          <td>
+                          <td style={{ verticalAlign: 'top' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                 {tx.is_duplicate && (
@@ -877,7 +877,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             </div>
                           </td>
                           {/* Amount Input */}
-                          <td style={{ textAlign: 'right' }}>
+                          <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
                             <input
                               type="text"
                               className="grid-input"
@@ -900,7 +900,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Actions (Split/Delete) */}
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                             <button 
                               type="button"
                               className="btn" 
