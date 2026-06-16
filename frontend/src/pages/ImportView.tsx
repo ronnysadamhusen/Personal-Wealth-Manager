@@ -398,23 +398,32 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                       </p>
 
                       <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ fontWeight: 600 }}>Choose Destination Account for Import</label>
-                        <select 
-                          className="form-control"
-                          value={importTargetAccId}
-                          onChange={(e) => setImportTargetAccId(e.target.value)}
-                          required
-                          style={{ borderColor: !importTargetAccId ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-color)', background: 'rgba(255,255,255,0.01)' }}
-                        >
-                          <option value="">-- Choose Account --</option>
-                          {accounts.map(a => (
-                            <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : a.type === 'payroll' ? 'Payroll' : 'Credit Card'})</option>
-                          ))}
-                        </select>
-                        {!importTargetAccId && (
-                          <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem', fontWeight: 500 }}>
-                            * Destination account selection is required before statement upload is enabled.
+                        <label style={{ fontWeight: 600 }}>Destination Account</label>
+                        {onClose ? (
+                          /* Modal mode: account locked to the one that was clicked */
+                          <div style={{ padding: '0.6rem 0.85rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            🏦 {accounts.find(a => a.id === importTargetAccId)?.name ?? '—'}
                           </div>
+                        ) : (
+                          <>
+                            <select
+                              className="form-control"
+                              value={importTargetAccId}
+                              onChange={(e) => setImportTargetAccId(e.target.value)}
+                              required
+                              style={{ borderColor: !importTargetAccId ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-color)', background: 'rgba(255,255,255,0.01)' }}
+                            >
+                              <option value="">-- Choose Account --</option>
+                              {accounts.map(a => (
+                                <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash/Wallet' : a.type === 'payroll' ? 'Payroll' : 'Credit Card'})</option>
+                              ))}
+                            </select>
+                            {!importTargetAccId && (
+                              <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.35rem', fontWeight: 500 }}>
+                                * Destination account selection is required before statement upload is enabled.
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -566,7 +575,9 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
               <div className="glass-panel card-content" style={{ marginTop: '2rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Import Statement History Log</h3>
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                  A chronological history of all bank statement or credit card files uploaded, parsed, and successfully integrated.
+                  {onClose
+                    ? 'Riwayat import statement untuk akun ini.'
+                    : 'A chronological history of all bank statement or credit card files uploaded, parsed, and successfully integrated.'}
                 </p>
                 <div className="table-container">
                   <table className="data-table">
@@ -574,19 +585,23 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                       <tr>
                         <th>Import Date & Time</th>
                         <th>File Name</th>
-                        <th>Target Account</th>
+                        {!onClose && <th>Target Account</th>}
                         <th style={{ textAlign: 'right' }}>Transactions Imported</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {importLogs.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
-                            No statement files have been imported yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        importLogs.map((log: any) => {
+                      {(() => {
+                        const visibleLogs = onClose
+                          ? importLogs.filter((l: any) => l.account_id === importTargetAccId)
+                          : importLogs;
+                        if (visibleLogs.length === 0) return (
+                          <tr>
+                            <td colSpan={onClose ? 3 : 4} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                              {onClose ? 'Belum ada statement yang diimport untuk akun ini.' : 'No statement files have been imported yet.'}
+                            </td>
+                          </tr>
+                        );
+                        return visibleLogs.map((log: any) => {
                           const fileNames = (log.file_name || '').split(',').map((f: string) => f.trim()).filter(Boolean);
                           return (
                             <tr key={log.id}>
@@ -607,18 +622,20 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                   ))}
                                 </div>
                               </td>
-                              <td>
-                                <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>
-                                  {log.account_name}
-                                </span>
-                              </td>
+                              {!onClose && (
+                                <td>
+                                  <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>
+                                    {log.account_name}
+                                  </span>
+                                </td>
+                              )}
                               <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>
                                 {log.transaction_count}
                               </td>
                             </tr>
                           );
-                        })
-                      )}
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
