@@ -12,7 +12,7 @@ interface ImportViewProps {
 
 export default function ImportView({ initialAccountId, onClose }: ImportViewProps = {}) {
   const {
-    accounts, savedPasswords, importLogs, groupedCategories,
+    accounts, savedPasswords, importLogs,
     renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo, switchTxSubTab,
     pendingImportAccountId, setPendingImportAccountId,
   } = useApp();
