@@ -784,7 +784,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         <th style={{ minWidth: '140px' }}>Category</th>
                         <th style={{ minWidth: '130px', whiteSpace: 'nowrap' }}>Location/Merchant</th>
                         <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Product/Service</th>
-                        <th style={{ whiteSpace: 'nowrap' }}>Amount (IDR)</th>
+                        <th style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Amount (IDR)</th>
                         <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                       </tr>
                     </thead>
@@ -883,13 +883,26 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Amount Input */}
-                          <td>
-                            <input 
-                              type="number" 
-                              className="grid-input" 
-                              value={tx.amount} 
-                              onChange={(e) => handleGridChange(index, 'amount', parseFloat(e.target.value) || 0)}
-                              style={{ fontWeight: 600, color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
+                          <td style={{ textAlign: 'right' }}>
+                            <input
+                              type="text"
+                              className="grid-input"
+                              value={tx._amountEditing
+                                ? tx._amountRaw ?? String(tx.amount)
+                                : (tx.amount != null ? new Intl.NumberFormat('id-ID').format(tx.amount) : '')}
+                              onFocus={() => {
+                                handleGridChange(index, '_amountEditing', true);
+                                handleGridChange(index, '_amountRaw', String(tx.amount));
+                              }}
+                              onChange={(e) => handleGridChange(index, '_amountRaw', e.target.value)}
+                              onBlur={(e) => {
+                                const raw = e.target.value.replace(/\./g, '').replace(',', '.');
+                                const num = parseFloat(raw);
+                                handleGridChange(index, 'amount', isNaN(num) ? 0 : num);
+                                handleGridChange(index, '_amountEditing', false);
+                                handleGridChange(index, '_amountRaw', undefined);
+                              }}
+                              style={{ fontWeight: 600, color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)', textAlign: 'right', minWidth: '110px' }}
                             />
                           </td>
                           {/* Actions (Split/Delete) */}
