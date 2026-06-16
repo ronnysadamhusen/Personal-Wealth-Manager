@@ -780,10 +780,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         </th>
                         <th style={{ whiteSpace: 'nowrap' }}>Tx Date</th>
                         <th style={{ whiteSpace: 'nowrap' }}>Booking Date</th>
-                        <th style={{ minWidth: '180px' }}>Description</th>
-                        <th style={{ minWidth: '140px' }}>Category</th>
-                        <th style={{ minWidth: '130px', whiteSpace: 'nowrap' }}>Location/Merchant</th>
-                        <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Product/Service</th>
+                        <th style={{ minWidth: '320px' }}>Description / Category / Location / Product</th>
                         <th style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>Amount (IDR)</th>
                         <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                       </tr>
@@ -822,65 +819,61 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               onChange={(e) => handleGridChange(index, 'booking_date', e.target.value)}
                             />
                           </td>
-                          {/* Description Input */}
+                          {/* Description + Category + Location + Product (merged) */}
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              <input 
-                                type="text" 
-                                className="grid-input" 
-                                value={tx.description} 
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                              <input
+                                type="text"
+                                className="grid-input"
+                                value={tx.description}
                                 onChange={(e) => handleGridChange(index, 'description', e.target.value)}
+                                style={{ fontWeight: 500 }}
                               />
                               {tx.is_duplicate && (
                                 <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', fontSize: '0.7rem', padding: '0.1rem 0.4rem', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '4px' }}>
                                   ⚠️ Potential Duplicate
                                 </span>
                               )}
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                <select
+                                  className="form-control"
+                                  value={tx.category}
+                                  onChange={(e) => handleGridChange(index, 'category', e.target.value)}
+                                  style={{ flex: '1 1 120px', padding: '0.2rem 0.4rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.78rem' }}
+                                >
+                                  {groupedCategories.map(group => {
+                                    const rowType = tx.amount >= 0 ? 'income' : 'expense';
+                                    const parentMatch = group.parent.type === 'both' || group.parent.type === rowType;
+                                    const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === rowType);
+                                    if (!parentMatch && matchedSubs.length === 0) return null;
+                                    return (
+                                      <optgroup key={group.parent.id} label={group.parent.name}>
+                                        {parentMatch && <option value={group.parent.name}>{group.parent.name}</option>}
+                                        {matchedSubs.map(sub => (
+                                          <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
+                                        ))}
+                                      </optgroup>
+                                    );
+                                  })}
+                                </select>
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  placeholder="Merchant"
+                                  value={tx.location_merchant || ''}
+                                  onChange={(e) => handleGridChange(index, 'location_merchant', e.target.value)}
+                                  style={{ flex: '1 1 90px', fontSize: '0.78rem' }}
+                                />
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  placeholder="Produk"
+                                  value={tx.product_service || ''}
+                                  onChange={(e) => handleGridChange(index, 'product_service', e.target.value)}
+                                  style={{ flex: '1 1 80px', fontSize: '0.78rem' }}
+                                />
+                              </div>
                             </div>
-                          </td>
-                          {/* Category Selector */}
-                          <td>
-                            <select 
-                              className="form-control"
-                              value={tx.category}
-                              onChange={(e) => handleGridChange(index, 'category', e.target.value)}
-                              style={{ padding: '0.25rem 0.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.85rem' }}
-                            >
-                              {groupedCategories.map(group => {
-                                const rowType = tx.amount >= 0 ? 'income' : 'expense';
-                                const parentMatch = group.parent.type === 'both' || group.parent.type === rowType;
-                                const matchedSubs = group.subs.filter(sub => sub.type === 'both' || sub.type === rowType);
-                                if (!parentMatch && matchedSubs.length === 0) return null;
-                                return (
-                                  <optgroup key={group.parent.id} label={group.parent.name}>
-                                    {parentMatch && <option value={group.parent.name}>{group.parent.name}</option>}
-                                    {matchedSubs.map(sub => (
-                                      <option key={sub.id} value={sub.name}>↳ {sub.name}</option>
-                                    ))}
-                                  </optgroup>
-                                );
-                              })}
-                            </select>
-                          </td>
-                          {/* Location/Merchant Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              placeholder="e.g. Starbucks"
-                              value={tx.location_merchant || ''} 
-                              onChange={(e) => handleGridChange(index, 'location_merchant', e.target.value)}
-                            />
-                          </td>
-                          {/* Product/Service Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              placeholder="e.g. Coffee"
-                              value={tx.product_service || ''} 
-                              onChange={(e) => handleGridChange(index, 'product_service', e.target.value)}
-                            />
                           </td>
                           {/* Amount Input */}
                           <td style={{ textAlign: 'right' }}>
