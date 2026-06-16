@@ -707,20 +707,20 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   </div>
                 </div>
 
-                {/* Notes row */}
-                {(parsedData.creditLimit || parsedData.billingCycleDate || parsedData.dueDate) && (
+                {/* Notes row — only billing cycle/due date, not limit (already in summary bar) */}
+                {(parsedData.billingCycleDate || parsedData.dueDate) && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-success)', marginBottom: '0.75rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    {parsedData.creditLimit && <span>ℹ Limit: {renderAmount(parsedData.creditLimit)}</span>}
                     {parsedData.billingCycleDate && <span>ℹ Tgl Cetak: Hari {parsedData.billingCycleDate}</span>}
                     {parsedData.dueDate && <span>ℹ Jatuh Tempo: Hari {parsedData.dueDate}</span>}
                   </div>
                 )}
 
-                {/* Summary bar */}
+                {/* Summary bar — shows totals from ALL transactions in the PDF */}
                 {(() => {
-                  const activeTxs = parsedData.transactions.filter((t: any) => !t.exclude);
-                  const previewIncome  = activeTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
-                  const previewExpense = activeTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
+                  const allTxs = parsedData.transactions;
+                  const selectedTxs = allTxs.filter((t: any) => !t.exclude);
+                  const totalIncome  = allTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
+                  const totalExpense = allTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
                   const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
                   const isCC = targetAcc?.type === 'credit_card';
                   const saldoAwal = targetAcc ? (isCC ? (targetAcc.current_bill ?? 0) : (targetAcc.balance ?? 0)) : null;
@@ -728,8 +728,8 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   const tagihanBaru = parsedData.currentBill ?? null;
                   const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
                   const items: { label: string; value: string; color?: string; sub?: string }[] = [
-                    { label: 'Pemasukan', value: fmt(previewIncome), color: 'var(--color-success)', sub: `${activeTxs.filter((t: any) => t.amount > 0).length} tx dipilih` },
-                    { label: 'Pengeluaran', value: fmt(previewExpense), color: 'var(--color-danger)', sub: `${activeTxs.filter((t: any) => t.amount < 0).length} tx dipilih` },
+                    { label: 'Pemasukan', value: fmt(totalIncome), color: 'var(--color-success)', sub: `${allTxs.filter((t: any) => t.amount > 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount > 0).length} dipilih` },
+                    { label: 'Pengeluaran', value: fmt(totalExpense), color: 'var(--color-danger)', sub: `${allTxs.filter((t: any) => t.amount < 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount < 0).length} dipilih` },
                     ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal), sub: 'sebelum import' }] : []),
                     ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)', sub: 'dari PDF' }] : []),
                     ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)', sub: 'dari PDF' }] : []),
