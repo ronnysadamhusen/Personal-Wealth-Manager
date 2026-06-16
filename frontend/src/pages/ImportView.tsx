@@ -4,7 +4,13 @@ import Icons from '../components/Icons';
 import SplitTransactionModal from '../components/SplitTransactionModal';
 import { useApp } from '../context/AppContext';
 
-export default function ImportView() {
+interface ImportViewProps {
+  /** When provided, ImportView runs in modal mode (no nav side-effects). */
+  initialAccountId?: string;
+  onClose?: () => void;
+}
+
+export default function ImportView({ initialAccountId, onClose }: ImportViewProps = {}) {
   const {
     accounts, savedPasswords, importLogs, groupedCategories,
     renderAmount, loading, setLoading, setErrorMsg, fetchData, navigateTo, switchTxSubTab,
@@ -34,13 +40,16 @@ export default function ImportView() {
   // Save result summary
   const [saveResult, setSaveResult] = useState<{ currentBill: number | null; availableCredit: number | null; creditLimit: number | null; accountName: string } | null>(null);
 
-  // Pre-select account when coming from AccountsPage Import PDF button
+  // Pre-select account via prop (modal mode) or legacy context state
   useEffect(() => {
-    if (pendingImportAccountId) {
+    if (initialAccountId) {
+      setImportTargetAccId(initialAccountId);
+    } else if (pendingImportAccountId) {
       setImportTargetAccId(pendingImportAccountId);
       setPendingImportAccountId('');
     }
-  }, [pendingImportAccountId, setPendingImportAccountId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Duplicate Check State Guards
   const [lastCheckedAccId, setLastCheckedAccId] = useState('');
@@ -287,14 +296,19 @@ export default function ImportView() {
         const availableCredit = parsedData.availableCreditLimit != null
           ? parsedData.availableCreditLimit
           : (currentBill != null && creditLimit != null ? Math.max(0, creditLimit - currentBill) : null);
-        if (acc?.type === 'credit_card' && (currentBill != null || availableCredit != null)) {
-          setSaveResult({ currentBill, availableCredit, creditLimit, accountName: acc.name });
-        }
+        const hasCcSummary = acc?.type === 'credit_card' && (currentBill != null || availableCredit != null);
         setParsedData(null);
         setPdfFile(null);
         setPdfFiles([]);
         setParsedTxList([]);
         fetchData();
+        if (hasCcSummary) {
+          setSaveResult({ currentBill, availableCredit, creditLimit, accountName: acc!.name });
+        } else if (onClose) {
+          onClose();
+        } else {
+          switchTxSubTab('ledger');
+        }
       } else {
         const errJ = await res.json();
         setErrorMsg(errJ.error || 'Failed to save transactions');
@@ -347,11 +361,11 @@ export default function ImportView() {
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                  <button className="btn btn-primary" onClick={() => { setSaveResult(null); switchTxSubTab('ledger'); }}>
+                  <button className="btn btn-primary" onClick={() => { setSaveResult(null); if (onClose) { onClose(); } switchTxSubTab('ledger'); navigateTo('transactions'); }}>
                     Lihat Transaksi
                   </button>
-                  <button className="btn btn-secondary" onClick={() => { setSaveResult(null); navigateTo('accounts'); }}>
-                    Kembali ke Akun
+                  <button className="btn btn-secondary" onClick={() => { setSaveResult(null); if (onClose) { onClose(); } else { navigateTo('accounts'); } }}>
+                    {onClose ? 'Tutup' : 'Kembali ke Akun'}
                   </button>
                 </div>
               </div>

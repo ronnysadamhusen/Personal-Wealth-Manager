@@ -3,9 +3,11 @@ import { API_URL } from '../constants';
 import Icons from '../components/Icons';
 import { useApp } from '../context/AppContext';
 import PayrollSlipModal from '../components/PayrollSlipModal';
+import ImportView from './ImportView';
 
 export default function AccountsPage() {
-  const { accounts, renderAmount, fetchData, setLoading, navigateTo, switchTxSubTab, setPendingImportAccountId } = useApp();
+  const { accounts, renderAmount, fetchData, setLoading } = useApp();
+  const [importModalAccId, setImportModalAccId] = useState<string | null>(null);
 
   // Reconciliation States
   const [reconcilingAcc, setReconcilingAcc] = useState<any | null>(null);
@@ -166,11 +168,7 @@ export default function AccountsPage() {
                             type="button"
                             className="btn btn-primary"
                             style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                            onClick={() => {
-                              setPendingImportAccountId(a.id);
-                              navigateTo('transactions');
-                              switchTxSubTab('import');
-                            }}
+                            onClick={() => setImportModalAccId(a.id)}
                           >
                             <Icons.Import /> Import PDF
                           </button>
@@ -449,6 +447,31 @@ export default function AccountsPage() {
                 </div>
 
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Import PDF Modal */}
+        {importModalAccId && (
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '2rem 1rem' }}>
+            <div className="glass-panel" style={{ width: '100%', maxWidth: '1100px', padding: '1.5rem', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Icons.Import /> Import PDF Statement
+                </h3>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '0.3rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem' }}
+                  onClick={() => setImportModalAccId(null)}
+                >
+                  ✕ Tutup
+                </button>
+              </div>
+              <ImportView
+                initialAccountId={importModalAccId}
+                onClose={() => setImportModalAccId(null)}
+              />
             </div>
           </div>
         )}
