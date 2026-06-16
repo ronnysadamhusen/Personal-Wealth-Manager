@@ -527,15 +527,25 @@ db.serialize(() => {
             investment_id TEXT NOT NULL,
             type TEXT CHECK(type IN ('buy', 'sell', 'dividend', 'price_update')) NOT NULL,
             date TEXT NOT NULL,
-            units REAL,
-            price_per_unit REAL,
-            total_amount REAL,
+            units REAL DEFAULT 0,
+            price_per_unit REAL DEFAULT 0,
+            amount REAL NOT NULL DEFAULT 0,
+            fee REAL DEFAULT 0,
+            linked_account_id TEXT,
+            linked_transaction_id TEXT,
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(investment_id) REFERENCES investments(id) ON DELETE CASCADE
+            FOREIGN KEY(investment_id) REFERENCES investments(id) ON DELETE CASCADE,
+            FOREIGN KEY(linked_account_id) REFERENCES accounts(id) ON DELETE SET NULL
           )
         `);
-        db.run("INSERT INTO investment_transactions SELECT * FROM investment_transactions_old");
+        db.run(`INSERT INTO investment_transactions (id, investment_id, type, date, units, price_per_unit, amount, notes, created_at)
+          SELECT id, investment_id, type, date,
+            COALESCE(units, 0),
+            COALESCE(price_per_unit, 0),
+            COALESCE(amount, total_amount, 0),
+            notes, created_at
+          FROM investment_transactions_old`);
         db.run("DROP TABLE investment_transactions_old");
 
         // 7. Fix payroll_slips if it also references accounts_old
@@ -564,6 +574,15 @@ db.serialize(() => {
           }
         });
 
+        // Finally drop the accounts_old table itself so FK checks no longer fail
+        db.run("DROP TABLE IF EXISTS accounts_old", (dropErr) => {
+          if (dropErr) {
+            console.error("Failed to drop accounts_old:", dropErr.message);
+          } else {
+            console.log("accounts_old table dropped.");
+          }
+        });
+
         db.run("PRAGMA foreign_keys = ON;", (pragmaErr) => {
           if (!pragmaErr) {
             console.log("Database foreign keys pointing to accounts_old repaired successfully.");
@@ -571,6 +590,13 @@ db.serialize(() => {
         });
       });
     }
+  });
+
+  // Safety net: always drop accounts_old if it still exists from a crashed migration.
+  // This prevents FK check errors ("no such table: accounts_old") on routes that touch
+  // any table with a dangling REFERENCES accounts_old(...) constraint.
+  db.run("DROP TABLE IF EXISTS accounts_old", (err) => {
+    if (!err) console.log("Safety net: accounts_old cleaned up (no-op if it didn't exist).");
   });
 });
 
