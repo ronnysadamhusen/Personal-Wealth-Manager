@@ -675,6 +675,48 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
             ) : (
               /* Stage 2: Verification and Editing Grid */
               <div className="glass-panel card-content">
+                {/* Compact header row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--color-success)' }}>✓</span> Verifikasi Transaksi
+                    <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                      — {parsedData.bankName} · {parsedData.transactionCount} transaksi
+                    </span>
+                  </h3>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                    {!onClose && (
+                      <select
+                        className="form-control"
+                        value={importTargetAccId}
+                        onChange={(e) => setImportTargetAccId(e.target.value)}
+                        required
+                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                      >
+                        <option value="">-- Pilih Akun --</option>
+                        {accounts.map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
+                      Simpan ({parsedData.transactions.filter((t: any) => !t.exclude).length}/{parsedData.transactions.length})
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => setParsedData(null)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
+                      Batal
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes row */}
+                {(parsedData.creditLimit || parsedData.billingCycleDate || parsedData.dueDate) && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-success)', marginBottom: '0.75rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    {parsedData.creditLimit && <span>ℹ Limit: {renderAmount(parsedData.creditLimit)}</span>}
+                    {parsedData.billingCycleDate && <span>ℹ Tgl Cetak: Hari {parsedData.billingCycleDate}</span>}
+                    {parsedData.dueDate && <span>ℹ Jatuh Tempo: Hari {parsedData.dueDate}</span>}
+                  </div>
+                )}
+
+                {/* Summary bar */}
                 {(() => {
                   const activeTxs = parsedData.transactions.filter((t: any) => !t.exclude);
                   const previewIncome  = activeTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
@@ -682,101 +724,29 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
                   const isCC = targetAcc?.type === 'credit_card';
                   const saldoAwal = targetAcc ? (isCC ? (targetAcc.current_bill ?? 0) : (targetAcc.balance ?? 0)) : null;
-                  const sisaLimit = parsedData.availableCreditLimit ?? targetAcc?.available_credit ?? null;
+                  const sisaLimit = parsedData.availableCreditLimit ?? (targetAcc as any)?.available_credit ?? null;
                   const tagihanBaru = parsedData.currentBill ?? null;
                   const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
+                  const items: { label: string; value: string; color?: string; sub?: string }[] = [
+                    { label: 'Pemasukan', value: fmt(previewIncome), color: 'var(--color-success)', sub: `${activeTxs.filter((t: any) => t.amount > 0).length} tx dipilih` },
+                    { label: 'Pengeluaran', value: fmt(previewExpense), color: 'var(--color-danger)', sub: `${activeTxs.filter((t: any) => t.amount < 0).length} tx dipilih` },
+                    ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal), sub: 'sebelum import' }] : []),
+                    ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)', sub: 'dari PDF' }] : []),
+                    ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)', sub: 'dari PDF' }] : []),
+                    ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit), sub: 'dari PDF' }] : []),
+                  ];
                   return (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pemasukan</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-success)' }}>{fmt(previewIncome)}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{activeTxs.filter((t: any) => t.amount > 0).length} tx</div>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pengeluaran</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(previewExpense)}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{activeTxs.filter((t: any) => t.amount < 0).length} tx</div>
-                      </div>
-                      {saldoAwal != null && (
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini'}</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(saldoAwal)}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>sebelum import</div>
+                    <div style={{ display: 'flex', gap: '0', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                      {items.map((item, i) => (
+                        <div key={i} style={{ flex: 1, padding: '0.6rem 0.75rem', textAlign: 'center', borderRight: i < items.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.2rem' }}>{item.label}</div>
+                          <div style={{ fontSize: '0.88rem', fontWeight: 700, color: item.color ?? 'var(--color-text)' }}>{item.value}</div>
+                          {item.sub && <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: '0.1rem' }}>{item.sub}</div>}
                         </div>
-                      )}
-                      {isCC && tagihanBaru != null && (
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tagihan Baru</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(tagihanBaru)}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
-                        </div>
-                      )}
-                      {sisaLimit != null && (
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sisa Limit</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>{fmt(sisaLimit)}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
-                        </div>
-                      )}
-                      {parsedData.creditLimit != null && (
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Limit</div>
-                          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{fmt(parsedData.creditLimit)}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dari PDF</div>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   );
                 })()}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <div>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ color: 'var(--color-success)' }}>✓</span> Verify Parsed Transactions
-                    </h3>
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                      We detected a **{parsedData.bankName} {parsedData.statementType}** statement with **{parsedData.transactionCount} transactions**. Please review, edit, or tag installments below before saving.
-                    </p>
-                    {parsedData.creditLimit && (
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--color-success)', fontWeight: 'bold' }}>
-                        ℹ Batas kredit terdeteksi di PDF: {renderAmount(parsedData.creditLimit)} (akan di-update otomatis setelah disimpan)
-                      </div>
-                    )}
-                    {(parsedData.billingCycleDate || parsedData.dueDate) && (
-                      <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--color-success)' }}>
-                        ℹ Siklus tagihan/Jatuh tempo terdeteksi:
-                        {parsedData.billingCycleDate && ` Tanggal Cetak: Hari ${parsedData.billingCycleDate}`}
-                        {parsedData.dueDate && ` | Jatuh Tempo: Hari ${parsedData.dueDate}`} (akan di-update otomatis)
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ marginBottom: '0.25rem' }}>Save to Account</label>
-                      <select
-                        className="form-control"
-                        value={importTargetAccId}
-                        onChange={(e) => setImportTargetAccId(e.target.value)}
-                        required
-                        style={{ padding: '0.5rem 2rem 0.5rem 1rem' }}
-                      >
-                        <option value="">-- Choose Account --</option>
-                        {accounts.map(a => (
-                          <option key={a.id} value={a.id}>{a.name} ({a.type === 'bank' ? 'Bank' : a.type === 'cash' ? 'Cash' : 'CC'})</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId}>
-                      Save All to Database ({parsedData.transactions.length})
-                    </button>
-
-                    <button className="btn btn-secondary" onClick={() => setParsedData(null)}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
 
                 <div className="table-container">
                   <table className="data-table">
