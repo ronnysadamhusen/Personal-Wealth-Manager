@@ -677,12 +677,23 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
               <div className="glass-panel card-content">
                 {/* Compact header row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
-                    <span style={{ color: 'var(--color-success)' }}>✓</span> Verifikasi Transaksi
-                    <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>
-                      — {parsedData.bankName} · {parsedData.transactionCount} transaksi
-                    </span>
-                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: 'var(--color-success)' }}>✓</span> Verifikasi Transaksi
+                      <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                        — {parsedData.bankName} · {parsedData.transactionCount} transaksi
+                      </span>
+                    </h3>
+                    {pdfFiles.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {pdfFiles.map((f, i) => (
+                          <span key={i} style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            📄 {f.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
                     {!onClose && (
                       <select
@@ -774,8 +785,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         <th style={{ minWidth: '130px', whiteSpace: 'nowrap' }}>Location/Merchant</th>
                         <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Product/Service</th>
                         <th style={{ whiteSpace: 'nowrap' }}>Amount (IDR)</th>
-                        <th style={{ minWidth: '120px', whiteSpace: 'nowrap' }}>Note (Optional)</th>
-                        <th style={{ whiteSpace: 'nowrap' }}>CC Installment?</th>
                         <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                       </tr>
                     </thead>
@@ -825,11 +834,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               {tx.is_duplicate && (
                                 <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', fontSize: '0.7rem', padding: '0.1rem 0.4rem', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '4px' }}>
                                   ⚠️ Potential Duplicate
-                                </span>
-                              )}
-                              {tx.file_name && (
-                                <span className="badge" style={{ alignSelf: 'flex-start', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', fontSize: '0.65rem', padding: '0.05rem 0.25rem', borderRadius: '4px', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '180px' }} title={tx.file_name}>
-                                  📄 {tx.file_name}
                                 </span>
                               )}
                             </div>
@@ -887,44 +891,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               onChange={(e) => handleGridChange(index, 'amount', parseFloat(e.target.value) || 0)}
                               style={{ fontWeight: 600, color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
                             />
-                          </td>
-                          {/* Note Input */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="grid-input" 
-                              placeholder="Keterangan..."
-                              value={tx.note || ''} 
-                              onChange={(e) => handleGridChange(index, 'note', e.target.value)}
-                            />
-                          </td>
-                          {/* CC Installment Tags */}
-                          <td>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              {tx.amount < 0 ? ( // Only expenses can be installments
-                                <>
-                                  <input 
-                                    type="checkbox" 
-                                    checked={tx.is_installment}
-                                    onChange={(e) => handleGridChange(index, 'is_installment', e.target.checked)}
-                                  />
-                                  {tx.is_installment && (
-                                    <input 
-                                      type="number" 
-                                      className="grid-input" 
-                                      value={tx.installment_months}
-                                      onChange={(e) => handleGridChange(index, 'installment_months', parseInt(e.target.value) || 12)}
-                                      style={{ width: '50px', background: 'var(--bg-input)', textAlign: 'center', padding: '0.1rem' }}
-                                      min="2"
-                                      max="60"
-                                      title="Installment Months"
-                                    />
-                                  )}
-                                </>
-                              ) : (
-                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Income/Cc Pymt</span>
-                              )}
-                            </div>
                           </td>
                           {/* Actions (Split/Delete) */}
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
