@@ -539,14 +539,21 @@ db.serialize(() => {
             FOREIGN KEY(linked_account_id) REFERENCES accounts(id) ON DELETE SET NULL
           )
         `);
-        db.run(`INSERT INTO investment_transactions (id, investment_id, type, date, units, price_per_unit, amount, notes, created_at)
-          SELECT id, investment_id, type, date,
-            COALESCE(units, 0),
-            COALESCE(price_per_unit, 0),
-            COALESCE(amount, total_amount, 0),
-            notes, created_at
-          FROM investment_transactions_old`);
-        db.run("DROP TABLE investment_transactions_old");
+        // Check whether old table uses 'amount' or 'total_amount' column name
+        db.all("PRAGMA table_info(investment_transactions_old)", (pragErr, cols) => {
+          const colNames = (cols || []).map(c => c.name);
+          const amountCol = colNames.includes('amount') ? 'amount' : 'total_amount';
+          db.run(`INSERT INTO investment_transactions (id, investment_id, type, date, units, price_per_unit, amount, notes, created_at)
+            SELECT id, investment_id, type, date,
+              COALESCE(units, 0),
+              COALESCE(price_per_unit, 0),
+              COALESCE(${amountCol}, 0),
+              notes, created_at
+            FROM investment_transactions_old`, (insErr) => {
+            if (insErr) console.error("Failed to migrate investment_transactions:", insErr.message);
+            db.run("DROP TABLE investment_transactions_old");
+          });
+        });
 
         // 7. Fix payroll_slips if it also references accounts_old
         db.run("DROP TABLE IF EXISTS payroll_slips_old");
