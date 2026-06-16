@@ -40,9 +40,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
   // Save result summary
   const [saveResult, setSaveResult] = useState<{ currentBill: number | null; availableCredit: number | null; creditLimit: number | null; accountName: string } | null>(null);
 
-  // New category modal
-  const [newCatModal, setNewCatModal] = useState<{ name: string; type: 'income' | 'expense' | 'both' } | null>(null);
-
   // Pre-select account via prop (modal mode) or legacy context state
   useEffect(() => {
     if (initialAccountId) {
@@ -815,34 +812,16 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                 )}
                                 <span style={{ fontWeight: 500, fontSize: '0.88rem' }}>{tx.description}</span>
                               </div>
-                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {(() => {
-                                  const allCatNames = groupedCategories.flatMap((g: any) => [g.parent.name, ...g.subs.map((s: any) => s.name)]);
-                                  const isNew = tx.category && tx.category.trim() !== '' && !allCatNames.includes(tx.category.trim());
-                                  return (
-                                    <>
-                                      <input
-                                        type="text"
-                                        className="grid-input"
-                                        list={`cat-${index}`}
-                                        value={tx.category || ''}
-                                        onChange={(e) => handleGridChange(index, 'category', e.target.value)}
-                                        placeholder="Kategori..."
-                                        style={{ flex: '1 1 130px', fontSize: '0.78rem', borderColor: isNew ? 'rgba(245,158,11,0.5)' : undefined }}
-                                      />
-                                      {isNew && (
-                                        <button
-                                          type="button"
-                                          title={`Tambah "${tx.category}" sebagai kategori baru`}
-                                          onClick={() => setNewCatModal({ name: tx.category.trim(), type: tx.amount >= 0 ? 'income' : 'expense' })}
-                                          style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--color-warning)', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                                        >
-                                          ➕ Buat kategori
-                                        </button>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  list={`cat-${index}`}
+                                  value={tx.category || ''}
+                                  onChange={(e) => handleGridChange(index, 'category', e.target.value)}
+                                  placeholder="Kategori..."
+                                  style={{ flex: '1 1 130px', fontSize: '0.78rem' }}
+                                />
                                 <datalist id={`cat-${index}`}>
                                   {groupedCategories.flatMap((group: any) => {
                                     const rowType = tx.amount >= 0 ? 'income' : 'expense';
@@ -1000,67 +979,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
           onConfirm={handleConfirmImportSplit}
           onCancel={() => setSplittingTxIndex(null)}
         />
-      )}
-
-      {newCatModal && (
-        <div className="modal-overlay">
-          <div className="glass-panel modal-content" style={{ maxWidth: '420px' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Tambah Kategori Baru</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-              Kategori ini akan langsung tersedia di semua baris setelah dibuat.
-            </p>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setLoading(true);
-              try {
-                const res = await fetch(`${API_URL}/categories`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ name: newCatModal.name, type: newCatModal.type }),
-                });
-                if (!res.ok) {
-                  const err = await res.json();
-                  setErrorMsg(err.error || 'Gagal membuat kategori');
-                } else {
-                  await fetchData();
-                  setNewCatModal(null);
-                }
-              } catch (err: any) {
-                setErrorMsg(err.message || 'Error');
-              } finally {
-                setLoading(false);
-              }
-            }}>
-              <div className="form-group">
-                <label>Nama Kategori</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={newCatModal.name}
-                  onChange={(e) => setNewCatModal({ ...newCatModal, name: e.target.value })}
-                  required
-                  autoFocus
-                />
-              </div>
-              <div className="form-group">
-                <label>Tipe</label>
-                <select
-                  className="form-control"
-                  value={newCatModal.type}
-                  onChange={(e) => setNewCatModal({ ...newCatModal, type: e.target.value as 'income' | 'expense' | 'both' })}
-                >
-                  <option value="expense">Pengeluaran (Expense)</option>
-                  <option value="income">Pemasukan (Income)</option>
-                  <option value="both">Keduanya (Both)</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan Kategori</button>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setNewCatModal(null)}>Batal</button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </>
   );
