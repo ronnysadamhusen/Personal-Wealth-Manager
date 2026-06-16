@@ -8,9 +8,19 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.6.1';
+export const APP_VERSION = '1.6.2';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.6.2',
+    date: '2026-06-16',
+    highlights: 'Fix critical: error "no such table: accounts_old" saat simpan transaksi — self-healing migration diperbaiki dan safety net ditambahkan.',
+    changes: [
+      { type: 'fix', description: 'Self-healing migration kini men-drop tabel accounts_old setelah semua child tables dibangun ulang, mencegah FK check error saat INSERT ke import_logs/transactions' },
+      { type: 'fix', description: 'Schema investment_transactions di self-healing diperbarui ke 12 kolom (sesuai schema terkini) dan INSERT menggunakan explicit column names untuk menghindari column count mismatch' },
+      { type: 'fix', description: 'Safety net unconditional DROP TABLE IF EXISTS accounts_old ditambahkan di akhir startup — membersihkan sisa crashed migration apapun secara otomatis' },
+    ],
+  },
   {
     version: '1.6.1',
     date: '2026-06-14',
