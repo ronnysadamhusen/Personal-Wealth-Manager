@@ -1,7 +1,7 @@
 # ===================================================================
 # STAGE 1: Build the React + Vite + TypeScript Frontend
 # ===================================================================
-FROM node:20-alpine AS frontend-builder
+FROM node:20 AS frontend-builder
 WORKDIR /app/frontend
 
 # Copy dependencies config
