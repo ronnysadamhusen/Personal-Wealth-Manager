@@ -428,6 +428,7 @@ export default function LiabilitiesPage() {
                 ) : (
                   <div>
                     {/* Amortization Bar charts using pure HTML/CSS */}
+                    <div className="timeline-chart-scroll">
                     <div className="timeline-chart">
                       {projections[0]?.monthly_schedule.map((m: any) => {
                         // find max payment in array to scale heights
@@ -450,7 +451,8 @@ export default function LiabilitiesPage() {
                         );
                       })}
                     </div>
-                    
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span style={{ display: 'inline-block', width: '12px', height: '12px', background: 'var(--color-primary)', borderRadius: '2px' }} />
