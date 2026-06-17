@@ -8,9 +8,22 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.0',
+    date: '2026-06-17',
+    highlights: 'Cicilan kartu kredit kini bisa dicatat nama merchant dan produk, diedit langsung, serta diarsipkan saat sudah lunas.',
+    changes: [
+      { type: 'feat', description: 'Kolom Merchant & Produk di tabel Active Installment Plans — bisa diisi saat tambah manual atau diedit via tombol ✏️' },
+      { type: 'feat', description: 'Modal edit cicilan: ubah description, nama merchant, dan nama produk untuk data yang sudah ada (termasuk hasil import PDF)' },
+      { type: 'feat', description: 'Tombol 📦 arsipkan cicilan per baris — terang saat cicilan lunas (remaining = 0), tersedia kapan saja' },
+      { type: 'feat', description: 'Section "Arsip Cicilan" yang dapat dilipat — tampilkan, aktifkan kembali, atau hapus permanen cicilan yang diarsipkan' },
+      { type: 'improvement', description: 'Cicilan diarsipkan tidak ikut dihitung di proyeksi amortisasi dan Debt Payoff Estimator' },
+      { type: 'fix', description: 'Dockerfile builder image diganti ke node:20 (Debian) agar Vite 8 / Rolldown native binding berjalan di Docker' },
+    ],
+  },
   {
     version: '1.8.0',
     date: '2026-06-17',
