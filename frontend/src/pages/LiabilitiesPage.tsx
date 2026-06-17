@@ -142,6 +142,41 @@ export default function LiabilitiesPage() {
     }
   };
 
+  // Edit installment modal
+  const [editingInst, setEditingInst] = useState<any | null>(null);
+  const [editInstDesc, setEditInstDesc] = useState('');
+  const [editInstMerchant, setEditInstMerchant] = useState('');
+  const [editInstProduct, setEditInstProduct] = useState('');
+
+  const openEditInstallment = (i: any) => {
+    setEditingInst(i);
+    setEditInstDesc(i.description || '');
+    setEditInstMerchant(i.merchant_name || '');
+    setEditInstProduct(i.product_name || '');
+  };
+
+  const handleEditInstallment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInst) return;
+    try {
+      const res = await fetch(`${API_URL}/installments/${editingInst.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: editInstDesc,
+          merchant_name: editInstMerchant || null,
+          product_name: editInstProduct || null,
+        })
+      });
+      if (res.ok) {
+        setEditingInst(null);
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Installment manually
   const [newInstCard, setNewInstCard] = useState('');
   const [newInstDesc, setNewInstDesc] = useState('');
@@ -448,13 +483,23 @@ export default function LiabilitiesPage() {
                               </div>
                             </td>
                             <td>
-                              <button
-                                className="btn"
-                                style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
-                                onClick={() => handleDeleteInstallment(i.id)}
-                              >
-                                <Icons.Delete />
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }}
+                                  onClick={() => openEditInstallment(i)}
+                                  title="Edit"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="btn"
+                                  style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
+                                  onClick={() => handleDeleteInstallment(i.id)}
+                                >
+                                  <Icons.Delete />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1036,6 +1081,76 @@ export default function LiabilitiesPage() {
                     className="btn btn-secondary" 
                     style={{ flex: 1 }}
                     onClick={() => setPayingDR(null)}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Installment Modal */}
+        {editingInst && (
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel modal-content" style={{ width: '100%', maxWidth: '480px', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0 }}>Edit Cicilan</h3>
+                <button
+                  type="button"
+                  onClick={() => setEditingInst(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                <strong style={{ color: 'var(--color-text)' }}>{editingInst.card_name}</strong>
+                {' · '}Started: {editingInst.start_date}
+                {' · '}<span className="text-danger">{renderAmount(editingInst.monthly_amount)}/bln</span>
+              </div>
+
+              <form onSubmit={handleEditInstallment} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Description</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editInstDesc}
+                    onChange={(e) => setEditInstDesc(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Nama Merchant <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Tokopedia, Shopee"
+                    value={editInstMerchant}
+                    onChange={(e) => setEditInstMerchant(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Nama Produk <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. iPhone 15, Laptop Asus"
+                    value={editInstProduct}
+                    onChange={(e) => setEditInstProduct(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                    Simpan
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setEditingInst(null)}
                   >
                     Batal
                   </button>

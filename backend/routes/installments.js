@@ -40,6 +40,34 @@ router.post('/api/installments', async (req, res) => {
   }
 });
 
+// Update installment fields
+router.put('/api/installments/:id', async (req, res) => {
+  const { id } = req.params;
+  const { description, merchant_name, product_name } = req.body;
+  try {
+    const inst = await query.get('SELECT * FROM installments WHERE id = ?', [id]);
+    if (!inst) return res.status(404).json({ error: 'Installment not found' });
+
+    await query.run(
+      `UPDATE installments SET
+        description = ?,
+        merchant_name = ?,
+        product_name = ?
+       WHERE id = ?`,
+      [
+        description ?? inst.description,
+        merchant_name !== undefined ? (merchant_name || null) : inst.merchant_name,
+        product_name !== undefined ? (product_name || null) : inst.product_name,
+        id
+      ]
+    );
+    const updated = await query.get('SELECT * FROM installments WHERE id = ?', [id]);
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete/payoff an installment
 router.delete('/api/installments/:id', async (req, res) => {
   try {
