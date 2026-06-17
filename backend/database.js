@@ -384,6 +384,10 @@ db.serialize(() => {
     )
   `);
 
+  // Migration: add merchant_name and product_name to installments
+  db.run("ALTER TABLE installments ADD COLUMN merchant_name TEXT DEFAULT NULL", () => {});
+  db.run("ALTER TABLE installments ADD COLUMN product_name TEXT DEFAULT NULL", () => {});
+
   // Migration: Add debt_receivable_id to transactions
   db.run("ALTER TABLE transactions ADD COLUMN debt_receivable_id TEXT", (alterErr) => {
     // Ignored if column already exists

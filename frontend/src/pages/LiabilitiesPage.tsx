@@ -145,6 +145,8 @@ export default function LiabilitiesPage() {
   // Installment manually
   const [newInstCard, setNewInstCard] = useState('');
   const [newInstDesc, setNewInstDesc] = useState('');
+  const [newInstMerchant, setNewInstMerchant] = useState('');
+  const [newInstProduct, setNewInstProduct] = useState('');
   const [newInstAmount, setNewInstAmount] = useState('');
   const [newInstMonths, setNewInstMonths] = useState('');
   const [newInstDate, setNewInstDate] = useState(new Date().toISOString().split('T')[0]);
@@ -160,6 +162,8 @@ export default function LiabilitiesPage() {
         body: JSON.stringify({
           account_id: newInstCard,
           description: newInstDesc,
+          merchant_name: newInstMerchant || null,
+          product_name: newInstProduct || null,
           monthly_amount: parseFloat(newInstAmount),
           total_months: parseInt(newInstMonths),
           start_date: newInstDate
@@ -167,6 +171,8 @@ export default function LiabilitiesPage() {
       });
       if (res.ok) {
         setNewInstDesc('');
+        setNewInstMerchant('');
+        setNewInstProduct('');
         setNewInstAmount('');
         setNewInstMonths('');
         fetchData();
@@ -394,6 +400,8 @@ export default function LiabilitiesPage() {
                         <tr>
                           <th>Card Name</th>
                           <th>Description</th>
+                          <th>Merchant</th>
+                          <th>Product</th>
                           <th>Monthly Bill</th>
                           <th>Remaining (Mo)</th>
                           <th>Actions</th>
@@ -407,6 +415,20 @@ export default function LiabilitiesPage() {
                               <div>{i.description}</div>
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Started: {i.start_date}</span>
                             </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              {i.merchant_name ? (
+                                <span>{i.merchant_name}</span>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ fontSize: '0.85rem' }}>
+                              {i.product_name ? (
+                                <span>{i.product_name}</span>
+                              ) : (
+                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
+                              )}
+                            </td>
                             <td className="text-danger" style={{ fontWeight: '600' }}>
                               {renderAmount(i.monthly_amount)}
                             </td>
@@ -414,7 +436,7 @@ export default function LiabilitiesPage() {
                               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                 <strong className="text-warning">{i.remaining_months}</strong>
                                 <span>/ {i.total_months} months</span>
-                                <button 
+                                <button
                                   className="btn btn-secondary"
                                   style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', borderRadius: '4px' }}
                                   onClick={() => handleTickInstallment(i.id)}
@@ -426,8 +448,8 @@ export default function LiabilitiesPage() {
                               </div>
                             </td>
                             <td>
-                              <button 
-                                className="btn" 
+                              <button
+                                className="btn"
                                 style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
                                 onClick={() => handleDeleteInstallment(i.id)}
                               >
@@ -463,14 +485,37 @@ export default function LiabilitiesPage() {
 
                   <div className="form-group">
                     <label>Description</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. Tokopedia Cicilan Laptop" 
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Tokopedia Cicilan Laptop"
                       value={newInstDesc}
                       onChange={(e) => setNewInstDesc(e.target.value)}
                       required
                     />
+                  </div>
+
+                  <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
+                    <div className="form-group">
+                      <label>Nama Merchant <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. Tokopedia, Shopee"
+                        value={newInstMerchant}
+                        onChange={(e) => setNewInstMerchant(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Nama Produk <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. iPhone 15, Laptop Asus"
+                        value={newInstProduct}
+                        onChange={(e) => setNewInstProduct(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>

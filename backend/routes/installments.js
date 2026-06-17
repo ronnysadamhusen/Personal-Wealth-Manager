@@ -21,7 +21,7 @@ router.get('/api/installments', async (req, res) => {
 
 // Create installment manually
 router.post('/api/installments', async (req, res) => {
-  const { account_id, description, monthly_amount, total_months, start_date, interest_rate = 0 } = req.body;
+  const { account_id, description, monthly_amount, total_months, start_date, interest_rate = 0, merchant_name = null, product_name = null } = req.body;
   if (!account_id || !description || !monthly_amount || !total_months || !start_date) {
     return res.status(400).json({ error: 'Required fields: account_id, description, monthly_amount, total_months, start_date' });
   }
@@ -29,9 +29,9 @@ router.post('/api/installments', async (req, res) => {
   const id = generateUUID();
   try {
     await query.run(
-      `INSERT INTO installments (id, account_id, description, monthly_amount, total_months, remaining_months, start_date, interest_rate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, account_id, description, monthly_amount, total_months, total_months, start_date, interest_rate]
+      `INSERT INTO installments (id, account_id, description, monthly_amount, total_months, remaining_months, start_date, interest_rate, merchant_name, product_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, account_id, description, monthly_amount, total_months, total_months, start_date, interest_rate, merchant_name, product_name]
     );
     const created = await query.get('SELECT * FROM installments WHERE id = ?', [id]);
     res.status(201).json(created);
