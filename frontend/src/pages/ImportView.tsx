@@ -545,7 +545,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                               Setup and save passwords for statements (e.g. BCA statements are usually encrypted with date of birth or tax numbers). Saved passwords will be used to decrypt statements automatically during future uploads.
                             </p>
                             <div className="table-container" style={{ marginBottom: '1.5rem' }}>
-                              <table className="data-table">
+                              <table className="data-table cards-sm">
                                 <thead>
                                   <tr>
                                     <th>Bank Name</th>
@@ -559,7 +559,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                     savedPasswords.map((p: any) => (
                                       <tr key={p.id}>
                                         <td style={{ fontWeight: 600 }}>{p.bank_name}</td>
-                                        <td style={{ color: 'var(--color-text-muted)' }}>•••••••• (Stored)</td>
+                                        <td data-label="Password" style={{ color: 'var(--color-text-muted)' }}>•••••••• (Stored)</td>
                                       </tr>
                                     ))
                                   )}
@@ -622,7 +622,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     : 'A chronological history of all bank statement or credit card files uploaded, parsed, and successfully integrated.'}
                 </p>
                 <div className="table-container">
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th>Tanggal Import</th>
@@ -654,7 +654,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                           const fileNames = (log.file_name || '').split(',').map((f: string) => f.trim()).filter(Boolean);
                           return (
                             <tr key={log.id}>
-                              <td style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                              <td data-label="Tgl Import" style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{new Date(log.imported_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                               <td>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                   {fileNames.map((name: string, idx: number) => (
@@ -665,14 +665,14 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                 </div>
                               </td>
                               {!onClose && (
-                                <td><span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>{log.account_name}</span></td>
+                                <td data-hide-sm><span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text)' }}>{log.account_name}</span></td>
                               )}
-                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{log.transaction_count}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontSize: '0.85rem' }}>{fmt(log.total_income)}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-danger)', fontSize: '0.85rem' }}>{fmt(log.total_expense)}</td>
-                              <td style={{ textAlign: 'right', fontSize: '0.85rem' }}>{fmt(log.opening_balance)}</td>
-                              <td style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(log.closing_balance)}</td>
-                              <td style={{ textAlign: 'right', fontSize: '0.85rem', color: log.available_credit != null ? 'var(--color-primary)' : undefined }}>{fmt(log.available_credit)}</td>
+                              <td data-label="Tx" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>{log.transaction_count}</td>
+                              <td data-label="Pemasukan" style={{ textAlign: 'right', color: 'var(--color-success)', fontSize: '0.85rem' }}>{fmt(log.total_income)}</td>
+                              <td data-label="Pengeluaran" style={{ textAlign: 'right', color: 'var(--color-danger)', fontSize: '0.85rem' }}>{fmt(log.total_expense)}</td>
+                              <td data-label="Saldo Awal" style={{ textAlign: 'right', fontSize: '0.85rem' }}>{fmt(log.opening_balance)}</td>
+                              <td data-label="Saldo Akhir" style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 600 }}>{fmt(log.closing_balance)}</td>
+                              <td data-label="Sisa Limit" style={{ textAlign: 'right', fontSize: '0.85rem', color: log.available_credit != null ? 'var(--color-primary)' : undefined }}>{fmt(log.available_credit)}</td>
                             </tr>
                           );
                         });
@@ -686,7 +686,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
               /* Stage 2: Verification and Editing Grid */
               <div className="glass-panel card-content">
                 {/* Compact header row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, whiteSpace: 'nowrap' }}>
                       <span style={{ color: 'var(--color-success)' }}>✓</span> Verifikasi Transaksi
@@ -704,7 +704,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                     {!onClose && (
                       <select
                         className="form-control"
@@ -759,7 +759,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit) }] : []),
                   ];
                   return (
-                    <div style={{ display: 'flex', gap: '0', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                    <div className="import-summary-bar" style={{ display: 'flex', gap: '0', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
                       {items.map((item, i) => (
                         <div key={i} style={{ flex: 1, padding: '0.6rem 0.75rem', textAlign: 'center', borderRight: i < items.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
                           <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.2rem' }}>{item.label}</div>
@@ -771,7 +771,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                 })()}
 
                 <div className="table-container" style={{ overflowX: 'auto' }}>
-                  <table className="data-table" style={{ minWidth: '1200px', tableLayout: 'auto' }}>
+                  <table className="data-table cards-sm" style={{ minWidth: '1200px', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
                         <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Transaction Date</th>
@@ -785,11 +785,11 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                       {parsedData.transactions.map((tx: any, index: number) => (
                         <tr key={index}>
                           {/* Transaction Date — plain text */}
-                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
+                          <td data-label="Tgl Transaksi" style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
                             {tx.date}
                           </td>
                           {/* Posting Date — plain text */}
-                          <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
+                          <td data-hide-sm style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
                             {tx.booking_date || tx.date}
                           </td>
                           {/* Description (plain text) + Category (searchable) + Merchant + Product */}
@@ -843,7 +843,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             </div>
                           </td>
                           {/* Amount Input */}
-                          <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                          <td data-label="Nominal" style={{ textAlign: 'right', verticalAlign: 'top' }}>
                             <input
                               type="text"
                               className="grid-input"
@@ -866,7 +866,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                             />
                           </td>
                           {/* Actions (Split/Delete) */}
-                          <td style={{ verticalAlign: 'top', paddingTop: '0.35rem' }}>
+                          <td data-label="Actions" style={{ verticalAlign: 'top', paddingTop: '0.35rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem' }}>
                               <button
                                 type="button"

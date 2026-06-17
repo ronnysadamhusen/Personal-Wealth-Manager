@@ -647,7 +647,7 @@ export default function TransactionsPage() {
                     No transactions match your current filtering criteria.
                   </div>
                 ) : (
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th style={{ width: '4%', textAlign: 'center' }}>
@@ -675,8 +675,8 @@ export default function TransactionsPage() {
                     <tbody>
                       {filteredAndAggregatedTx.list.map((tx) => (
                         <tr key={tx.id} style={{ background: selectedTxIds.includes(tx.id) ? 'rgba(99, 102, 241, 0.04)' : 'transparent' }}>
-                          <td style={{ textAlign: 'center' }}>
-                            <input 
+                          <td data-hide-sm style={{ textAlign: 'center' }}>
+                            <input
                               type="checkbox"
                               checked={selectedTxIds.includes(tx.id)}
                               onChange={(e) => {
@@ -688,8 +688,8 @@ export default function TransactionsPage() {
                               }}
                             />
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{tx.date}</td>
-                          <td style={{ fontWeight: 500 }}>{tx.account_name}</td>
+                          <td data-label="Date" style={{ whiteSpace: 'nowrap' }}>{tx.date}</td>
+                          <td data-hide-sm style={{ fontWeight: 500 }}>{tx.account_name}</td>
                           <td>
                             <div style={{ fontWeight: 500 }}>{tx.description}</div>
                             <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
@@ -728,15 +728,15 @@ export default function TransactionsPage() {
                               )}
                             </div>
                           </td>
-                          <td>
+                          <td data-label="Category">
                             <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
                               {getTransactionPath(tx)}
                             </span>
                           </td>
-                          <td className={tx.amount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: '600', textAlign: 'right' }}>
+                          <td data-label="Amount" className={tx.amount >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: '600', textAlign: 'right' }}>
                             {renderAmount(tx.amount)}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td data-label="Action" style={{ textAlign: 'center' }}>
                             <button 
                               className="btn" 
                               style={{ padding: '0.25rem', color: 'var(--color-primary)', background: 'transparent', marginRight: '0.5rem' }}

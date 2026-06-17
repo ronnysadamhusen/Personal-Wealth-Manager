@@ -144,9 +144,9 @@ export default function AccountsPage() {
               ) : (
                 accounts.map(a => (
                   <div key={a.id} className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <div>
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: '700' }}>{a.name}</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: '700', wordBreak: 'break-word' }}>{a.name}</h4>
                         <span className="badge" style={{ background: a.type === 'bank' ? 'rgba(16, 185, 129, 0.1)' : a.type === 'cash' ? 'rgba(245, 158, 11, 0.1)' : a.type === 'payroll' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(99, 102, 241, 0.1)', color: a.type === 'bank' ? 'var(--color-success)' : a.type === 'cash' ? 'var(--color-warning)' : a.type === 'payroll' ? '#a78bfa' : 'var(--color-primary)', marginTop: '0.4rem' }}>
                           {a.type === 'bank' ? 'BANK ACCOUNT' : a.type === 'cash' ? 'CASH / WALLET' : a.type === 'payroll' ? 'PAYROLL' : 'CREDIT CARD'}
                         </span>
@@ -199,7 +199,7 @@ export default function AccountsPage() {
                     <div className="summary-widget">
                       <div className="widget-item">
                         <div className="card-desc">Current Balance</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash' || a.type === 'payroll') ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                        <div style={{ fontSize: 'var(--fs-value-lg)', fontWeight: 700, color: (a.type === 'bank' || a.type === 'cash' || a.type === 'payroll') ? 'var(--color-success)' : 'var(--color-danger)' }}>
                           {renderAmount(a.type === 'credit_card' && a.current_bill != null ? -a.current_bill : a.current_balance)}
                         </div>
                       </div>
@@ -207,7 +207,7 @@ export default function AccountsPage() {
                       {(a.type === 'bank' || a.type === 'cash') ? (
                         <div className="widget-item">
                           <div className="card-desc">Initial Balance</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                          <div style={{ fontSize: 'var(--fs-value)', fontWeight: 600 }}>
                             {renderAmount(a.balance)}
                           </div>
                         </div>
@@ -224,7 +224,7 @@ export default function AccountsPage() {
                       ) : (
                         <div className="widget-item">
                           <div className="card-desc">Available Credit Limit</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                          <div style={{ fontSize: 'var(--fs-value)', fontWeight: 600 }}>
                             {renderAmount(
                             a.available_credit != null
                               ? a.available_credit
@@ -238,7 +238,7 @@ export default function AccountsPage() {
                     </div>
 
                     {a.type === 'credit_card' && (
-                      <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', gap: '1rem 2rem', flexWrap: 'wrap', marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', fontSize: '0.85rem' }}>
                         <div>
                           <span style={{ color: 'var(--color-text-muted)' }}>Billing Date:</span> <strong>Day {a.billing_cycle_date}</strong>
                         </div>

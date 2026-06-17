@@ -483,7 +483,7 @@ export default function LiabilitiesPage() {
                     Belum ada cicilan aktif. Import transaksi kartu kredit dari PDF atau klik <strong>Add Installment</strong> untuk menambah manual.
                   </div>
                 ) : (
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th>Card Name</th>
@@ -501,25 +501,25 @@ export default function LiabilitiesPage() {
                       {installments.map(i => (
                         <tr key={i.id}>
                           <td style={{ fontWeight: 600 }}>{i.card_name}</td>
-                          <td>{i.description}</td>
-                          <td style={{ fontSize: '0.85rem' }}>
+                          <td data-label="Description">{i.description}</td>
+                          <td data-hide-sm style={{ fontSize: '0.85rem' }}>
                             {i.merchant_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
                           </td>
-                          <td style={{ fontSize: '0.85rem' }}>
+                          <td data-hide-sm style={{ fontSize: '0.85rem' }}>
                             {i.product_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
                           </td>
-                          <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{i.start_date}</td>
-                          <td className="text-danger" style={{ fontWeight: 600, textAlign: 'right' }}>
+                          <td data-hide-sm style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{i.start_date}</td>
+                          <td data-label="Monthly Bill" className="text-danger" style={{ fontWeight: 600, textAlign: 'right' }}>
                             {renderAmount(i.monthly_amount)}
                           </td>
-                          <td style={{ fontWeight: 600, color: 'var(--color-warning)', textAlign: 'right' }}>
+                          <td data-label="Outstanding" style={{ fontWeight: 600, color: 'var(--color-warning)', textAlign: 'right' }}>
                             {renderAmount(i.monthly_amount * i.remaining_months)}
                           </td>
-                          <td>
+                          <td data-label="Remaining">
                             <span className="text-warning" style={{ fontWeight: 600 }}>{i.remaining_months}</span>
                             <span style={{ color: 'var(--color-text-muted)' }}> / {i.total_months} mo</span>
                           </td>
-                          <td>
+                          <td data-label="Actions">
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                               <button
                                 className="btn btn-secondary"
@@ -582,7 +582,7 @@ export default function LiabilitiesPage() {
                     </p>
                   ) : (
                     <div className="table-container">
-                      <table className="data-table">
+                      <table className="data-table cards-sm">
                         <thead>
                           <tr>
                             <th>Card Name</th>
@@ -598,15 +598,15 @@ export default function LiabilitiesPage() {
                           {archivedInsts.map(i => (
                             <tr key={i.id} style={{ opacity: 0.7 }}>
                               <td style={{ fontWeight: 600 }}>{i.card_name}</td>
-                              <td>
+                              <td data-label="Description">
                                 <div>{i.description}</div>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Started: {i.start_date}</span>
                               </td>
-                              <td style={{ fontSize: '0.85rem' }}>{i.merchant_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
-                              <td style={{ fontSize: '0.85rem' }}>{i.product_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
-                              <td style={{ fontWeight: 600 }}>{renderAmount(i.monthly_amount)}</td>
-                              <td style={{ color: 'var(--color-text-muted)' }}>{i.total_months} bulan</td>
-                              <td>
+                              <td data-hide-sm style={{ fontSize: '0.85rem' }}>{i.merchant_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
+                              <td data-hide-sm style={{ fontSize: '0.85rem' }}>{i.product_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
+                              <td data-label="Monthly Bill" style={{ fontWeight: 600 }}>{renderAmount(i.monthly_amount)}</td>
+                              <td data-label="Duration" style={{ color: 'var(--color-text-muted)' }}>{i.total_months} bulan</td>
+                              <td data-label="Actions">
                                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                                   <button
                                     className="btn btn-secondary"
@@ -710,7 +710,7 @@ export default function LiabilitiesPage() {
                           🔴 Daftar Hutang Saya
                         </h3>
                         <div className="table-container">
-                          <table className="data-table">
+                          <table className="data-table cards-sm">
                             <thead>
                               <tr>
                                 <th>Pemberi Pinjaman</th>
@@ -734,19 +734,19 @@ export default function LiabilitiesPage() {
                                 debtsReceivables.filter(d => d.type === 'debt').map(d => (
                                   <tr key={d.id}>
                                     <td><strong>{d.person}</strong></td>
-                                    <td>{d.description}</td>
-                                    <td>{d.date}</td>
-                                    <td>{d.due_date || '-'}</td>
-                                    <td style={{ textAlign: 'right' }}>{renderAmount(d.amount)}</td>
-                                    <td style={{ textAlign: 'right', fontWeight: d.status === 'active' ? 'bold' : 'normal', color: d.status === 'active' ? 'var(--color-danger)' : 'inherit' }}>
+                                    <td data-label="Keterangan">{d.description}</td>
+                                    <td data-hide-sm>{d.date}</td>
+                                    <td data-label="Jatuh Tempo">{d.due_date || '-'}</td>
+                                    <td data-label="Jumlah Awal" style={{ textAlign: 'right' }}>{renderAmount(d.amount)}</td>
+                                    <td data-label="Sisa Hutang" style={{ textAlign: 'right', fontWeight: d.status === 'active' ? 'bold' : 'normal', color: d.status === 'active' ? 'var(--color-danger)' : 'inherit' }}>
                                       {renderAmount(d.remaining_amount)}
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
+                                    <td data-label="Status" style={{ textAlign: 'center' }}>
                                       <span className={`badge ${d.status === 'active' ? 'badge-danger' : 'badge-success'}`}>
                                         {d.status === 'active' ? 'Belum Lunas' : 'Lunas'}
                                       </span>
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
+                                    <td data-label="Tindakan" style={{ textAlign: 'center' }}>
                                       <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
                                         {d.status === 'active' && (
                                           <button
@@ -796,7 +796,7 @@ export default function LiabilitiesPage() {
                           🟢 Daftar Piutang (Uang Saya di Orang Lain)
                         </h3>
                         <div className="table-container">
-                          <table className="data-table">
+                          <table className="data-table cards-sm">
                             <thead>
                               <tr>
                                 <th>Peminjam</th>
@@ -820,19 +820,19 @@ export default function LiabilitiesPage() {
                                 debtsReceivables.filter(d => d.type === 'receivable').map(d => (
                                   <tr key={d.id}>
                                     <td><strong>{d.person}</strong></td>
-                                    <td>{d.description}</td>
-                                    <td>{d.date}</td>
-                                    <td>{d.due_date || '-'}</td>
-                                    <td style={{ textAlign: 'right' }}>{renderAmount(d.amount)}</td>
-                                    <td style={{ textAlign: 'right', fontWeight: d.status === 'active' ? 'bold' : 'normal', color: d.status === 'active' ? 'var(--color-success)' : 'inherit' }}>
+                                    <td data-label="Keterangan">{d.description}</td>
+                                    <td data-hide-sm>{d.date}</td>
+                                    <td data-label="Jatuh Tempo">{d.due_date || '-'}</td>
+                                    <td data-label="Jumlah Awal" style={{ textAlign: 'right' }}>{renderAmount(d.amount)}</td>
+                                    <td data-label="Sisa Tagihan" style={{ textAlign: 'right', fontWeight: d.status === 'active' ? 'bold' : 'normal', color: d.status === 'active' ? 'var(--color-success)' : 'inherit' }}>
                                       {renderAmount(d.remaining_amount)}
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
+                                    <td data-label="Status" style={{ textAlign: 'center' }}>
                                       <span className={`badge ${d.status === 'active' ? 'badge-warning' : 'badge-success'}`}>
                                         {d.status === 'active' ? 'Belum Tagih' : 'Lunas'}
                                       </span>
                                     </td>
-                                    <td style={{ textAlign: 'center' }}>
+                                    <td data-label="Tindakan" style={{ textAlign: 'center' }}>
                                       <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
                                         {d.status === 'active' && (
                                           <button
@@ -1359,7 +1359,7 @@ export default function LiabilitiesPage() {
                 </div>
               ) : (
                 <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th>Tanggal</th>
@@ -1380,14 +1380,14 @@ export default function LiabilitiesPage() {
                       ) : (
                         instTransactions.map((tx: any) => (
                           <tr key={tx.id}>
-                            <td style={{ fontSize: '0.85rem' }}>{tx.date}</td>
-                            <td style={{ fontSize: '0.85rem' }}>{tx.account_name}</td>
+                            <td data-label="Tanggal" style={{ fontSize: '0.85rem' }}>{tx.date}</td>
+                            <td data-hide-sm style={{ fontSize: '0.85rem' }}>{tx.account_name}</td>
                             <td style={{ fontSize: '0.85rem' }}>{tx.description}</td>
-                            <td style={{ fontSize: '0.85rem' }}>{tx.category}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 600, color: tx.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                            <td data-label="Kategori" style={{ fontSize: '0.85rem' }}>{tx.category}</td>
+                            <td data-label="Nominal" style={{ textAlign: 'right', fontWeight: 600, color: tx.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
                               {tx.amount < 0 ? '-' : '+'}{formatIDR(Math.abs(tx.amount))}
                             </td>
-                            <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{tx.note || '—'}</td>
+                            <td data-label="Catatan" style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{tx.note || '—'}</td>
                           </tr>
                         ))
                       )}
@@ -1460,7 +1460,7 @@ export default function LiabilitiesPage() {
 
               <h4 style={{ marginBottom: '0.75rem' }}>Daftar Mutasi / Aliran Dana Terkait</h4>
               <div className="table-container" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                <table className="data-table">
+                <table className="data-table cards-sm">
                   <thead>
                     <tr>
                       <th>Tanggal</th>
@@ -1481,10 +1481,10 @@ export default function LiabilitiesPage() {
                         const accName = accounts.find((a: any) => a.id === p.account_id)?.name || 'Unknown Account';
                         return (
                           <tr key={p.id}>
-                            <td>{p.date}</td>
-                            <td>{accName}</td>
+                            <td data-label="Tanggal">{p.date}</td>
+                            <td data-hide-sm>{accName}</td>
                             <td>{p.description}</td>
-                            <td style={{ textAlign: 'right', fontWeight: '600', color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                            <td data-label="Nominal" style={{ textAlign: 'right', fontWeight: '600', color: p.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
                               {p.amount < 0 ? '-' : '+'}{formatIDR(Math.abs(p.amount))}
                             </td>
                           </tr>

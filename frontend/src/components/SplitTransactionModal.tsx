@@ -47,7 +47,7 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                 </p>
 
                 <div className="table-container" style={{ marginBottom: '1rem', background: 'rgba(255,255,255,0.01)' }}>
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th style={{ width: '22%' }}>Kategori</th>
@@ -61,8 +61,8 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                     <tbody>
                       {splitRows.map((row, rIdx) => (
                         <tr key={rIdx}>
-                          <td>
-                            <select 
+                          <td data-label="Kategori">
+                            <select
                               className="form-control"
                               value={row.category}
                               onChange={(e) => {
@@ -88,8 +88,8 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                               })}
                             </select>
                           </td>
-                          <td>
-                            <AutocompleteInput 
+                          <td data-label="Merchant">
+                            <AutocompleteInput
                               className="form-control"
                               placeholder="Merchant..."
                               value={row.location_merchant}
@@ -102,8 +102,8 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                               style={{ padding: '0.35rem', fontSize: '0.8rem', margin: 0 }}
                             />
                           </td>
-                          <td>
-                            <AutocompleteInput 
+                          <td data-label="Produk">
+                            <AutocompleteInput
                               className="form-control"
                               placeholder="Produk..."
                               value={row.product_service}
@@ -116,9 +116,9 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                               style={{ padding: '0.35rem', fontSize: '0.8rem', margin: 0 }}
                             />
                           </td>
-                          <td>
-                            <input 
-                              type="number" 
+                          <td data-label="Nominal">
+                            <input
+                              type="number"
                               className="form-control"
                               placeholder="Nominal"
                               value={row.amount}
@@ -131,8 +131,8 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                               required
                             />
                           </td>
-                          <td>
-                            <input 
+                          <td data-label="Catatan">
+                            <input
                               type="text"
                               className="form-control"
                               placeholder="Catatan..."
@@ -145,7 +145,7 @@ export default function SplitTransactionModal({ targetTx, onConfirm, onCancel }:
                               style={{ padding: '0.35rem', fontSize: '0.8rem', margin: 0 }}
                             />
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td data-label="Hapus" style={{ textAlign: 'center' }}>
                             <button
                               type="button"
                               className="btn"

@@ -162,7 +162,7 @@ export default function GoalsPage() {
                 <div className="grid-cols-4" style={{ gap: '1.5rem' }}>
                   <div className="glass-panel card-content" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div className="card-desc">Total Rencana Dana</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--color-text)', marginTop: '0.5rem' }}>
+                    <div className="card-value" style={{ color: 'var(--color-text)', marginTop: '0.5rem' }}>
                       {renderAmount(totalTarget)}
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
@@ -172,7 +172,7 @@ export default function GoalsPage() {
 
                   <div className="glass-panel card-content" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div className="card-desc">Total Dana Terkumpul</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--color-success)', marginTop: '0.5rem' }}>
+                    <div className="card-value" style={{ color: 'var(--color-success)', marginTop: '0.5rem' }}>
                       {renderAmount(totalSaved)}
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
@@ -182,7 +182,7 @@ export default function GoalsPage() {
 
                   <div className="glass-panel card-content" style={{ borderLeft: '4px solid var(--color-warning)' }}>
                     <div className="card-desc">Total Kekurangan Dana</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '0.5rem' }}>
+                    <div className="card-value" style={{ color: 'var(--color-warning)', marginTop: '0.5rem' }}>
                       {renderAmount(totalShortfall)}
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
@@ -192,7 +192,7 @@ export default function GoalsPage() {
 
                   <div className="glass-panel card-content" style={{ borderLeft: '4px solid #8b5cf6', background: 'rgba(139, 92, 246, 0.03)' }}>
                     <div className="card-desc" style={{ color: '#a78bfa' }}>Target Tabungan Bulanan</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#c084fc', marginTop: '0.5rem' }}>
+                    <div className="card-value" style={{ color: '#c084fc', marginTop: '0.5rem' }}>
                       {renderAmount(totalMonthlySavingsRequired)} / bln
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>

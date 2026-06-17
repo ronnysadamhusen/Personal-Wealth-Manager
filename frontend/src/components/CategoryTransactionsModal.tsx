@@ -133,7 +133,7 @@ export default function CategoryTransactionsModal({ categoryName, onClose, onCat
               </p>
             </div>
           ) : (
-            <table className="data-table" style={{ margin: 0 }}>
+            <table className="data-table cards-sm" style={{ margin: 0 }}>
               <thead>
                 <tr>
                   <th style={{ width: '95px' }}>Tanggal</th>
@@ -156,7 +156,7 @@ export default function CategoryTransactionsModal({ categoryName, onClose, onCat
                         transition: 'background 0.15s',
                       }}
                     >
-                      <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                      <td data-label="Tanggal" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                         {tx.date}
                       </td>
                       <td style={{
@@ -165,16 +165,16 @@ export default function CategoryTransactionsModal({ categoryName, onClose, onCat
                       }}>
                         {tx.description}
                       </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                      <td data-hide-sm style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
                         {tx.account_name}
                       </td>
-                      <td style={{
+                      <td data-label="Jumlah" style={{
                         textAlign: 'right', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap',
                         color: tx.amount >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
                       }}>
                         {formatIDR(tx.amount)}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="Aksi" style={{ textAlign: 'center' }}>
                         {editingTxId === tx.id ? (
                           <button
                             className="btn"

@@ -179,21 +179,21 @@ export default function InvestmentsPage() {
               </div>
 
               {/* Portfolio Summary Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>TOTAL NILAI PORTOFOLIO</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  <div className="card-value" style={{ color: 'var(--color-primary)' }}>
                     {renderAmount(totalValue)}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>{activeInv.length} aset aktif</div>
                 </div>
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>TOTAL MODAL DIINVESTASIKAN</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{renderAmount(totalInvested)}</div>
+                  <div className="card-value">{renderAmount(totalInvested)}</div>
                 </div>
                 <div className="glass-panel card-content" style={{ padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.4rem' }}>UNREALIZED GAIN / LOSS</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: unrealizedGain >= 0 ? 'var(--color-income)' : 'var(--color-expense)' }}>
+                  <div className="card-value" style={{ color: unrealizedGain >= 0 ? 'var(--color-income)' : 'var(--color-expense)' }}>
                     {unrealizedGain >= 0 ? '+' : ''}{renderAmount(unrealizedGain)}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: unrealizedGain >= 0 ? 'var(--color-income)' : 'var(--color-expense)', marginTop: '0.25rem' }}>
@@ -240,7 +240,7 @@ export default function InvestmentsPage() {
                   <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => { resetInvestmentForm(); setShowAddInvestmentModal(true); }}>+ Tambah Aset Pertama</button>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
                   {investments.map(inv => {
                     const gain = (inv.current_value || 0) - (inv.total_invested || 0);
                     const gainPct = inv.total_invested > 0 ? (gain / inv.total_invested * 100) : 0;

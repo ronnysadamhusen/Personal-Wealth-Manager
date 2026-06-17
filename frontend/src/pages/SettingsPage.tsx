@@ -319,7 +319,7 @@ export default function SettingsPage() {
                 </form>
 
                 <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                  <table className="data-table">
+                  <table className="data-table cards-sm">
                     <thead>
                       <tr>
                         <th>Category Hierarchy</th>
@@ -381,9 +381,9 @@ export default function SettingsPage() {
                                   </span>
                                 </div>
                               </td>
-                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><ImportancePill cat={group.parent} /></td>
-                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><UrgencyPill cat={group.parent} /></td>
-                              <td style={{ textAlign: 'center' }}>
+                              <td data-label="Kepentingan" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><ImportancePill cat={group.parent} /></td>
+                              <td data-label="Urgensi" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}><UrgencyPill cat={group.parent} /></td>
+                              <td data-label="Transaksi" style={{ textAlign: 'center' }}>
                                 {(txCounts[group.parent.name] ?? 0) > 0 ? (
                                   <button type="button" onClick={() => setViewTxCategory(group.parent.name)}
                                     style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: 'var(--color-primary)', borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
@@ -394,7 +394,7 @@ export default function SettingsPage() {
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
                                 )}
                               </td>
-                              <td style={{ textAlign: 'center' }}>
+                              <td data-label="Actions" style={{ textAlign: 'center' }}>
                                 <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
                                   <button type="button" className="btn"
                                     style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-primary)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px' }}
@@ -455,9 +455,9 @@ export default function SettingsPage() {
                                       </span>
                                     </div>
                                   </td>
-                                  <td style={{ textAlign: 'center' }}><ImportancePill cat={sub} /></td>
-                                  <td style={{ textAlign: 'center' }}><UrgencyPill cat={sub} /></td>
-                                  <td style={{ textAlign: 'center' }}>
+                                  <td data-label="Kepentingan" style={{ textAlign: 'center' }}><ImportancePill cat={sub} /></td>
+                                  <td data-label="Urgensi" style={{ textAlign: 'center' }}><UrgencyPill cat={sub} /></td>
+                                  <td data-label="Transaksi" style={{ textAlign: 'center' }}>
                                     {(txCounts[sub.name] ?? 0) > 0 ? (
                                       <button type="button" onClick={() => setViewTxCategory(sub.name)}
                                         style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: 'var(--color-primary)', borderRadius: '999px', padding: '0.15rem 0.6rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
@@ -468,7 +468,7 @@ export default function SettingsPage() {
                                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>—</span>
                                     )}
                                   </td>
-                                  <td style={{ textAlign: 'center' }}>
+                                  <td data-label="Actions" style={{ textAlign: 'center' }}>
                                     <div style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
                                       <button type="button" className="btn"
                                         style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', color: 'var(--color-primary)', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '6px' }}

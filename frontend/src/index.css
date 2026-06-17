@@ -25,6 +25,31 @@
 
   /* Bottom nav height */
   --bottom-nav-height: 64px;
+
+  /* ── Type scale (mirrors DashboardPage — single source of truth) ── */
+  --fs-section: 0.72rem;   /* uppercase section titles */
+  --fs-label: 0.8rem;      /* form labels, muted captions */
+  --fs-body: 0.85rem;      /* default body / table cells */
+  --fs-value: 0.9rem;      /* totals */
+  --fs-value-lg: 1rem;     /* prominent stat numbers */
+  --fs-hero: 2rem;         /* hero figures (net worth) */
+
+  /* ── Spacing scale ── */
+  --space-1: 0.4rem;
+  --space-2: 0.6rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+
+  /* Max content width on desktop (keeps app centered, not stretched) */
+  --content-max-width: 1366px;
+}
+
+/* Normalizes "stat card" numbers across pages to the dashboard scale */
+.stat-value {
+  font-size: var(--fs-value-lg);
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 * {
@@ -201,7 +226,7 @@ header {
 
 main.main-content {
   flex: 1;
-  max-width: 100%;
+  max-width: var(--content-max-width);
   width: 100%;
   margin: 0 auto;
   padding: 0.75rem;
@@ -222,8 +247,19 @@ main.main-content {
   margin-bottom: 1rem;
 }
 
+.grid-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 /* Tablet breakpoint (1024px) */
 @media (max-width: 1024px) {
+  .grid-cols-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
   .grid-cols-3, .grid-cols-2 {
     grid-template-columns: 1fr !important;
   }
@@ -1150,533 +1186,122 @@ table.data-table input.grid-input:focus {
   [style*="grid-template-columns: 1fr 1fr"],
   [style*="grid-template-columns: 1fr 1fr 1fr"],
   [style*="grid-template-columns: repeat(3, 1fr)"],
-  [style*="grid-template-columns: repeat(2, 1fr)"] {
+  [style*="grid-template-columns: repeat(2, 1fr)"],
+  [style*="grid-template-columns: 1.2fr 1.8fr"],
+  [style*="grid-template-columns: 0.8fr 1.2fr"],
+  [style*="grid-template-columns: 1.7fr 1.3fr"],
+  [style*="grid-template-columns: 1.2fr 0.8fr"],
+  [style*="grid-template-columns: 1fr 1.2fr"],
+  .grid-cols-4 {
     grid-template-columns: 1fr !important;
   }
 
-  /* ── Ledger container: no horizontal scroll on mobile ──────── */
-  .tx-ledger-container {
-    overflow-x: hidden !important;
-  }
+}
 
-  /* ── Ledger table → card layout on mobile ───────────────────── */
-  table.tx-ledger-table,
-  table.tx-ledger-table tbody {
+/* ── Generic responsive table → stacked cards on mobile ───────────
+ *
+ *  Opt-in: add `cards-sm` to any `<table className="data-table">` and
+ *  give each `<td>` a `data-label="…"`. On ≤768px every row becomes a
+ *  card; each cell shows its label on the left and value on the right.
+ *
+ *  - A `<td>` WITHOUT data-label renders full-width, bold, left-aligned
+ *    (use it for the primary name/description cell).
+ *  - A `<td data-hide-sm>` is hidden on mobile (low-priority columns).
+ *  - The actions cell (data-label "Aksi"/"Actions"/"Action"/"Tindakan")
+ *    right-aligns its buttons.
+ */
+@media (max-width: 768px) {
+  table.data-table.cards-sm thead { display: none; }
+
+  table.data-table.cards-sm,
+  table.data-table.cards-sm tbody {
     display: block;
     width: 100%;
+    min-width: 0 !important; /* override inline min-width (e.g. import table) */
   }
 
-  table.tx-ledger-table thead { display: none; }
-
-  table.tx-ledger-table tr {
-    display: grid !important;
-    grid-template-columns: 1fr auto !important;
-    grid-template-rows: auto auto auto !important;
-    grid-template-areas:
-      "date   amount"
-      "desc   desc"
-      "cat    actions" !important;
-    gap: 0.05rem 0.75rem;
-    background: rgba(255, 255, 255, 0.025);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+  table.data-table.cards-sm tr {
+    display: block;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.6rem 0.8rem;
     margin-bottom: 0.5rem;
-    padding: 0.7rem 0.75rem;
-    box-sizing: border-box;
-    width: 100%;
   }
 
-  table.tx-ledger-table tr[style*="rgba(99, 102, 241, 0.04)"] {
-    background: rgba(99, 102, 241, 0.08) !important;
-    border-color: rgba(99, 102, 241, 0.2) !important;
-  }
-
-  table.tx-ledger-table td {
-    display: block;
-    padding: 0;
+  table.data-table.cards-sm td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
     border: none !important;
-    line-height: 1.4;
+    padding: 0.25rem 0 !important;
+    font-size: var(--fs-body);
+    text-align: right;
     min-width: 0;
-    overflow: hidden;
   }
 
-  /* col 1 – checkbox */
-  table.tx-ledger-table td:nth-child(1) { display: none; }
-
-  /* col 2 – date */
-  table.tx-ledger-table td:nth-child(2) {
-    grid-area: date;
+  table.data-table.cards-sm td[data-label]::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
     font-size: 0.68rem;
-    color: var(--color-text-muted);
-    letter-spacing: 0.01em;
-  }
-
-  /* col 3 – account */
-  table.tx-ledger-table td:nth-child(3) { display: none; }
-
-  /* col 4 – description (full width, wraps) */
-  table.tx-ledger-table td:nth-child(4) {
-    grid-area: desc;
-    font-size: 0.875rem;
-    font-weight: 500;
-    white-space: normal;
-    word-break: break-word;
-    padding-top: 0.1rem;
-  }
-
-  /* col 5 – category badge */
-  table.tx-ledger-table td:nth-child(5) {
-    grid-area: cat;
-    align-self: center;
-  }
-
-  table.tx-ledger-table td:nth-child(5) .badge {
-    font-size: 0.65rem;
-    padding: 0.1rem 0.45rem;
-  }
-
-  /* col 6 – amount */
-  table.tx-ledger-table td:nth-child(6) {
-    grid-area: amount;
-    font-size: 0.92rem;
-    font-weight: 700;
-    text-align: right !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    flex-shrink: 0;
     white-space: nowrap;
-    align-self: center;
   }
 
-  /* col 7 – actions: three small icon buttons in a row */
-  table.tx-ledger-table td:nth-child(7) {
-    grid-area: actions;
-    display: flex !important;
-    flex-direction: row;
+  /* Primary cell (no data-label): full-width name/description */
+  table.data-table.cards-sm td:not([data-label]) {
+    justify-content: flex-start;
+    text-align: left;
+    font-weight: 600;
+    padding-bottom: 0.35rem !important;
+  }
+
+  /* Low-priority columns hidden on mobile */
+  table.data-table.cards-sm td[data-hide-sm] { display: none !important; }
+
+  /* Editable cells (inputs/selects): stack label above a full-width control */
+  table.data-table.cards-sm td:has(input):not([data-hide-sm]),
+  table.data-table.cards-sm td:has(select):not([data-hide-sm]),
+  table.data-table.cards-sm td:has(textarea):not([data-hide-sm]) {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
     gap: 0.2rem;
-    align-items: center;
+  }
+  table.data-table.cards-sm td:has(input)::before,
+  table.data-table.cards-sm td:has(select)::before,
+  table.data-table.cards-sm td:has(textarea)::before {
+    text-align: left;
+  }
+
+  /* Full-span cells (empty-state messages, inline edit forms) flow as block */
+  table.data-table.cards-sm td[colspan] {
+    display: block;
+    text-align: center;
+  }
+  table.data-table.cards-sm td[colspan]::before { display: none; }
+
+  /* Actions cell: buttons aligned right */
+  table.data-table.cards-sm td[data-label="Aksi"],
+  table.data-table.cards-sm td[data-label="Actions"],
+  table.data-table.cards-sm td[data-label="Action"],
+  table.data-table.cards-sm td[data-label="Tindakan"] {
     justify-content: flex-end;
+    padding-top: 0.45rem !important;
   }
 
-  table.tx-ledger-table td:nth-child(7) .btn {
-    min-height: unset !important;
-    width: 28px !important;
-    height: 28px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    border-radius: 7px;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    font-size: 0.78rem;
-    line-height: 1;
-    flex-shrink: 0;
-  }
-
-  /* ── Credit card detail row: allow wrapping ─────────────────── */
-  .cc-details-row {
+  /* Import verify summary bar: wrap to 2 columns instead of squishing */
+  .import-summary-bar {
     flex-wrap: wrap !important;
-    gap: 0.5rem !important;
   }
-
-  .cc-details-row > div {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  /* ── Account card header: wrap name + buttons on small screens ── */
-  .account-card-header {
-    flex-wrap: wrap !important;
-    gap: 0.5rem !important;
-    align-items: flex-start !important;
-  }
-
-  .account-card-header > div:first-child {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .account-card-header > div:first-child h4 {
-    font-size: 1rem !important;
-    word-break: break-word;
-  }
-
-  .account-card-header .account-actions {
-    flex-shrink: 0;
-  }
-
-  .account-card-header .account-actions .btn-reconcile-label {
-    display: none;
-  }
-
-  /* ── Balance amounts in account cards: scale down ─────────────── */
-  .account-balance-main {
-    font-size: 1rem !important;
-  }
-
-  .account-balance-secondary {
-    font-size: 0.95rem !important;
-  }
-
-  /* ── Import PDF: sub-tab bar full width, buttons equal ───────── */
-  .tx-subtab-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  .tx-subtab-bar {
-    width: 100% !important;
-  }
-
-  .tx-subtab-btn {
-    flex: 1 !important;
-    padding: 0.45rem 0.5rem !important;
-    font-size: 0.78rem !important;
-    text-align: center !important;
-    justify-content: center !important;
-  }
-
-  /* ── Import PDF: Stage 2 verify header → stack on mobile ─────── */
-  .import-verify-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  .import-verify-actions {
-    flex-wrap: wrap !important;
-    gap: 0.5rem !important;
-  }
-
-  .import-verify-actions .form-group {
-    flex: 1 1 100% !important;
-  }
-
-  .import-verify-actions .btn {
-    flex: 1 1 auto !important;
-  }
-
-  /* ── Import PDF: parsed transaction table → compact card layout ── */
-  /* ── Import PDF: parsed transaction → elegant card layout ───────
-   *
-   *  ┌───────────────────────────────────────┐
-   *  │ ☑  TOKOPEDIA*GAMING...    -Rp 250.000 │  ← header row
-   *  │     06 Jun 2026                        │  ← date, muted
-   *  │  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │
-   *  │  [ Kategori ▾ ...................... ]  │
-   *  │  [ Merchant ........ ] [ Produk .... ]  │
-   *  │  [ Catatan ......... ]   □ Cicilan    │
-   *  │                              ✂️   🗑   │
-   *  └───────────────────────────────────────┘
-   */
-
-  /* Wrapper: disable horizontal scroll untuk import cards */
-  .import-parsed-table-wrap {
-    overflow-x: hidden !important;
-  }
-
-  table.import-parsed-table,
-  table.import-parsed-table tbody {
-    display: block !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  table.import-parsed-table thead { display: none !important; }
-
-  table.import-parsed-table tr {
-    display: grid !important;
-    /* 2 kolom: konten kiri (1fr) | nominal kanan (auto) */
-    grid-template-columns: 1fr auto !important;
-    gap: 0.25rem 0.4rem !important;
-    padding: 0.6rem !important;
-    margin-bottom: 0.5rem !important;
-    border-radius: 12px !important;
-    background: rgba(255,255,255,0.03) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    box-sizing: border-box !important;
-    max-width: 100% !important;
-  }
-
-  table.import-parsed-table td {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    min-width: 0 !important;
-    /* jangan overflow: hidden di sini — biarkan per-cell */
-  }
-
-  /* No labels at all — visual hierarchy does the job */
-  table.import-parsed-table td::before { display: none !important; }
-
-  /*
-   * Layout baru:
-   * ROW 1: [☑ col1] [Tgl col2] [Nominal col3]  ← header ringkas
-   * ROW 2: [Deskripsi — full width]
-   * ROW 3: [Kategori — full width]
-   * ROW 4: [Merchant col1/3] [Produk col3]
-   * ROW 5: [Catatan col1/3] [Cicilan col3]
-   * ROW 6: [Aksi — full width, kanan]
-   */
-
-  /* ROW 1a: checkbox — full width so label text never clips */
-  table.import-parsed-table td[data-label="Import?"] {
-    order: 1 !important;
-    grid-column: 1 / -1 !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    overflow: visible !important;
-  }
-  table.import-parsed-table td[data-label="Import?"] input[type="checkbox"] {
-    width: 16px !important;
-    height: 16px !important;
-    flex-shrink: 0 !important;
-  }
-
-  /* ROW 1b: tanggal — col1 (1fr), plenty of room for date string */
-  table.import-parsed-table td[data-label="Tgl Transaksi"] {
-    order: 2 !important;
-    grid-column: 1 !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 0.25rem !important;
-  }
-  table.import-parsed-table td[data-label="Tgl Transaksi"]::before {
-    content: 'Tgl' !important;
-    display: inline !important;
-    font-size: 0.68rem !important;
-    color: var(--color-text-muted) !important;
-    font-weight: 500 !important;
-    text-transform: none !important;
-    letter-spacing: 0 !important;
-    flex-shrink: 0 !important;
-  }
-  table.import-parsed-table td[data-label="Tgl Transaksi"] .grid-input {
-    font-size: 0.73rem !important;
-    color: var(--color-text-muted) !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    min-height: unset !important;
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-
-  /* ROW 1c: nominal — col2 (80px), right-aligned bold */
-  table.import-parsed-table td[data-label="Nominal (IDR)"] {
-    order: 3 !important;
-    grid-column: 2 !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-  }
-  table.import-parsed-table td[data-label="Nominal (IDR)"] .grid-input {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    min-height: unset !important;
-    font-weight: 700 !important;
-    font-size: 0.76rem !important;
-    text-align: right !important;
-    width: auto !important;
-    min-width: 80px !important;
-    max-width: 130px !important;
-  }
-
-  /* ROW 2: deskripsi full-width, bold, wraps naturally */
-  table.import-parsed-table td[data-label="Deskripsi"] {
-    order: 4 !important;
-    grid-column: 1 / -1 !important;
-    padding-top: 0.3rem !important;
-    padding-bottom: 0.3rem !important;
-    border-top: 1px solid rgba(255,255,255,0.06) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-    margin-top: 0.1rem !important;
-    margin-bottom: 0.1rem !important;
-  }
-  table.import-parsed-table td[data-label="Deskripsi"] .grid-input {
-    font-weight: 600 !important;
-    font-size: 0.84rem !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    min-height: unset !important;
-    color: var(--color-text) !important;
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-    resize: none !important;
-    line-height: 1.45 !important;
-    width: 100% !important;
-  }
-  table.import-parsed-table td[data-label="Deskripsi"] .badge {
-    font-size: 0.65rem !important;
-    margin-top: 0.15rem !important;
-  }
-
-  /* === Tgl Booking: hidden === */
-  table.import-parsed-table td[data-label="Tgl Booking"] { display: none !important; }
-
-  /* === ROW 3: category full width === */
-  table.import-parsed-table td[data-label="Kategori"] {
-    order: 5 !important;
-    grid-column: 1 / -1 !important;
-  }
-
-  /* === ROW 4: merchant (col1/2) | produk (col2/4) — 50/50 === */
-  table.import-parsed-table td[data-label="Merchant"] {
-    order: 6 !important;
-    grid-column: 1 / 2 !important;
-  }
-  table.import-parsed-table td[data-label="Merchant"]::before {
-    content: 'Merchant' !important;
-    display: block !important;
-    font-size: 0.62rem !important;
-    font-weight: 600 !important;
-    color: var(--color-text-muted) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    margin-bottom: 0.15rem !important;
-  }
-  table.import-parsed-table td[data-label="Produk/Layanan"] {
-    order: 7 !important;
-    grid-column: 2 !important;
-  }
-  table.import-parsed-table td[data-label="Produk/Layanan"]::before {
-    content: 'Produk' !important;
-    display: block !important;
-    font-size: 0.62rem !important;
-    font-weight: 600 !important;
-    color: var(--color-text-muted) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    margin-bottom: 0.15rem !important;
-  }
-
-  /* === ROW 5: catatan full-width, cicilan di bawahnya inline === */
-  table.import-parsed-table td[data-label="Catatan"] {
-    order: 8 !important;
-    grid-column: 1 / -1 !important;
-  }
-  table.import-parsed-table td[data-label="Catatan"]::before {
-    content: 'Catatan' !important;
-    display: block !important;
-    font-size: 0.62rem !important;
-    font-weight: 600 !important;
-    color: var(--color-text-muted) !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    margin-bottom: 0.15rem !important;
-  }
-
-  /* === ROW 6: cicilan (col1) | aksi (col2) — satu baris === */
-  table.import-parsed-table td[data-label="Cicilan CC?"] {
-    order: 9 !important;
-    grid-column: 1 !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 0.4rem !important;
-    font-size: 0.78rem !important;
-    color: var(--color-text-muted) !important;
-  }
-
-  table.import-parsed-table td[data-label="Aksi"] {
-    order: 10 !important;
-    grid-column: 2 !important;
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    gap: 0.25rem !important;
-  }
-
-  /* Shared input style */
-  table.import-parsed-table .grid-input {
-    width: 100% !important;
-    min-height: 28px !important;
-    padding: 0.15rem 0.4rem !important;
-    font-size: 0.8rem !important;
-    border-radius: 6px !important;
-  }
-
-  table.import-parsed-table select.form-control {
-    min-height: 28px !important;
-    padding: 0.15rem 0.4rem !important;
-    font-size: 0.8rem !important;
-    border-radius: 6px !important;
-  }
-
-  /* Action buttons — lebih jelas */
-  table.import-parsed-table td[data-label="Aksi"] .btn {
-    min-height: 28px !important;
-    width: 28px !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 7px !important;
-    font-size: 0.82rem !important;
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-  }
-
-  /* ── Import PDF: history log → card layout on mobile ────────── */
-  table.import-log-table,
-  table.import-log-table tbody { display: block; width: 100%; }
-
-  table.import-log-table thead { display: none; }
-
-  table.import-log-table tr.import-log-row {
-    display: grid !important;
-    grid-template-columns: auto 1fr 80px !important;
-    grid-template-rows: auto auto !important;
-    gap: 0.2rem 0.5rem !important;
-    padding: 0.6rem 0.7rem !important;
-    margin-bottom: 0.4rem !important;
-    border-radius: 10px !important;
-    background: rgba(255,255,255,0.03) !important;
-    border: 1px solid rgba(255,255,255,0.07) !important;
-  }
-
-  /* Tanggal — col 1, row 1 */
-  table.import-log-table tr.import-log-row td:nth-child(1) {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    font-size: 0.72rem !important;
-    color: var(--color-text-muted) !important;
-    white-space: nowrap !important;
-    padding: 0 !important;
-    border: none !important;
-    align-self: center !important;
-  }
-
-  /* File name — col 2, row 1 */
-  table.import-log-table tr.import-log-row td:nth-child(2) {
-    grid-column: 2 !important;
-    grid-row: 1 / 3 !important;
-    padding: 0 0.25rem !important;
-    border: none !important;
-  }
-
-  /* Account — col 3, row 1 */
-  table.import-log-table tr.import-log-row td:nth-child(3) {
-    grid-column: 3 !important;
-    grid-row: 1 !important;
-    padding: 0 !important;
-    border: none !important;
-    align-self: center !important;
-  }
-
-  /* Tx count — col 1+3, row 2 */
-  table.import-log-table tr.import-log-row td:nth-child(4) {
-    grid-column: 1 !important;
-    grid-row: 2 !important;
-    font-size: 0.72rem !important;
-    text-align: left !important;
-    padding: 0 !important;
-    border: none !important;
-  }
-
-  table.import-log-table tr.import-log-row td:nth-child(4)::before {
-    content: 'Tx: ';
-    color: var(--color-text-muted);
-    font-weight: 400;
+  .import-summary-bar > div {
+    flex: 1 1 45% !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 }
