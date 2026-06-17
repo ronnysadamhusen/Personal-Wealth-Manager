@@ -524,19 +524,8 @@ export default function LiabilitiesPage() {
                             {renderAmount(i.monthly_amount * i.remaining_months)}
                           </td>
                           <td>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              <strong className="text-warning">{i.remaining_months}</strong>
-                              <span>/ {i.total_months} mo</span>
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', borderRadius: '4px' }}
-                                onClick={() => handleTickInstallment(i.id)}
-                                title="Kurangi sisa bulan sebanyak 1 (simulasi siklus tagihan)"
-                                disabled={i.remaining_months <= 0}
-                              >
-                                Tick
-                              </button>
-                            </div>
+                            <span className="text-warning" style={{ fontWeight: 600 }}>{i.remaining_months}</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}> / {i.total_months} mo</span>
                           </td>
                           <td>
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
