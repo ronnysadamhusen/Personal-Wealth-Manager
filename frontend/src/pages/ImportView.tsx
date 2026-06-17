@@ -280,7 +280,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           account_id: importTargetAccId,
-          transactions: parsedData.transactions.filter((tx: any) => !tx.exclude),
+          transactions: parsedData.transactions,
           file_name: fileNames,
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
@@ -712,8 +712,11 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         ))}
                       </select>
                     )}
+                    <button type="button" className="btn btn-secondary" onClick={() => setNewCatModal({ name: '', type: 'expense' })} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
+                      ➕ Buat Kategori
+                    </button>
                     <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
-                      Simpan ({parsedData.transactions.filter((t: any) => !t.exclude).length}/{parsedData.transactions.length})
+                      Simpan ({parsedData.transactions.length})
                     </button>
                     <button className="btn btn-secondary" onClick={() => setParsedData(null)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
                       Batal
@@ -732,7 +735,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                 {/* Summary bar — shows totals from ALL transactions in the PDF */}
                 {(() => {
                   const allTxs = parsedData.transactions;
-                  const selectedTxs = allTxs.filter((t: any) => !t.exclude);
                   const totalIncome  = allTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
                   const totalExpense = allTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
                   const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
@@ -741,13 +743,13 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   const sisaLimit = parsedData.availableCreditLimit ?? (targetAcc as any)?.available_credit ?? null;
                   const tagihanBaru = parsedData.currentBill ?? null;
                   const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
-                  const items: { label: string; value: string; color?: string; sub?: string }[] = [
-                    { label: 'Pemasukan', value: fmt(totalIncome), color: 'var(--color-success)', sub: `${allTxs.filter((t: any) => t.amount > 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount > 0).length} dipilih` },
-                    { label: 'Pengeluaran', value: fmt(totalExpense), color: 'var(--color-danger)', sub: `${allTxs.filter((t: any) => t.amount < 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount < 0).length} dipilih` },
-                    ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal), sub: 'sebelum import' }] : []),
-                    ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)', sub: 'dari PDF' }] : []),
-                    ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)', sub: 'dari PDF' }] : []),
-                    ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit), sub: 'dari PDF' }] : []),
+                  const items: { label: string; value: string; color?: string }[] = [
+                    { label: 'Pemasukan', value: fmt(totalIncome), color: 'var(--color-success)' },
+                    { label: 'Pengeluaran', value: fmt(totalExpense), color: 'var(--color-danger)' },
+                    ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal) }] : []),
+                    ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)' }] : []),
+                    ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)' }] : []),
+                    ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit) }] : []),
                   ];
                   return (
                     <div style={{ display: 'flex', gap: '0', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
@@ -765,21 +767,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   <table className="data-table" style={{ minWidth: '1200px', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '40px', textAlign: 'center' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={parsedData.transactions.length > 0 && parsedData.transactions.every((t: any) => !t.exclude)} 
-                            onChange={(e) => {
-                              const checkVal = e.target.checked;
-                              const updated = parsedData.transactions.map((t: any) => ({
-                                ...t,
-                                exclude: !checkVal
-                              }));
-                              setParsedData({ ...parsedData, transactions: updated });
-                            }}
-                            title="Toggle All"
-                          />
-                        </th>
                         <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Transaction Date</th>
                         <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Posting Date</th>
                         <th>Description / Category / Merchant / Produk</th>
@@ -789,15 +776,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     </thead>
                     <tbody>
                       {parsedData.transactions.map((tx: any, index: number) => (
-                        <tr key={index} style={{ opacity: tx.exclude ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                          {/* Import? Checkbox */}
-                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '0.6rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={!tx.exclude}
-                              onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
-                            />
-                          </td>
+                        <tr key={index}>
                           {/* Transaction Date — plain text */}
                           <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
                             {tx.date}
@@ -816,33 +795,15 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                 <span style={{ fontWeight: 500, fontSize: '0.88rem' }}>{tx.description}</span>
                               </div>
                               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                {(() => {
-                                  const allCatNames = groupedCategories.flatMap((g: any) => [g.parent.name, ...g.subs.map((s: any) => s.name)]);
-                                  const isNew = tx.category && tx.category.trim() !== '' && !allCatNames.includes(tx.category.trim());
-                                  return (
-                                    <>
-                                      <input
-                                        type="text"
-                                        className="grid-input"
-                                        list={`cat-${index}`}
-                                        value={tx.category || ''}
-                                        onChange={(e) => handleGridChange(index, 'category', e.target.value)}
-                                        placeholder="Kategori..."
-                                        style={{ flex: '1 1 130px', fontSize: '0.78rem', borderColor: isNew ? 'rgba(245,158,11,0.5)' : undefined }}
-                                      />
-                                      {isNew && (
-                                        <button
-                                          type="button"
-                                          title={`Tambah "${tx.category}" sebagai kategori baru`}
-                                          onClick={() => setNewCatModal({ name: tx.category.trim(), type: tx.amount >= 0 ? 'income' : 'expense' })}
-                                          style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--color-warning)', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                                        >
-                                          ➕ Buat kategori
-                                        </button>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                                <input
+                                  type="text"
+                                  className="grid-input"
+                                  list={`cat-${index}`}
+                                  value={tx.category || ''}
+                                  onChange={(e) => handleGridChange(index, 'category', e.target.value)}
+                                  placeholder="Kategori..."
+                                  style={{ flex: '1 1 130px', fontSize: '0.78rem' }}
+                                />
                                 <datalist id={`cat-${index}`}>
                                   {groupedCategories.flatMap((group: any) => {
                                     const rowType = tx.amount >= 0 ? 'income' : 'expense';
