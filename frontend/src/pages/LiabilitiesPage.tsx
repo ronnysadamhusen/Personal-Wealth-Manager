@@ -210,7 +210,8 @@ export default function LiabilitiesPage() {
     }
   };
 
-  // Installment manually
+  // Add Installment modal
+  const [showAddInstModal, setShowAddInstModal] = useState(false);
   const [newInstCard, setNewInstCard] = useState('');
   const [newInstDesc, setNewInstDesc] = useState('');
   const [newInstMerchant, setNewInstMerchant] = useState('');
@@ -218,6 +219,23 @@ export default function LiabilitiesPage() {
   const [newInstAmount, setNewInstAmount] = useState('');
   const [newInstMonths, setNewInstMonths] = useState('');
   const [newInstDate, setNewInstDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // View Installment Transactions modal
+  const [viewingInstTx, setViewingInstTx] = useState<any | null>(null);
+  const [instTransactions, setInstTransactions] = useState<any[]>([]);
+  const [loadingInstTx, setLoadingInstTx] = useState(false);
+
+  const openInstTransactions = async (inst: any) => {
+    setViewingInstTx(inst);
+    setLoadingInstTx(true);
+    setInstTransactions([]);
+    try {
+      const res = await fetch(`${API_URL}/installments/${inst.id}/transactions`);
+      if (res.ok) setInstTransactions(await res.json());
+    } catch { /* ignore */ } finally {
+      setLoadingInstTx(false);
+    }
+  };
 
   const handleAddInstallment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,11 +256,14 @@ export default function LiabilitiesPage() {
         })
       });
       if (res.ok) {
+        setShowAddInstModal(false);
+        setNewInstCard('');
         setNewInstDesc('');
         setNewInstMerchant('');
         setNewInstProduct('');
         setNewInstAmount('');
         setNewInstMonths('');
+        setNewInstDate(new Date().toISOString().split('T')[0]);
         fetchData();
       }
     } catch (err) {
@@ -451,199 +472,112 @@ export default function LiabilitiesPage() {
               </div>
             </div>
 
-            {/* Bottom Section: Active Installment Grid and Add Manually */}
-            <div className="grid-cols-2" style={{ gridTemplateColumns: '1.8fr 1.2fr' }}>
-              {/* Active Installments List */}
-              <div className="glass-panel card-content">
-                <h3 style={{ marginBottom: '1.5rem' }}>Active Installment Plans</h3>
-                
-                <div className="table-container">
-                  {installments.length === 0 ? (
-                    <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                      No active installments recorded. Tag imported credit card transactions as installments during PDF import, or add them manually in the right panel.
-                    </div>
-                  ) : (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Card Name</th>
-                          <th>Description</th>
-                          <th>Merchant</th>
-                          <th>Product</th>
-                          <th>Monthly Bill</th>
-                          <th>Remaining (Mo)</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {installments.map(i => (
-                          <tr key={i.id}>
-                            <td style={{ fontWeight: 600 }}>{i.card_name}</td>
-                            <td>
-                              <div>{i.description}</div>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Started: {i.start_date}</span>
-                            </td>
-                            <td style={{ fontSize: '0.85rem' }}>
-                              {i.merchant_name ? (
-                                <span>{i.merchant_name}</span>
-                              ) : (
-                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
-                              )}
-                            </td>
-                            <td style={{ fontSize: '0.85rem' }}>
-                              {i.product_name ? (
-                                <span>{i.product_name}</span>
-                              ) : (
-                                <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
-                              )}
-                            </td>
-                            <td className="text-danger" style={{ fontWeight: '600' }}>
-                              {renderAmount(i.monthly_amount)}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                <strong className="text-warning">{i.remaining_months}</strong>
-                                <span>/ {i.total_months} months</span>
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', borderRadius: '4px' }}
-                                  onClick={() => handleTickInstallment(i.id)}
-                                  title="Reduce remaining months by 1 (simulating statement cycle)"
-                                  disabled={i.remaining_months <= 0}
-                                >
-                                  Tick
-                                </button>
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }}
-                                  onClick={() => openEditInstallment(i)}
-                                  title="Edit"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', opacity: i.remaining_months === 0 ? 1 : 0.6 }}
-                                  onClick={() => handleArchiveInstallment(i.id)}
-                                  title={i.remaining_months === 0 ? 'Arsipkan (Lunas)' : 'Arsipkan'}
-                                >
-                                  📦
-                                </button>
-                                <button
-                                  className="btn"
-                                  style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
-                                  onClick={() => handleDeleteInstallment(i.id)}
-                                >
-                                  <Icons.Delete />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+            {/* Active Installment Plans - Full Width */}
+            <div className="glass-panel card-content">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0 }}>Active Installment Plans</h3>
+                <button
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  onClick={() => setShowAddInstModal(true)}
+                >
+                  <Icons.Plus /> Add Installment
+                </button>
               </div>
 
-              {/* Add Installment Manually */}
-              <div className="glass-panel card-content">
-                <h3 style={{ marginBottom: '1.5rem' }}>Add Installment Manually</h3>
-                <form onSubmit={handleAddInstallment}>
-                  <div className="form-group">
-                    <label>Credit Card Account</label>
-                    <select 
-                      className="form-control"
-                      value={newInstCard}
-                      onChange={(e) => setNewInstCard(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select --</option>
-                      {accounts.filter(a => a.type === 'credit_card').map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
+              <div className="table-container">
+                {installments.length === 0 ? (
+                  <div style={{ padding: '3rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                    Belum ada cicilan aktif. Import transaksi kartu kredit dari PDF atau klik <strong>Add Installment</strong> untuk menambah manual.
+                  </div>
+                ) : (
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Card Name</th>
+                        <th>Description</th>
+                        <th>Merchant</th>
+                        <th>Product</th>
+                        <th>Start Date</th>
+                        <th style={{ textAlign: 'right' }}>Monthly Bill</th>
+                        <th style={{ textAlign: 'right' }}>Outstanding</th>
+                        <th>Remaining (Mo)</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {installments.map(i => (
+                        <tr key={i.id}>
+                          <td style={{ fontWeight: 600 }}>{i.card_name}</td>
+                          <td>{i.description}</td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            {i.merchant_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
+                          </td>
+                          <td style={{ fontSize: '0.85rem' }}>
+                            {i.product_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
+                          </td>
+                          <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{i.start_date}</td>
+                          <td className="text-danger" style={{ fontWeight: 600, textAlign: 'right' }}>
+                            {renderAmount(i.monthly_amount)}
+                          </td>
+                          <td style={{ fontWeight: 600, color: 'var(--color-warning)', textAlign: 'right' }}>
+                            {renderAmount(i.monthly_amount * i.remaining_months)}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <strong className="text-warning">{i.remaining_months}</strong>
+                              <span>/ {i.total_months} mo</span>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', borderRadius: '4px' }}
+                                onClick={() => handleTickInstallment(i.id)}
+                                title="Kurangi sisa bulan sebanyak 1 (simulasi siklus tagihan)"
+                                disabled={i.remaining_months <= 0}
+                              >
+                                Tick
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }}
+                                onClick={() => openInstTransactions(i)}
+                                title="Lihat transaksi terkait cicilan ini"
+                              >
+                                <Icons.Ledger />
+                              </button>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem' }}
+                                onClick={() => openEditInstallment(i)}
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', opacity: i.remaining_months === 0 ? 1 : 0.6 }}
+                                onClick={() => handleArchiveInstallment(i.id)}
+                                title={i.remaining_months === 0 ? 'Arsipkan (Lunas)' : 'Arsipkan'}
+                              >
+                                📦
+                              </button>
+                              <button
+                                className="btn"
+                                style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
+                                onClick={() => handleDeleteInstallment(i.id)}
+                              >
+                                <Icons.Delete />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Description</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. Tokopedia Cicilan Laptop"
-                      value={newInstDesc}
-                      onChange={(e) => setNewInstDesc(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
-                    <div className="form-group">
-                      <label>Nama Merchant <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="e.g. Tokopedia, Shopee"
-                        value={newInstMerchant}
-                        onChange={(e) => setNewInstMerchant(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Nama Produk <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="e.g. iPhone 15, Laptop Asus"
-                        value={newInstProduct}
-                        onChange={(e) => setNewInstProduct(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
-                    <div className="form-group">
-                      <label>Monthly Bill (IDR)</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        placeholder="e.g. 500000" 
-                        value={newInstAmount}
-                        onChange={(e) => setNewInstAmount(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Total Duration (Months)</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        placeholder="e.g. 12" 
-                        value={newInstMonths}
-                        onChange={(e) => setNewInstMonths(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Start Date</label>
-                    <input 
-                      type="date" 
-                      className="form-control" 
-                      value={newInstDate}
-                      onChange={(e) => setNewInstDate(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                    <Icons.Plus /> Save Installment
-                  </button>
-                </form>
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
 
@@ -1271,6 +1205,225 @@ export default function LiabilitiesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Installment Modal */}
+        {showAddInstModal && (
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel modal-content" style={{ width: '95%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0 }}>Tambah Cicilan Manual</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddInstModal(false)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+              <form onSubmit={handleAddInstallment}>
+                <div className="form-group">
+                  <label>Credit Card Account</label>
+                  <select
+                    className="form-control"
+                    value={newInstCard}
+                    onChange={(e) => setNewInstCard(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select --</option>
+                    {accounts.filter(a => a.type === 'credit_card').map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Tokopedia Cicilan Laptop"
+                    value={newInstDesc}
+                    onChange={(e) => setNewInstDesc(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
+                  <div className="form-group">
+                    <label>Nama Merchant <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Tokopedia, Shopee"
+                      value={newInstMerchant}
+                      onChange={(e) => setNewInstMerchant(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Nama Produk <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(Opsional)</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. iPhone 15, Laptop Asus"
+                      value={newInstProduct}
+                      onChange={(e) => setNewInstProduct(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid-cols-2" style={{ gridTemplateColumns: '1fr 1fr', margin: 0, gap: '1rem' }}>
+                  <div className="form-group">
+                    <label>Monthly Bill (IDR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 500000"
+                      value={newInstAmount}
+                      onChange={(e) => setNewInstAmount(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Total Duration (Months)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 12"
+                      value={newInstMonths}
+                      onChange={(e) => setNewInstMonths(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={newInstDate}
+                    onChange={(e) => setNewInstDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                    <Icons.Plus /> Save Installment
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => setShowAddInstModal(false)}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* View Installment Transactions Modal */}
+        {viewingInstTx && (
+          <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="glass-panel modal-content" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                <h3 style={{ margin: 0 }}>
+                  🧾 Transaksi Terkait: {viewingInstTx.description}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingInstTx(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', fontSize: '1.25rem', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Installment Summary */}
+              <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Kartu Kredit</div>
+                  <strong>{viewingInstTx.card_name}</strong>
+                </div>
+                {viewingInstTx.merchant_name && (
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Merchant</div>
+                    <strong>{viewingInstTx.merchant_name}</strong>
+                  </div>
+                )}
+                {viewingInstTx.product_name && (
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Produk</div>
+                    <strong>{viewingInstTx.product_name}</strong>
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Tagihan / Bulan</div>
+                  <strong className="text-danger">{renderAmount(viewingInstTx.monthly_amount)}</strong>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Sisa Bulan</div>
+                  <strong className="text-warning">{viewingInstTx.remaining_months} / {viewingInstTx.total_months} bulan</strong>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Start Date</div>
+                  <strong>{viewingInstTx.start_date}</strong>
+                </div>
+              </div>
+
+              {loadingInstTx ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                  Memuat transaksi...
+                </div>
+              ) : (
+                <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Tanggal</th>
+                        <th>Akun</th>
+                        <th>Deskripsi</th>
+                        <th>Kategori</th>
+                        <th style={{ textAlign: 'right' }}>Nominal</th>
+                        <th>Catatan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {instTransactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                            Belum ada transaksi yang dikaitkan dengan cicilan ini. Transaksi akan muncul di sini jika di-tag sebagai bagian dari cicilan ini saat import PDF.
+                          </td>
+                        </tr>
+                      ) : (
+                        instTransactions.map((tx: any) => (
+                          <tr key={tx.id}>
+                            <td style={{ fontSize: '0.85rem' }}>{tx.date}</td>
+                            <td style={{ fontSize: '0.85rem' }}>{tx.account_name}</td>
+                            <td style={{ fontSize: '0.85rem' }}>{tx.description}</td>
+                            <td style={{ fontSize: '0.85rem' }}>{tx.category}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 600, color: tx.amount < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                              {tx.amount < 0 ? '-' : '+'}{formatIDR(Math.abs(tx.amount))}
+                            </td>
+                            <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{tx.note || '—'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setViewingInstTx(null)}
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -184,4 +184,21 @@ router.get('/api/credit-cards/projection', async (req, res) => {
   }
 });
 
+// Get transactions linked to an installment
+router.get('/api/installments/:id/transactions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const transactions = await query.all(`
+      SELECT t.*, a.name as account_name
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE t.installment_id = ?
+      ORDER BY t.date DESC
+    `, [id]);
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
