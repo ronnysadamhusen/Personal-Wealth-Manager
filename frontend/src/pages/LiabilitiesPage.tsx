@@ -271,16 +271,6 @@ export default function LiabilitiesPage() {
     }
   };
 
-  // Tick installment month (reducing remaining months)
-  const handleTickInstallment = async (id: string) => {
-    try {
-      const res = await fetch(`${API_URL}/installments/${id}/tick`, { method: 'POST' });
-      if (res.ok) fetchData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   return (
     <>
           <div>
