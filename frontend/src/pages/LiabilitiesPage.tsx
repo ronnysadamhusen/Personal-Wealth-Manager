@@ -142,6 +142,39 @@ export default function LiabilitiesPage() {
     }
   };
 
+  // Archived installments
+  const [archivedInsts, setArchivedInsts] = useState<any[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const fetchArchivedInstallments = async () => {
+    try {
+      const res = await fetch(`${API_URL}/installments?status=archived`);
+      if (res.ok) setArchivedInsts(await res.json());
+    } catch { /* ignore */ }
+  };
+
+  const handleArchiveInstallment = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/installments/${id}/archive`, { method: 'POST' });
+      if (res.ok) {
+        fetchData();
+        if (showArchived) fetchArchivedInstallments();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleUnarchiveInstallment = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/installments/${id}/unarchive`, { method: 'POST' });
+      if (res.ok) { fetchData(); fetchArchivedInstallments(); }
+    } catch (err) { console.error(err); }
+  };
+
+  const toggleShowArchived = () => {
+    if (!showArchived) fetchArchivedInstallments();
+    setShowArchived(prev => !prev);
+  };
+
   // Edit installment modal
   const [editingInst, setEditingInst] = useState<any | null>(null);
   const [editInstDesc, setEditInstDesc] = useState('');
@@ -493,6 +526,14 @@ export default function LiabilitiesPage() {
                                   ✏️
                                 </button>
                                 <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: '0.25rem 0.4rem', fontSize: '0.75rem', opacity: i.remaining_months === 0 ? 1 : 0.6 }}
+                                  onClick={() => handleArchiveInstallment(i.id)}
+                                  title={i.remaining_months === 0 ? 'Arsipkan (Lunas)' : 'Arsipkan'}
+                                >
+                                  📦
+                                </button>
+                                <button
                                   className="btn"
                                   style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
                                   onClick={() => handleDeleteInstallment(i.id)}
@@ -604,6 +645,80 @@ export default function LiabilitiesPage() {
                   </button>
                 </form>
               </div>
+            </div>
+
+            {/* Archived Installments */}
+            <div className="glass-panel card-content" style={{ marginTop: '1.5rem' }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={toggleShowArchived}
+              >
+                <h3 style={{ margin: 0 }}>📦 Arsip Cicilan</h3>
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                  {showArchived ? '▲ Sembunyikan' : '▼ Tampilkan'}
+                </span>
+              </div>
+
+              {showArchived && (
+                <div style={{ marginTop: '1rem' }}>
+                  {archivedInsts.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1.5rem 0' }}>
+                      Belum ada cicilan yang diarsipkan.
+                    </p>
+                  ) : (
+                    <div className="table-container">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Card Name</th>
+                            <th>Description</th>
+                            <th>Merchant</th>
+                            <th>Product</th>
+                            <th>Monthly Bill</th>
+                            <th>Duration</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {archivedInsts.map(i => (
+                            <tr key={i.id} style={{ opacity: 0.7 }}>
+                              <td style={{ fontWeight: 600 }}>{i.card_name}</td>
+                              <td>
+                                <div>{i.description}</div>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Started: {i.start_date}</span>
+                              </td>
+                              <td style={{ fontSize: '0.85rem' }}>{i.merchant_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
+                              <td style={{ fontSize: '0.85rem' }}>{i.product_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}</td>
+                              <td style={{ fontWeight: 600 }}>{renderAmount(i.monthly_amount)}</td>
+                              <td style={{ color: 'var(--color-text-muted)' }}>{i.total_months} bulan</td>
+                              <td>
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                    onClick={() => handleUnarchiveInstallment(i.id)}
+                                    title="Kembalikan ke aktif"
+                                  >
+                                    ↩️ Aktifkan
+                                  </button>
+                                  <button
+                                    className="btn"
+                                    style={{ padding: '0.25rem', color: 'var(--color-danger)', background: 'transparent' }}
+                                    onClick={() => handleDeleteInstallment(i.id)}
+                                    title="Hapus permanen"
+                                  >
+                                    <Icons.Delete />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
             )}

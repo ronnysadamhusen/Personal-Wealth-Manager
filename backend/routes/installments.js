@@ -4,15 +4,17 @@ const { generateUUID } = require('../utils/id');
 
 const router = express.Router();
 
-// Get all installments
+// Get installments — active only by default, ?status=archived for archived
 router.get('/api/installments', async (req, res) => {
   try {
+    const status = req.query.status === 'archived' ? 'archived' : 'active';
     const list = await query.all(`
       SELECT i.*, a.name as card_name
       FROM installments i
       JOIN accounts a ON i.account_id = a.id
+      WHERE i.status = ?
       ORDER BY i.start_date DESC
-    `);
+    `, [status]);
     res.json(list);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -68,6 +70,32 @@ router.put('/api/installments/:id', async (req, res) => {
   }
 });
 
+// Archive an installment
+router.post('/api/installments/:id/archive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inst = await query.get('SELECT * FROM installments WHERE id = ?', [id]);
+    if (!inst) return res.status(404).json({ error: 'Installment not found' });
+    await query.run("UPDATE installments SET status = 'archived' WHERE id = ?", [id]);
+    res.json({ ...inst, status: 'archived' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unarchive an installment
+router.post('/api/installments/:id/unarchive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inst = await query.get('SELECT * FROM installments WHERE id = ?', [id]);
+    if (!inst) return res.status(404).json({ error: 'Installment not found' });
+    await query.run("UPDATE installments SET status = 'active' WHERE id = ?", [id]);
+    res.json({ ...inst, status: 'active' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete/payoff an installment
 router.delete('/api/installments/:id', async (req, res) => {
   try {
@@ -103,7 +131,7 @@ router.get('/api/credit-cards/projection', async (req, res) => {
 
     for (const card of cards) {
       // Get all active installments for this card
-      const list = await query.all('SELECT * FROM installments WHERE account_id = ? AND remaining_months > 0', [card.id]);
+      const list = await query.all("SELECT * FROM installments WHERE account_id = ? AND remaining_months > 0 AND status = 'active'", [card.id]);
       
       // We will project over the next 36 months
       const monthlyProjections = [];
