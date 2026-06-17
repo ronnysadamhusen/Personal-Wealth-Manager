@@ -41,7 +41,13 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
   const [saveResult, setSaveResult] = useState<{ currentBill: number | null; availableCredit: number | null; creditLimit: number | null; accountName: string } | null>(null);
 
   // New category modal
-  const [newCatModal, setNewCatModal] = useState<{ name: string; type: 'income' | 'expense' | 'both' } | null>(null);
+  const [newCatModal, setNewCatModal] = useState<{
+    name: string;
+    type: 'income' | 'expense' | 'both';
+    parent_id: string;
+    importance: string;
+    urgency: string;
+  } | null>(null);
 
   // Pre-select account via prop (modal mode) or legacy context state
   useEffect(() => {
@@ -712,7 +718,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         ))}
                       </select>
                     )}
-                    <button type="button" className="btn btn-secondary" onClick={() => setNewCatModal({ name: '', type: 'expense' })} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setNewCatModal({ name: '', type: 'expense', parent_id: '', importance: '', urgency: '' })} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
                       ➕ Buat Kategori
                     </button>
                     <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
@@ -965,7 +971,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
 
       {newCatModal && (
         <div className="modal-overlay">
-          <div className="glass-panel modal-content" style={{ maxWidth: '420px' }}>
+          <div className="glass-panel modal-content" style={{ maxWidth: '480px' }}>
             <h3 style={{ marginBottom: '0.5rem' }}>Tambah Kategori Baru</h3>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
               Kategori ini akan langsung tersedia di semua baris setelah dibuat.
@@ -977,7 +983,13 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                 const res = await fetch(`${API_URL}/categories`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ name: newCatModal.name, type: newCatModal.type }),
+                  body: JSON.stringify({
+                    name: newCatModal.name,
+                    type: newCatModal.type,
+                    parent_id: newCatModal.parent_id || null,
+                    importance: newCatModal.importance || null,
+                    urgency: newCatModal.urgency || null,
+                  }),
                 });
                 if (!res.ok) {
                   const err = await res.json();
@@ -1003,19 +1015,60 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   autoFocus
                 />
               </div>
-              <div className="form-group">
-                <label>Tipe</label>
-                <select
-                  className="form-control"
-                  value={newCatModal.type}
-                  onChange={(e) => setNewCatModal({ ...newCatModal, type: e.target.value as 'income' | 'expense' | 'both' })}
-                >
-                  <option value="expense">Pengeluaran (Expense)</option>
-                  <option value="income">Pemasukan (Income)</option>
-                  <option value="both">Keduanya (Both)</option>
-                </select>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Parent Kategori</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.parent_id}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, parent_id: e.target.value })}
+                  >
+                    <option value="">Tidak ada (Parent)</option>
+                    {groupedCategories.map((g: any) => (
+                      <option key={g.parent.id} value={g.parent.id}>{g.parent.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Tipe</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.type}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, type: e.target.value as 'income' | 'expense' | 'both' })}
+                  >
+                    <option value="expense">Pengeluaran</option>
+                    <option value="income">Pemasukan</option>
+                    <option value="both">Keduanya</option>
+                  </select>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Kepentingan</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.importance}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, importance: e.target.value })}
+                  >
+                    <option value="">— Pilih —</option>
+                    <option value="penting">⭐ Penting</option>
+                    <option value="tidak_penting">◌ Tidak Penting</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Urgensi</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.urgency}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, urgency: e.target.value })}
+                  >
+                    <option value="">— Pilih —</option>
+                    <option value="mendesak">🔴 Mendesak</option>
+                    <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan Kategori</button>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setNewCatModal(null)}>Batal</button>
               </div>
