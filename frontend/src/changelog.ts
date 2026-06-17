@@ -8,9 +8,20 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.8.0',
+    date: '2026-06-17',
+    highlights: 'Tambah kategori langsung dari proses import PDF — lengkap dengan parent, tipe, kepentingan, dan urgensi.',
+    changes: [
+      { type: 'feat', description: 'Tombol "➕ Buat Kategori" di header tabel verifikasi import — membuka modal tanpa membatalkan proses import' },
+      { type: 'feat', description: 'Modal tambah kategori dari import: mendukung nama, parent kategori, tipe, kepentingan (Eisenhower), dan urgensi' },
+      { type: 'improvement', description: 'Kolom checkbox dihapus dari tabel verifikasi — semua transaksi dari PDF langsung diimport tanpa perlu select/deselect' },
+      { type: 'improvement', description: 'Tombol Simpan menampilkan total semua transaksi (bukan hanya yang dipilih)' },
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-06-16',

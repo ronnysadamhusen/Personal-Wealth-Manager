@@ -40,6 +40,16 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
   // Save result summary
   const [saveResult, setSaveResult] = useState<{ currentBill: number | null; availableCredit: number | null; creditLimit: number | null; accountName: string } | null>(null);
 
+  // New category modal
+  const [newCatModal, setNewCatModal] = useState<{
+    name: string;
+    type: 'income' | 'expense' | 'both';
+    parent_id: string;
+    importance: string;
+    urgency: string;
+  } | null>(null);
+
+
   // Pre-select account via prop (modal mode) or legacy context state
   useEffect(() => {
     if (initialAccountId) {
@@ -277,7 +287,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           account_id: importTargetAccId,
-          transactions: parsedData.transactions.filter((tx: any) => !tx.exclude),
+          transactions: parsedData.transactions,
           file_name: fileNames,
           detected_installments: parsedData.detectedInstallments || [],
           credit_limit: parsedData.creditLimit,
@@ -709,8 +719,11 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                         ))}
                       </select>
                     )}
+                    <button type="button" className="btn btn-secondary" onClick={() => setNewCatModal({ name: '', type: 'expense', parent_id: '', importance: '', urgency: '' })} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
+                      ➕ Buat Kategori
+                    </button>
                     <button className="btn btn-primary" onClick={handleSaveImportedData} disabled={!importTargetAccId} style={{ whiteSpace: 'nowrap', padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}>
-                      Simpan ({parsedData.transactions.filter((t: any) => !t.exclude).length}/{parsedData.transactions.length})
+                      Simpan ({parsedData.transactions.length})
                     </button>
                     <button className="btn btn-secondary" onClick={() => setParsedData(null)} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>
                       Batal
@@ -729,7 +742,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                 {/* Summary bar — shows totals from ALL transactions in the PDF */}
                 {(() => {
                   const allTxs = parsedData.transactions;
-                  const selectedTxs = allTxs.filter((t: any) => !t.exclude);
                   const totalIncome  = allTxs.reduce((s: number, t: any) => t.amount > 0 ? s + t.amount : s, 0);
                   const totalExpense = allTxs.reduce((s: number, t: any) => t.amount < 0 ? s + Math.abs(t.amount) : s, 0);
                   const targetAcc = accounts.find((a: any) => a.id === importTargetAccId);
@@ -738,13 +750,13 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   const sisaLimit = parsedData.availableCreditLimit ?? (targetAcc as any)?.available_credit ?? null;
                   const tagihanBaru = parsedData.currentBill ?? null;
                   const fmt = (v: number | null) => v != null ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v) : '—';
-                  const items: { label: string; value: string; color?: string; sub?: string }[] = [
-                    { label: 'Pemasukan', value: fmt(totalIncome), color: 'var(--color-success)', sub: `${allTxs.filter((t: any) => t.amount > 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount > 0).length} dipilih` },
-                    { label: 'Pengeluaran', value: fmt(totalExpense), color: 'var(--color-danger)', sub: `${allTxs.filter((t: any) => t.amount < 0).length} tx di PDF · ${selectedTxs.filter((t: any) => t.amount < 0).length} dipilih` },
-                    ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal), sub: 'sebelum import' }] : []),
-                    ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)', sub: 'dari PDF' }] : []),
-                    ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)', sub: 'dari PDF' }] : []),
-                    ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit), sub: 'dari PDF' }] : []),
+                  const items: { label: string; value: string; color?: string }[] = [
+                    { label: 'Pemasukan', value: fmt(totalIncome), color: 'var(--color-success)' },
+                    { label: 'Pengeluaran', value: fmt(totalExpense), color: 'var(--color-danger)' },
+                    ...(saldoAwal != null ? [{ label: isCC ? 'Tagihan Saat Ini' : 'Saldo Saat Ini', value: fmt(saldoAwal) }] : []),
+                    ...(isCC && tagihanBaru != null ? [{ label: 'Tagihan Baru', value: fmt(tagihanBaru), color: 'var(--color-danger)' }] : []),
+                    ...(sisaLimit != null ? [{ label: 'Sisa Limit', value: fmt(sisaLimit), color: 'var(--color-primary)' }] : []),
+                    ...(parsedData.creditLimit != null ? [{ label: 'Total Limit', value: fmt(parsedData.creditLimit) }] : []),
                   ];
                   return (
                     <div style={{ display: 'flex', gap: '0', marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
@@ -762,21 +774,6 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                   <table className="data-table" style={{ minWidth: '1200px', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '40px', textAlign: 'center' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={parsedData.transactions.length > 0 && parsedData.transactions.every((t: any) => !t.exclude)} 
-                            onChange={(e) => {
-                              const checkVal = e.target.checked;
-                              const updated = parsedData.transactions.map((t: any) => ({
-                                ...t,
-                                exclude: !checkVal
-                              }));
-                              setParsedData({ ...parsedData, transactions: updated });
-                            }}
-                            title="Toggle All"
-                          />
-                        </th>
                         <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Transaction Date</th>
                         <th style={{ whiteSpace: 'nowrap', width: '100px' }}>Posting Date</th>
                         <th>Description / Category / Merchant / Produk</th>
@@ -786,15 +783,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                     </thead>
                     <tbody>
                       {parsedData.transactions.map((tx: any, index: number) => (
-                        <tr key={index} style={{ opacity: tx.exclude ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-                          {/* Import? Checkbox */}
-                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '0.6rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={!tx.exclude}
-                              onChange={(e) => handleGridChange(index, 'exclude', !e.target.checked)}
-                            />
-                          </td>
+                        <tr key={index}>
                           {/* Transaction Date — plain text */}
                           <td style={{ whiteSpace: 'nowrap', verticalAlign: 'top', fontSize: '0.88rem' }}>
                             {tx.date}
@@ -812,7 +801,7 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
                                 )}
                                 <span style={{ fontWeight: 500, fontSize: '0.88rem' }}>{tx.description}</span>
                               </div>
-                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <input
                                   type="text"
                                   className="grid-input"
@@ -979,6 +968,114 @@ export default function ImportView({ initialAccountId, onClose }: ImportViewProp
           onConfirm={handleConfirmImportSplit}
           onCancel={() => setSplittingTxIndex(null)}
         />
+      )}
+
+      {newCatModal && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content" style={{ maxWidth: '480px' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Tambah Kategori Baru</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+              Kategori ini akan langsung tersedia di semua baris setelah dibuat.
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              try {
+                const res = await fetch(`${API_URL}/categories`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: newCatModal.name,
+                    type: newCatModal.type,
+                    parent_id: newCatModal.parent_id || null,
+                    importance: newCatModal.importance || null,
+                    urgency: newCatModal.urgency || null,
+                  }),
+                });
+                if (!res.ok) {
+                  const err = await res.json();
+                  setErrorMsg(err.error || 'Gagal membuat kategori');
+                } else {
+                  await fetchData();
+                  setNewCatModal(null);
+                }
+              } catch (err: any) {
+                setErrorMsg(err.message || 'Error');
+              } finally {
+                setLoading(false);
+              }
+            }}>
+              <div className="form-group">
+                <label>Nama Kategori</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={newCatModal.name}
+                  onChange={(e) => setNewCatModal({ ...newCatModal, name: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Parent Kategori</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.parent_id}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, parent_id: e.target.value })}
+                  >
+                    <option value="">Tidak ada (Parent)</option>
+                    {groupedCategories.map((g: any) => (
+                      <option key={g.parent.id} value={g.parent.id}>{g.parent.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Tipe</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.type}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, type: e.target.value as 'income' | 'expense' | 'both' })}
+                  >
+                    <option value="expense">Pengeluaran</option>
+                    <option value="income">Pemasukan</option>
+                    <option value="both">Keduanya</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Kepentingan</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.importance}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, importance: e.target.value })}
+                  >
+                    <option value="">— Pilih —</option>
+                    <option value="penting">⭐ Penting</option>
+                    <option value="tidak_penting">◌ Tidak Penting</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Urgensi</label>
+                  <select
+                    className="form-control"
+                    value={newCatModal.urgency}
+                    onChange={(e) => setNewCatModal({ ...newCatModal, urgency: e.target.value })}
+                  >
+                    <option value="">— Pilih —</option>
+                    <option value="mendesak">🔴 Mendesak</option>
+                    <option value="tidak_mendesak">🟢 Tidak Mendesak</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan Kategori</button>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setNewCatModal(null)}>Batal</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </>
   );
