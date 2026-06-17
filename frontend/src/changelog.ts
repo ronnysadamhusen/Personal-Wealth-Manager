@@ -8,9 +8,23 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.9.0';
+export const APP_VERSION = '1.10.0';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.10.0',
+    date: '2026-06-17',
+    highlights: 'Tabel cicilan aktif kini full-width, form tambah cicilan jadi popup modal, dan tersedia riwayat transaksi per cicilan.',
+    changes: [
+      { type: 'feat', description: 'Tombol "Add Installment" membuka modal form — form tidak lagi inline di samping tabel' },
+      { type: 'feat', description: 'Tabel Active Installment Plans full-width dengan kolom baru: Start Date dan Outstanding (sisa hutang total)' },
+      { type: 'feat', description: 'Tombol lihat transaksi (ikon ledger) per baris — membuka modal daftar transaksi yang dikaitkan ke cicilan tersebut' },
+      { type: 'feat', description: 'Endpoint baru: GET /api/installments/:id/transactions' },
+      { type: 'improvement', description: 'Kolom Monthly Bill dan Outstanding rata kanan untuk konsistensi tampilan angka' },
+      { type: 'improvement', description: 'Tooltip pada chart Amortization Timeline tidak lagi terpotong saat di-hover' },
+      { type: 'fix', description: 'Tombol Tick dihapus dari kolom Remaining — sisa bulan akan sinkron otomatis dari data transaksi' },
+    ],
+  },
   {
     version: '1.9.0',
     date: '2026-06-17',
