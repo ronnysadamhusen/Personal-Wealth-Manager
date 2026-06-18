@@ -204,6 +204,7 @@ const Parsers = {
     // Strip page number markers (e.g. "1/3", "2/3") and repeated page headers
     // that appear at page boundaries and break the transaction regex lookahead.
     text = text
+      .replace(/---\s*PAGE\s*\d+\s*---/gi, ' ')
       .replace(/\b\d+\/\d+\b/g, ' ')
       .replace(/REKENING\s+KARTU\s+KREDIT\s+\d+/gi, ' ')
       .replace(/TANGGAL\s+KETERANGAN\s+JUMLAH\s*\(RP\)\s+TRANSAKSI\s+PEMBUKUAN/gi, ' ')
