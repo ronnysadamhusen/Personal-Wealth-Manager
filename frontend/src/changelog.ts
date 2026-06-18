@@ -8,9 +8,17 @@ export interface ChangelogEntry {
   }[];
 }
 
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.10.1';
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.10.1',
+    date: '2026-06-18',
+    highlights: 'Perbaikan bug parser PDF BCA Credit Card: deskripsi transaksi di batas halaman tidak lagi tergabung.',
+    changes: [
+      { type: 'fix', description: 'Parser BCA CC kini meng-strip marker "--- PAGE N ---" sehingga transaksi di batas halaman PDF tidak tergabung menjadi satu entri dengan deskripsi korup dan nominal salah' },
+    ],
+  },
   {
     version: '1.10.0',
     date: '2026-06-17',
